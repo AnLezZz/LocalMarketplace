@@ -8,7 +8,7 @@ export default function Root({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en-NZ">
       <body>
-        <header><Link href="/" className="logo">LocalHub</Link></header>
+        <header><Link href="/" className="logo">LocalHub</Link> <Link href="/provider" style={{ marginLeft: 16 }}>Provider inbox</Link></header>
         <main>{children}</main>
         <footer>LocalHub does not collect, hold or guarantee payment. Pay your provider directly.</footer>
       </body>

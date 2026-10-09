@@ -20,7 +20,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ c
         <input name="q" placeholder="Keyword" defaultValue={q} aria-label="Keyword" />
         <button>Search</button>
       </form>
-      {list.length === 0 && <p className="muted">No providers match yet.</p>}
+      {list.length === 0 && <p className="msg">No providers found. If this is a fresh database, run <code>pnpm convex:seed</code>.</p>}
       <div className="grid">
         {list.map((p: any) => (
           <Link key={p._id} href={`/providers/${p._id}`} className="card">
