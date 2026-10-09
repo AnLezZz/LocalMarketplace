@@ -3,6 +3,8 @@ import { fetchQuery, fetchMutation } from "convex/nextjs";
 import { api, CATEGORIES } from "../../../lib/convex";
 import { authOpts } from "../../../lib/auth";
 import { attempt } from "../../../lib/actions";
+import Banner from "../../../components/Banner";
+import { categoryMeta } from "../../../components/categories";
 
 export const dynamic = "force-dynamic";
 
@@ -27,27 +29,50 @@ export default async function Register({ searchParams }: { searchParams: Promise
   }
 
   return (
-    <>
-      <h1>{profile ? "Update your application" : "Become a provider"}</h1>
-      <p className="muted">We review every application before it appears in search.</p>
-      {err && <p className="msg" role="alert">{err}</p>}
-      <form action={submit} className="stack">
-        <input name="name" placeholder="Business or trading name" defaultValue={profile?.name} required maxLength={80} />
-        <select name="category" defaultValue={profile?.category ?? ""} aria-label="Category" required>
-          <option value="" disabled>Category</option>
-          {CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
-        </select>
-        <input name="suburb" placeholder="Suburb" defaultValue={profile?.suburb} required maxLength={60} />
-        <label>Rate in NZD
-          <input name="rate" type="number" min={1} max={1000} step="0.01" defaultValue={profile ? profile.rateCents / 100 : undefined} required />
-        </label>
-        <select name="basis" defaultValue={profile?.rateBasis ?? "hourly"} aria-label="Rate basis">
-          <option value="hourly">per hour</option>
-          <option value="fixed">fixed price</option>
-        </select>
-        <textarea name="bio" placeholder="Tell customers about your experience" rows={5} defaultValue={profile?.bio} required maxLength={1000} />
-        <button>{profile ? "Resubmit" : "Apply"}</button>
+    <div className="page page--narrow">
+      <h1 className="page__title">{profile ? "Update your application" : "Become a provider"}</h1>
+      <p className="page__sub">We review every application before it appears in search.</p>
+      {err && <Banner tone="error">{err}</Banner>}
+      <form action={submit} className="card card--pad form">
+        <div className="field">
+          <label htmlFor="name" className="field__label">Business or trading name</label>
+          <input id="name" name="name" defaultValue={profile?.name} required maxLength={80} autoComplete="organization" />
+        </div>
+        <div className="form__row">
+          <div className="field field--grow">
+            <label htmlFor="category" className="field__label">Category</label>
+            <select id="category" name="category" defaultValue={profile?.category ?? ""} required>
+              <option value="" disabled>Choose a category</option>
+              {CATEGORIES.map((c) => <option key={c} value={c}>{categoryMeta(c).label}</option>)}
+            </select>
+          </div>
+          <div className="field field--grow">
+            <label htmlFor="suburb" className="field__label">Suburb</label>
+            <input id="suburb" name="suburb" defaultValue={profile?.suburb} required maxLength={60} autoComplete="address-level2" />
+          </div>
+        </div>
+        <div className="form__row">
+          <div className="field field--grow">
+            <label htmlFor="rate" className="field__label">Rate in NZD</label>
+            <div className="affix">
+              <span className="affix__pre" aria-hidden="true">$</span>
+              <input id="rate" name="rate" type="number" min={1} max={1000} step="0.01" inputMode="decimal" defaultValue={profile ? profile.rateCents / 100 : undefined} required />
+            </div>
+          </div>
+          <div className="field field--grow">
+            <label htmlFor="basis" className="field__label">Rate basis</label>
+            <select id="basis" name="basis" defaultValue={profile?.rateBasis ?? "hourly"}>
+              <option value="hourly">per hour</option>
+              <option value="fixed">fixed price</option>
+            </select>
+          </div>
+        </div>
+        <div className="field">
+          <label htmlFor="bio" className="field__label">About your business</label>
+          <textarea id="bio" name="bio" placeholder="Tell customers about your experience" rows={5} defaultValue={profile?.bio} required maxLength={1000} />
+        </div>
+        <button className="btn btn--primary btn--block">{profile ? "Resubmit" : "Apply"}</button>
       </form>
-    </>
+    </div>
   );
 }
