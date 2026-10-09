@@ -1,0 +1,20 @@
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--ivory); color: var(--charcoal); font-family: var(--font-sans); line-height: 1.5; }
+header, main, footer { max-width: 960px; margin: 0 auto; padding: 16px; }
+.logo { font-family: var(--font-serif); font-size: 28px; color: var(--forest); text-decoration: none; }
+h1, h2 { font-family: var(--font-serif); font-weight: 400; }
+h1 { font-size: 44px; margin: 8px 0; }
+footer { font-size: 13px; opacity: .7; }
+a { color: var(--forest); }
+form.filters { display: flex; gap: 8px; flex-wrap: wrap; margin: 16px 0; }
+input, select, textarea, button { font: inherit; padding: 10px 12px; border: 1px solid #c9d3c7; border-radius: 8px; background: #fff; }
+button { background: var(--forest); color: #fff; border-color: var(--forest); cursor: pointer; }
+button.alt { background: #fff; color: var(--forest); }
+button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible, a:focus-visible { outline: 3px solid var(--forest); outline-offset: 2px; }
+.grid { display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); }
+.card { background: var(--sage); border-radius: 12px; padding: 16px; text-decoration: none; color: inherit; display: block; }
+.card h3 { margin: 0 0 4px; }
+.muted { opacity: .75; font-size: 14px; }
+form.stack { display: grid; gap: 10px; max-width: 480px; }
+.msg { background: var(--sage); padding: 12px; border-radius: 8px; }
+.row { display: flex; gap: 8px; align-items: center; justify-content: space-between; background: #fff; border-radius: 8px; padding: 12px; margin-bottom: 8px; flex-wrap: wrap; }
