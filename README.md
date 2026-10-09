@@ -8,7 +8,8 @@ Turborepo + Next.js + Convex. Spec: local services marketplace PRD v1.1.
 3. Set the auth secrets once per deployment (see "Auth setup" below).
 4. `pnpm convex:seed`
 5. Put `NEXT_PUBLIC_CONVEX_URL` from `.env.local` into `apps/marketplace/.env.local`, then `pnpm dev`.
-6. Open http://localhost:3000 and create an account at `/signin`.
+6. Open http://localhost:3100 (port 3000 is occupied by OrbStack on macOS).
+7. Pre-seeded test accounts for Admin, Provider, and Customer are documented in [TEST_ACCOUNTS.md](TEST_ACCOUNTS.md).
 
 ## Auth setup
 Convex Auth needs `JWT_PRIVATE_KEY`, `JWKS` and `SITE_URL` on each deployment (dev and prod). Generate the key pair with `jose` (RS256) and set each with `npx convex env set "NAME=VALUE"`. `SITE_URL` is the app's origin (`http://localhost:3000` in dev).
