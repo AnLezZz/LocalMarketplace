@@ -9,5 +9,10 @@ export async function authOpts() {
 }
 
 export async function getMe(): Promise<{ id: string; name: string | null; email: string | null; role: "customer" | "provider" | "admin" } | null> {
-  return await fetchQuery(api.users.me, {}, await authOpts());
+  try {
+    return await fetchQuery(api.users.me, {}, await authOpts());
+  } catch (e) {
+    console.error("getMe failed; treating the visitor as signed out", e);
+    return null;
+  }
 }
