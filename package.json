@@ -6,13 +6,20 @@
     "dev": "turbo dev",
     "build": "turbo build",
     "convex:dev": "convex dev",
-    "convex:seed": "convex run seed:run"
+    "convex:seed": "convex run seed:run",
+    "test": "vitest run"
   },
   "devDependencies": {
+    "@edge-runtime/vm": "^5.0.0",
+    "@types/node": "^22.20.5",
+    "convex-test": "^0.0.60",
     "turbo": "^2.3.0",
-    "typescript": "^5.6.0"
+    "typescript": "^5.6.0",
+    "vitest": "^5.0.3"
   },
   "dependencies": {
-    "convex": "^1.17.0"
+    "@convex-dev/auth": "^0.0.96",
+    "convex": "^1.17.0",
+    "jose": "^6.2.12"
   }
 }

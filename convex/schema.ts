@@ -1,7 +1,25 @@
 import { defineSchema, defineTable } from "convex/server";
+import { authTables } from "@convex-dev/auth/server";
 import { v } from "convex/values";
 
+export const roleValidator = v.union(v.literal("customer"), v.literal("provider"), v.literal("admin"));
+
 export default defineSchema({
+  ...authTables,
+  // Replaces authTables.users to add `role`. The other fields mirror the library's table.
+  users: defineTable({
+    name: v.optional(v.string()),
+    image: v.optional(v.string()),
+    email: v.optional(v.string()),
+    emailVerificationTime: v.optional(v.number()),
+    phone: v.optional(v.string()),
+    phoneVerificationTime: v.optional(v.number()),
+    isAnonymous: v.optional(v.boolean()),
+    role: roleValidator,
+  })
+    .index("email", ["email"])
+    .index("phone", ["phone"]),
+
   providers: defineTable({
     name: v.string(),
     bio: v.string(),
