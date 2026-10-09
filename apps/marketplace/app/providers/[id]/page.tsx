@@ -1,6 +1,9 @@
+import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { fetchQuery, fetchMutation } from "convex/nextjs";
 import { api } from "../../../lib/convex";
+import { meta, price } from "../../../lib/ui";
+import { Hero, Reveal } from "../../../components/motion";
 
 export const dynamic = "force-dynamic";
 const TZ = "Pacific/Auckland";
@@ -18,6 +21,7 @@ export default async function Provider({ params, searchParams }: { params: Promi
   const { sent, error } = await searchParams;
   const p = await fetchQuery(api.providers.get, { id });
   if (!p) notFound();
+  const m = meta(p.category);
 
   async function submit(fd: FormData) {
     "use server";
@@ -38,22 +42,46 @@ export default async function Provider({ params, searchParams }: { params: Promi
   }
 
   return (
-    <>
-      <h1>{p.name}</h1>
-      <p className="muted">{p.category} · {p.suburb} · ★ {p.ratingAvg} ({p.reviewCount} reviews)</p>
-      <p>{p.bio}</p>
-      <p><strong>From ${(p.rateCents / 100).toFixed(0)}{p.rateBasis === "hourly" ? "/hr" : " fixed"}</strong>. Pay the provider directly; LocalHub does not handle payment.</p>
-      <h2>Request a booking</h2>
-      {sent && <p className="msg">Request sent. {p.name} will accept or decline. A request does not guarantee the slot.</p>}
-      {error && <p className="msg">{error}</p>}
-      <form action={submit} className="stack">
-        <input name="name" placeholder="Your name" required />
-        <input name="email" type="email" placeholder="Email" required />
-        <label>Start (Auckland time)<input name="start" type="datetime-local" required /></label>
-        <label>Hours<input name="hours" type="number" min={1} max={12} defaultValue={2} /></label>
-        <textarea name="description" placeholder="Describe the job" rows={4} required />
-        <button>Send request</button>
-      </form>
-    </>
+    <div className="wrap">
+      <Link href="/#browse" className="back">← All providers</Link>
+      <div className="pgrid">
+        <Hero>
+          <div className="phead">
+            <div className="avatar" style={{ background: `hsl(${m.hue} 55% 90%)` }}>{m.emoji}</div>
+            <div>
+              <h1>{p.name}</h1>
+              <div className="meta" style={{ marginTop: 8 }}><span className="tag">{p.category}</span><span>{p.suburb}</span></div>
+            </div>
+          </div>
+          <div className="facts">
+            <div className="fact"><b>★ {p.ratingAvg}</b><span>{p.reviewCount} reviews</span></div>
+            <div className="fact"><b>{price(p)}</b><span>{p.rateBasis === "hourly" ? "hourly rate" : "fixed price"}</span></div>
+            <div className="fact"><b>{p.suburb}</b><span>service area</span></div>
+          </div>
+          <h2 style={{ fontSize: 32, marginBottom: 8 }}>About</h2>
+          <p style={{ color: "var(--muted)", fontSize: 17 }}>{p.bio}</p>
+          <div className="notice" style={{ marginTop: 24 }}>You pay {p.name} directly. Localo does not collect, hold or guarantee payment. A request does not guarantee the time slot until the provider accepts.</div>
+        </Hero>
+
+        <Reveal delay={0.15}>
+          <div className="book">
+            <h2>Request a booking</h2>
+            <div style={{ color: "var(--muted)", fontSize: 14 }}>Usually answered within a day.</div>
+            {sent && <div className="toast ok">✓ Request sent. {p.name} will accept or decline.</div>}
+            {error && <div className="toast err">{error}</div>}
+            <form action={submit} className="form">
+              <label className="field">Your name<input name="name" placeholder="Jane Smith" required /></label>
+              <label className="field">Email<input name="email" type="email" placeholder="jane@example.com" required /></label>
+              <div className="two">
+                <label className="field">Start (Auckland)<input name="start" type="datetime-local" required /></label>
+                <label className="field">Hours<input name="hours" type="number" min={1} max={12} defaultValue={2} /></label>
+              </div>
+              <label className="field">The job<textarea name="description" rows={4} placeholder="Tell them what you need done" required /></label>
+              <button className="btn">Send request →</button>
+            </form>
+          </div>
+        </Reveal>
+      </div>
+    </div>
   );
 }

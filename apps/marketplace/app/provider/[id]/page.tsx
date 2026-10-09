@@ -1,7 +1,9 @@
+import Link from "next/link";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { fetchQuery, fetchMutation } from "convex/nextjs";
 import { api } from "../../../lib/convex";
+import { Stagger, Item } from "../../../components/motion";
 
 export const dynamic = "force-dynamic";
 const fmt = (ms: number) => new Date(ms).toLocaleString("en-NZ", { timeZone: "Pacific/Auckland", dateStyle: "medium", timeStyle: "short" });
@@ -20,24 +22,31 @@ export default async function Inbox({ params, searchParams }: { params: Promise<
   }
 
   return (
-    <>
-      <h1>Requests</h1>
-      {err && <p className="msg">{err}</p>}
-      {rows.length === 0 && <p className="muted">No requests yet.</p>}
-      {rows.map((b: any) => (
-        <div className="row" key={b._id}>
-          <div>
-            <strong>{b.customerName}</strong> · {fmt(b.startsAt)} → {fmt(b.endsAt)}
-            <div className="muted">{b.description}</div>
-            <div className="muted">Status: {b.status}</div>
-          </div>
-          <form action={act} style={{ display: "flex", gap: 8 }}>
-            <input type="hidden" name="id" value={b._id} />
-            {b.status === "requested" && <><button name="to" value="accepted">Accept</button><button className="alt" name="to" value="declined">Decline</button></>}
-            {b.status === "accepted" && <><button name="to" value="completed">Mark complete</button><button className="alt" name="to" value="cancelled">Cancel</button></>}
-          </form>
-        </div>
-      ))}
-    </>
+    <div className="wrap">
+      <Link href="/provider" className="back">← All businesses</Link>
+      <div className="page-h" style={{ paddingTop: 0 }}><div className="eyebrow">Inbox</div><h1>Booking requests</h1></div>
+      {err && <div className="toast err" style={{ marginBottom: 16 }}>{err}</div>}
+      {rows.length === 0 && <div className="empty">No requests yet. Share your profile to get your first one.</div>}
+      <Stagger>
+        {rows.map((b: any) => (
+          <Item key={b._id}>
+            <div className="req">
+              <div>
+                <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+                  <strong>{b.customerName}</strong><span className={`status ${b.status}`}>{b.status}</span>
+                </div>
+                <div className="when">{fmt(b.startsAt)} → {fmt(b.endsAt)}</div>
+                <div style={{ marginTop: 6 }}>{b.description}</div>
+              </div>
+              <form action={act} className="actions">
+                <input type="hidden" name="id" value={b._id} />
+                {b.status === "requested" && <><button className="btn" name="to" value="accepted">Accept</button><button className="btn ghost" name="to" value="declined">Decline</button></>}
+                {b.status === "accepted" && <><button className="btn" name="to" value="completed">Mark complete</button><button className="btn ghost" name="to" value="cancelled">Cancel</button></>}
+              </form>
+            </div>
+          </Item>
+        ))}
+      </Stagger>
+    </div>
   );
 }

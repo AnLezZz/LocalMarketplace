@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { fetchQuery } from "convex/nextjs";
 import { api } from "../../lib/convex";
+import { meta } from "../../lib/ui";
+import { Stagger, Item } from "../../components/motion";
 
 export const dynamic = "force-dynamic";
 
@@ -8,13 +10,21 @@ export const dynamic = "force-dynamic";
 export default async function Providers() {
   const list = await fetchQuery(api.providers.list, {});
   return (
-    <>
-      <h1>Provider inbox</h1>
-      <p className="muted">Pick a provider to see their requests.</p>
-      {list.length === 0 && <p className="msg">No providers in the database. Run <code>pnpm convex:seed</code>.</p>}
-      {list.map((p: any) => (
-        <div className="row" key={p._id}><span>{p.name} · {p.suburb}</span><Link href={`/provider/${p._id}`}>Open inbox</Link></div>
-      ))}
-    </>
+    <div className="wrap">
+      <div className="page-h"><div className="eyebrow">Provider inbox</div><h1>Choose your business.</h1></div>
+      {list.length === 0 && <div className="empty">No providers in the database. Run <code>pnpm convex:seed</code>.</div>}
+      <Stagger className="grid">
+        {list.map((p: any) => (
+          <Item key={p._id}>
+            <Link href={`/provider/${p._id}`} className="card">
+              <div className="avatar" style={{ background: `hsl(${meta(p.category).hue} 55% 90%)` }}>{meta(p.category).emoji}</div>
+              <h3>{p.name}</h3>
+              <div className="meta"><span className="tag">{p.category}</span><span>{p.suburb}</span></div>
+              <div className="foot"><span className="meta">Open inbox</span><div className="arrow">→</div></div>
+            </Link>
+          </Item>
+        ))}
+      </Stagger>
+    </div>
   );
 }
