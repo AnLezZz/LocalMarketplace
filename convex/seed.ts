@@ -1,7 +1,7 @@
-import { mutationGeneric as mutation } from "convex/server";
+import { internalMutation } from "./_generated/server";
 
 // Run once: npx convex run seed:run
-export const run = mutation({
+export const run = internalMutation({
   args: {},
   handler: async (ctx) => {
     if ((await ctx.db.query("providers").first()) !== null) return "already seeded";
