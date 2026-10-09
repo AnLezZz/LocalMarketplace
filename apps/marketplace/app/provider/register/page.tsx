@@ -39,7 +39,7 @@ export default async function Register({ searchParams }: { searchParams: Promise
         </select>
         <input name="suburb" placeholder="Suburb" defaultValue={profile?.suburb} required maxLength={60} />
         <label>Rate in NZD
-          <input name="rate" type="number" min={1} max={1000} step="0.5" defaultValue={profile ? profile.rateCents / 100 : undefined} required />
+          <input name="rate" type="number" min={1} max={1000} step="0.01" defaultValue={profile ? profile.rateCents / 100 : undefined} required />
         </label>
         <select name="basis" defaultValue={profile?.rateBasis ?? "hourly"} aria-label="Rate basis">
           <option value="hourly">per hour</option>

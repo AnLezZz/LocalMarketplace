@@ -13,7 +13,7 @@ Turborepo + Next.js + Convex. Spec: local services marketplace PRD v1.1.
 ## Auth setup
 Convex Auth needs `JWT_PRIVATE_KEY`, `JWKS` and `SITE_URL` on each deployment (dev and prod). Generate the key pair with `jose` (RS256) and set each with `npx convex env set "NAME=VALUE"`. `SITE_URL` is the app's origin (`http://localhost:3000` in dev).
 
-First admin: sign up, then `npx convex run users:grantAdmin '{"email":"you@example.nz"}'`. There is deliberately no public way to become an admin.
+First admin: sign up, then `npx convex run users:grantAdmin '{"email":"you@example.nz"}'`. On the production deployment add `--prod` (`npx convex run --prod users:grantAdmin ...`), and only after you have signed in successfully with that email on production. Emails are not verified, so granting admin to an address someone else may have registered first would promote the wrong person. There is deliberately no public way to become an admin.
 
 ## Roles
 - `customer` (default at sign-up) can request and cancel bookings.
@@ -23,10 +23,14 @@ First admin: sign up, then `npx convex run users:grantAdmin '{"email":"you@examp
 ## Tests
 `pnpm test` runs the Convex function tests (Vitest + convex-test). `convex/security.test.ts` fails if a public mutation is added without a signed-out check.
 
+`convex/_generated` is gitignored, so a fresh clone needs `npx convex codegen` (or `npx convex dev --once`) before `pnpm test`.
+
 ## Deploy
+Do not run the seed (`pnpm convex:seed`) on a production deployment: seeded listings have no owner, are demo-only, and cannot answer bookings.
+
 `npx convex deploy`, set the auth variables on the production deployment (with `SITE_URL` set to the production origin), then Vercel: root dir `apps/marketplace`, env `NEXT_PUBLIC_CONVEX_URL` = the production URL.
 
 ## Notes
 - Overlap protection: the `bookings.transition` mutation checks overlaps inside a Convex transaction, so concurrent accepts cannot double-book.
-- Seeded listings have no owner and cannot be managed by anyone; they are demo data.
+- Seeded listings have no owner and cannot be managed by anyone; they are demo data and should not be seeded in production.
 - Not yet built: payments, emails, email verification, password reset, reviews, messaging.
