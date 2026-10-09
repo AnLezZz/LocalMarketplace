@@ -233,6 +233,7 @@ main { padding: 0 var(--s-4); }
   background: var(--t-chip); color: var(--t-ink); margin-bottom: auto;
 }
 .tile__name { margin-top: var(--s-4); font-size: 17px; font-weight: 650; letter-spacing: -0.01em; line-height: 1.25; }
+.tile__meta .num { white-space: nowrap; }
 .tile__meta { margin-top: 2px; font-size: 13.5px; color: var(--ink-2); line-height: 1.35; }
 .tile__check {
   position: absolute; top: var(--s-3); right: var(--s-3);
@@ -316,12 +317,16 @@ main { padding: 0 var(--s-4); }
 /* ---------- Forms ---------- */
 .form { display: grid; gap: var(--s-4); }
 .form__group { border: 0; margin: 0; padding: 0; min-width: 0; display: grid; gap: var(--s-3); }
+.form__group > .form__legend + * { clear: both; }
 .form__group + .form__group { padding-top: var(--s-4); border-top: 1px solid var(--hairline); }
-.form__legend { padding: 0; margin-bottom: var(--s-3); font-size: 16px; font-weight: 700; letter-spacing: -0.01em; color: var(--ink); }
+.form__legend { float: left; width: 100%; padding: 0; margin-bottom: var(--s-1); font-size: 16px; font-weight: 700; letter-spacing: -0.01em; color: var(--ink); }
 .form__row { display: flex; flex-wrap: wrap; gap: var(--s-3); }
 .field { display: grid; gap: 6px; min-width: 0; }
 .field--grow { flex: 1 1 200px; }
-.field--hours { flex: 0 0 104px; }
+.field input, .field select, .field textarea { min-width: 0; max-width: 100%; }
+.form__row .field--grow:has(input[type="datetime-local"]) { flex-basis: 100%; }
+@media (min-width: 560px) { .form__row .field--grow:has(input[type="datetime-local"]) { flex-basis: 240px; } }
+.field--hours { flex: 1 1 104px; max-width: 160px; }
 .field__label { font-size: 14px; font-weight: 600; color: var(--ink); }
 .field__hint { font-size: 13px; color: var(--ink-3); }
 
