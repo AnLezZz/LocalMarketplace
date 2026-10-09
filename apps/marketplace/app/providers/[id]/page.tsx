@@ -1,6 +1,6 @@
 import { notFound, redirect } from "next/navigation";
-import { and, eq } from "drizzle-orm";
-import { getDb, providers, createRequest } from "@localhub/db";
+import { fetchQuery, fetchMutation } from "convex/nextjs";
+import { api } from "../../../lib/convex";
 
 export const dynamic = "force-dynamic";
 const TZ = "Pacific/Auckland";
@@ -16,7 +16,7 @@ function aucklandToDate(local: string): Date {
 export default async function Provider({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ sent?: string; error?: string }> }) {
   const { id } = await params;
   const { sent, error } = await searchParams;
-  const [p] = await getDb().select().from(providers).where(and(eq(providers.id, id), eq(providers.approved, true)));
+  const p = await fetchQuery(api.providers.get, { id });
   if (!p) notFound();
 
   async function submit(fd: FormData) {
@@ -29,7 +29,11 @@ export default async function Provider({ params, searchParams }: { params: Promi
     const email = String(fd.get("email") ?? "").trim();
     const description = String(fd.get("description") ?? "").trim();
     if (!name || !/^\S+@\S+\.\S+$/.test(email) || !description) redirect(`/providers/${id}?error=Fill+in+all+fields`);
-    await createRequest({ providerId: id, customerName: name, customerEmail: email, description, startsAt, endsAt });
+    try {
+      await fetchMutation(api.bookings.create, { providerId: id, customerName: name, customerEmail: email, description, startsAt: startsAt.getTime(), endsAt: endsAt.getTime() });
+    } catch {
+      redirect(`/providers/${id}?error=Could+not+send+request`);
+    }
     redirect(`/providers/${id}?sent=1`);
   }
 

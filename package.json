@@ -5,8 +5,14 @@
   "scripts": {
     "dev": "turbo dev",
     "build": "turbo build",
-    "db:migrate": "pnpm --filter @localhub/db migrate",
-    "db:seed": "pnpm --filter @localhub/db seed"
+    "convex:dev": "convex dev",
+    "convex:seed": "convex run seed:run"
   },
-  "devDependencies": { "turbo": "^2.3.0", "typescript": "^5.6.0" }
+  "devDependencies": {
+    "turbo": "^2.3.0",
+    "typescript": "^5.6.0"
+  },
+  "dependencies": {
+    "convex": "^1.17.0"
+  }
 }

@@ -1,1 +1,1 @@
-export default { transpilePackages: ["@localhub/db", "@localhub/design-tokens"] };
+export default { transpilePackages: ["@localhub/design-tokens"] };

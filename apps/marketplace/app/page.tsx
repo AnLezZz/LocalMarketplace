@@ -1,16 +1,12 @@
 import Link from "next/link";
-import { and, eq, ilike, or } from "drizzle-orm";
-import { getDb, providers, CATEGORIES } from "@localhub/db";
+import { fetchQuery } from "convex/nextjs";
+import { api, CATEGORIES } from "../lib/convex";
 
 export const dynamic = "force-dynamic";
 
 export default async function Home({ searchParams }: { searchParams: Promise<{ category?: string; suburb?: string; q?: string }> }) {
   const { category, suburb, q } = await searchParams;
-  const conds = [eq(providers.approved, true)];
-  if (category) conds.push(eq(providers.category, category));
-  if (suburb) conds.push(ilike(providers.suburb, `%${suburb}%`));
-  if (q) conds.push(or(ilike(providers.name, `%${q}%`), ilike(providers.bio, `%${q}%`))!);
-  const list = await getDb().select().from(providers).where(and(...conds));
+  const list = await fetchQuery(api.providers.list, { category: category || undefined, suburb: suburb || undefined, q: q || undefined });
 
   return (
     <>
@@ -26,8 +22,8 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ c
       </form>
       {list.length === 0 && <p className="muted">No providers match yet.</p>}
       <div className="grid">
-        {list.map((p) => (
-          <Link key={p.id} href={`/providers/${p.id}`} className="card">
+        {list.map((p: any) => (
+          <Link key={p._id} href={`/providers/${p._id}`} className="card">
             <h3>{p.name}</h3>
             <div className="muted">{p.category} · {p.suburb}</div>
             <p>From ${(p.rateCents / 100).toFixed(0)}{p.rateBasis === "hourly" ? "/hr" : ""}</p>
