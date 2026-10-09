@@ -1,0 +1,55 @@
+// Authored line icons: 24px grid, 1.75 stroke, round joins. Decorative by default (aria-hidden).
+import type { ReactNode } from "react";
+
+const PATHS = {
+  home: <><path d="M3.5 10.5 12 4l8.5 6.5" /><path d="M5.5 9v10a1 1 0 0 0 1 1h3.75v-5.5h3.5V20h3.75a1 1 0 0 0 1-1V9" /></>,
+  calendar: <><rect x="3.5" y="5" width="17" height="15.5" rx="3.5" /><path d="M3.5 10h17M8 3v4M16 3v4" /></>,
+  briefcase: <><rect x="3.5" y="7.5" width="17" height="12.5" rx="3" /><path d="M9 7.5V6a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v1.5M3.5 13h17" /></>,
+  inbox: <><path d="M3.5 13.5 6 6.3A2 2 0 0 1 7.9 5h8.2A2 2 0 0 1 18 6.3l2.5 7.2V18a2 2 0 0 1-2 2h-13a2 2 0 0 1-2-2z" /><path d="M3.5 13.5h4.75L9.75 16h4.5l1.5-2.5h4.75" /></>,
+  shield: <><path d="M12 3.5 19 6v5.5c0 4.3-2.9 7.6-7 9-4.1-1.4-7-4.7-7-9V6z" /><path d="m9 12 2 2 4-4" /></>,
+  signIn: <><path d="M14 4h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-3" /><path d="m10 8 4 4-4 4M14 12H4" /></>,
+  signOut: <><path d="M10 4H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h3" /><path d="m15 8 4 4-4 4M19 12H9" /></>,
+  search: <><circle cx="11" cy="11" r="6.5" /><path d="m20 20-4.2-4.2" /></>,
+  pin: <><path d="M12 21s-6.5-5.6-6.5-11a6.5 6.5 0 0 1 13 0c0 5.4-6.5 11-6.5 11z" /><circle cx="12" cy="10" r="2.3" /></>,
+  star: <path d="m12 3.8 2.5 5.1 5.6.8-4 3.9.9 5.6-5-2.6-5 2.6.9-5.6-4-3.9 5.6-.8z" fill="currentColor" />,
+  chevronLeft: <path d="M14.5 6 8.5 12l6 6" />,
+  chevronRight: <path d="m9.5 6 6 6-6 6" />,
+  clock: <><circle cx="12" cy="12" r="8.5" /><path d="M12 7.5V12l3 2" /></>,
+  check: <path d="m5 12.5 4.5 4.5L19 7.5" />,
+  x: <path d="m6.5 6.5 11 11M17.5 6.5l-11 11" />,
+  alert: <><circle cx="12" cy="12" r="8.5" /><path d="M12 7.5v5M12 16.2v.3" /></>,
+  info: <><circle cx="12" cy="12" r="8.5" /><path d="M12 11v5M12 7.8v.3" /></>,
+  user: <><circle cx="12" cy="8.5" r="3.75" /><path d="M4.5 20c.8-3.6 3.8-5.75 7.5-5.75s6.7 2.15 7.5 5.75" /></>,
+  card: <><rect x="3.5" y="5.5" width="17" height="13" rx="3" /><path d="M3.5 10h17M7.5 14.5h3" /></>,
+  // Categories
+  cleaning: <><path d="M8.5 10.5h6a1 1 0 0 1 1 1V20a1 1 0 0 1-1 1h-6a1 1 0 0 1-1-1v-8.5a1 1 0 0 1 1-1z" /><path d="M10 10.5v-3h3v3M9 7.5V5a1 1 0 0 1 1-1h4.5L13 7.5" /><path d="M18 4.5h2M18 7.5l1.6 1M18 1.75l1.6-1" /></>,
+  gardening: <><path d="M12 20v-8" /><path d="M12 12c0-4 2.5-6.5 7-6.5 0 4.5-2.5 6.5-7 6.5zM12 14.5c0-3.5-2-5.5-6.5-5.5 0 3.8 2 5.5 6.5 5.5z" /><path d="M7 20h10" /></>,
+  handyman: <path d="M15.5 4.2a4.5 4.5 0 0 0-4.6 6.1l-6.3 6.3a1.9 1.9 0 0 0 2.7 2.7l6.3-6.3a4.5 4.5 0 0 0 6.1-4.6l-2.6 2.6-2.4-.6-.6-2.4z" />,
+  petCare: <><path d="M12 13c-2.6 0-5 2.6-5 4.7 0 1.4 1 2.3 2.4 2.3.9 0 1.7-.5 2.6-.5s1.7.5 2.6.5c1.4 0 2.4-.9 2.4-2.3 0-2.1-2.4-4.7-5-4.7z" /><circle cx="5.75" cy="10.5" r="1.75" /><circle cx="9.5" cy="6.5" r="1.9" /><circle cx="14.5" cy="6.5" r="1.9" /><circle cx="18.25" cy="10.5" r="1.75" /></>,
+  car: <><path d="M4 16.5v-3.2l1.8-4.6a2 2 0 0 1 1.9-1.2h8.6a2 2 0 0 1 1.9 1.2l1.8 4.6v3.2a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1z" /><path d="M4 13.3h16M7 17.5V19.5M17 17.5V19.5M7.5 10.5h9" /></>,
+  moving: <><path d="M4 8l8-4 8 4v8l-8 4-8-4z" /><path d="m4 8 8 4 8-4M12 12v8M8 6l8 4" /></>,
+} satisfies Record<string, ReactNode>;
+
+export type IconName = keyof typeof PATHS;
+
+export default function Icon({ name, size = 20, className, label }: { name: IconName; size?: number; className?: string; label?: string }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1.75}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className ? `icon ${className}` : "icon"}
+      aria-hidden={label ? undefined : true}
+      role={label ? "img" : undefined}
+      aria-label={label}
+      focusable="false"
+    >
+      {PATHS[name]}
+    </svg>
+  );
+}

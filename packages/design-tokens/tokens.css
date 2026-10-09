@@ -1,5 +1,77 @@
+/* LocalHub design tokens. Light only. Contrast values measured against the surface named in each comment. */
 :root {
-  --ivory: #FAF9F6; --charcoal: #202320; --forest: #315C48; --sage: #E7EDE5;
-  --font-serif: "Instrument Serif", Georgia, serif;
-  --font-sans: Inter, system-ui, sans-serif;
+  color-scheme: light;
+
+  /* Surfaces */
+  --page: #F0F5F9;
+  --surface: #FFFFFF;
+  --surface-sunk: #F6F9FC;
+  --hairline: #E3EAF1;
+  --hairline-strong: #CFD9E4;
+
+  /* Text (tinted from the blue-grey hue, never plain grey) */
+  --ink: #09090B;
+  --ink-2: #40495E;       /* 9.00:1 on white, 8.20:1 on page */
+  --ink-3: #5A6479;       /* 5.94:1 on white, 5.41:1 on page; also placeholder */
+
+  /* Primary */
+  --blue: #0A44DB;        /* 7.34:1 on white */
+  --blue-light: #1E6AEB;  /* gradient light stop; white text 4.87:1 */
+  --blue-tint: #E8EFFE;   /* blue text 6.36:1 */
+  --blue-ring: rgba(10, 68, 219, 0.55);
+  --gradient-primary: linear-gradient(135deg, var(--blue-light) 0%, var(--blue) 100%);
+
+  /* Feedback */
+  --danger: #B42318;      /* 6.57:1 on white, 5.92:1 on danger tint */
+  --danger-tint: #FEF0EF;
+  --danger-line: #F6D3D0;
+  --success: #0B6B3A;     /* 6.02:1 on success tint */
+  --success-tint: #E9F8EF;
+  --success-line: #C6EBD5;
+
+  /* Status pills (text on bg, all >= 4.5:1) */
+  --st-requested-bg: #FFF1D6; --st-requested-fg: #8A4B00; --st-requested-dot: #E08A00;   /* 6.09:1 */
+  --st-accepted-bg: #E3ECFF;  --st-accepted-fg: #0A3FC4;  --st-accepted-dot: #2F6BF2;    /* 7.02:1 */
+  --st-completed-bg: #DDF5E8; --st-completed-fg: #0B6B3A; --st-completed-dot: #17A35C;   /* 5.76:1 */
+  --st-neutral-bg: #EEF1F5;   --st-neutral-fg: #40495E;   --st-neutral-dot: #8A93A6;     /* 7.95:1 */
+
+  /* Category hues: tile bg / icon chip bg / icon stroke */
+  --cat-cleaning-bg: #E8F7F1;  --cat-cleaning-chip: #C9EEDF;  --cat-cleaning-ink: #0B7A57;
+  --cat-gardening-bg: #EEF7E2; --cat-gardening-chip: #D6EDBA; --cat-gardening-ink: #3F7A12;
+  --cat-handyman-bg: #FFF4E0;  --cat-handyman-chip: #FFE2B0;  --cat-handyman-ink: #A35A00;
+  --cat-petcare-bg: #FDECEF;   --cat-petcare-chip: #F9CFD8;   --cat-petcare-ink: #B4234A;
+  --cat-car-bg: #E6F3FD;       --cat-car-chip: #C4E3FA;       --cat-car-ink: #0B6AAE;
+  --cat-moving-bg: #F1ECFE;    --cat-moving-chip: #DDD2FB;    --cat-moving-ink: #6A3FD1;
+
+  /* Radii */
+  --r-card: 20px;
+  --r-control: 14px;
+  --r-pill: 999px;
+
+  /* Shadows: two soft layers with real offset */
+  --shadow-1: 0 1px 2px rgba(16, 24, 40, 0.04), 0 8px 24px rgba(16, 24, 40, 0.06);
+  --shadow-2: 0 2px 4px rgba(16, 24, 40, 0.05), 0 14px 32px rgba(16, 24, 40, 0.09);
+  --shadow-button: 0 1px 2px rgba(10, 68, 219, 0.18), 0 6px 16px rgba(10, 68, 219, 0.22);
+  --shadow-button-hover: 0 2px 4px rgba(10, 68, 219, 0.2), 0 10px 22px rgba(10, 68, 219, 0.28);
+  --shadow-bar: 0 -1px 2px rgba(16, 24, 40, 0.03), 0 -8px 24px rgba(16, 24, 40, 0.05);
+
+  /* Spacing scale */
+  --s-1: 4px; --s-2: 8px; --s-3: 12px; --s-4: 16px; --s-5: 20px; --s-6: 24px; --s-8: 32px; --s-10: 40px; --s-12: 48px;
+
+  /* Type */
+  --font-sans: var(--font-inter), system-ui, -apple-system, "Segoe UI", sans-serif;
+  --fs-display: clamp(30px, 6.4vw, 44px);
+  --fs-h1: clamp(26px, 5.2vw, 34px);
+  --fs-h2: 20px;
+  --fs-h3: 17px;
+  --fs-body: 16px;
+  --fs-small: 14px;
+  --fs-micro: 12px;
+  --tracking-tight: -0.02em;
+
+  /* Motion */
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+
+  /* Layout */
+  --tabbar-h: 64px;
 }
