@@ -22,12 +22,16 @@ export const review = mutation({
     providerId: v.id("providers"),
     decision: v.union(v.literal("approve"), v.literal("reject")),
     reason: v.optional(v.string()),
+    // The version the admin read (from listPending). Stale means the applicant edited since.
+    submittedAt: v.number(),
   },
   handler: async (ctx, a) => {
-    await requireRole(ctx, "admin");
+    const admin = await requireRole(ctx, "admin");
     const p = await ctx.db.get(a.providerId);
     if (!p) throw new ConvexError("Provider not found");
     if (providerStatus(p) !== "pending") throw new ConvexError("Already reviewed");
+    if (p.userId === admin._id) throw new ConvexError("You can't review your own application");
+    if (p.submittedAt !== a.submittedAt) throw new ConvexError("This application changed. Reload and review again.");
     if (a.decision === "approve") {
       await ctx.db.patch(p._id, { approved: true, reviewedAt: Date.now(), rejectionReason: undefined });
     } else {

@@ -35,6 +35,8 @@ export default defineSchema({
     // Set by an admin decision. approved=false with reviewedAt set means rejected.
     reviewedAt: v.optional(v.number()),
     rejectionReason: v.optional(v.string()),
+    // Stamped on every submit/resubmit. An admin decision must quote it, so it binds to the version they read.
+    submittedAt: v.optional(v.number()),
   })
     .index("by_approved", ["approved"])
     .index("by_userId", ["userId"])

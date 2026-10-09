@@ -48,11 +48,13 @@ export const submitProfile = mutation({
     const existing = await getProviderForUser(ctx, user._id);
     if (existing?.approved) throw new ConvexError("Approved profiles can't be edited yet. Contact support.");
     if (existing) {
-      await ctx.db.patch(existing._id, { ...fields, reviewedAt: undefined, rejectionReason: undefined });
+      // Strictly increasing, so two submits in the same millisecond still get distinct stamps.
+      const submittedAt = Math.max(Date.now(), (existing.submittedAt ?? 0) + 1);
+      await ctx.db.patch(existing._id, { ...fields, submittedAt, reviewedAt: undefined, rejectionReason: undefined });
       return existing._id;
     }
     const id = await ctx.db.insert("providers", {
-      ...fields, userId: user._id, ratingAvg: 0, reviewCount: 0, approved: false,
+      ...fields, userId: user._id, ratingAvg: 0, reviewCount: 0, approved: false, submittedAt: Date.now(),
     });
     await ctx.db.patch(user._id, { role: "provider" });
     return id;

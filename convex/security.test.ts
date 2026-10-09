@@ -47,7 +47,7 @@ test("every public mutation refuses a signed-out caller", async () => {
     }),
   );
   const calls = [
-    () => t.mutation(api.admin.review, { providerId, decision: "approve" }),
+    () => t.mutation(api.admin.review, { providerId, decision: "approve", submittedAt: 1 }),
     () => t.mutation(api.bookings.create, { providerId, customerName: "A", description: "d", startsAt, endsAt: startsAt + 3_600_000 }),
     () => t.mutation(api.bookings.transition, { bookingId, to: "accepted" }),
     () => t.mutation(api.providers.submitProfile, {

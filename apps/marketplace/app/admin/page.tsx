@@ -17,7 +17,7 @@ export default async function Admin({ searchParams }: { searchParams: Promise<{ 
     "use server";
     const decision = fd.get("decision") === "approve" ? "approve" : "reject";
     const r = await attempt(async () =>
-      fetchMutation(api.admin.review, { providerId: String(fd.get("id")), decision, reason: String(fd.get("reason") ?? "") }, await authOpts()));
+      fetchMutation(api.admin.review, { providerId: String(fd.get("id")), decision, reason: String(fd.get("reason") ?? ""), submittedAt: Number(fd.get("submittedAt")) }, await authOpts()));
     revalidatePath("/admin");
     redirect(r.ok ? "/admin" : `/admin?err=${encodeURIComponent(r.message)}`);
   }
@@ -36,6 +36,7 @@ export default async function Admin({ searchParams }: { searchParams: Promise<{ 
           </div>
           <form action={decide} style={{ display: "grid", gap: 8 }}>
             <input type="hidden" name="id" value={p._id} />
+            <input type="hidden" name="submittedAt" value={p.submittedAt} />
             <input name="reason" placeholder="Reason (required to reject)" />
             <div style={{ display: "flex", gap: 8 }}>
               <button name="decision" value="approve">Approve</button>
