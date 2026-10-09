@@ -42,6 +42,9 @@ importers:
 
   apps/marketplace:
     dependencies:
+      '@convex-dev/auth':
+        specifier: ^0.0.96
+        version: 0.0.96(@auth/core@0.41.3)(convex@1.46.0(react@19.3.0))(react@19.3.0)
       '@localhub/design-tokens':
         specifier: workspace:*
         version: link:../../packages/design-tokens

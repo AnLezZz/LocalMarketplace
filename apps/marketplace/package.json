@@ -8,11 +8,12 @@
     "start": "next start"
   },
   "dependencies": {
+    "@convex-dev/auth": "^0.0.96",
     "@localhub/design-tokens": "workspace:*",
+    "convex": "^1.17.0",
     "next": "^15.1.0",
     "react": "^19.0.0",
-    "react-dom": "^19.0.0",
-    "convex": "^1.17.0"
+    "react-dom": "^19.0.0"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
