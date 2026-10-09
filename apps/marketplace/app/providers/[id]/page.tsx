@@ -1,6 +1,9 @@
+import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { fetchQuery, fetchMutation } from "convex/nextjs";
 import { api } from "../../../lib/convex";
+import { authOpts, getMe } from "../../../lib/auth";
+import { attempt } from "../../../lib/actions";
 
 export const dynamic = "force-dynamic";
 const TZ = "Pacific/Auckland";
@@ -18,6 +21,7 @@ export default async function Provider({ params, searchParams }: { params: Promi
   const { sent, error } = await searchParams;
   const p = await fetchQuery(api.providers.get, { id });
   if (!p) notFound();
+  const me = await getMe();
 
   async function submit(fd: FormData) {
     "use server";
@@ -26,15 +30,11 @@ export default async function Provider({ params, searchParams }: { params: Promi
     const endsAt = new Date(startsAt.getTime() + hours * 3600_000);
     if (isNaN(startsAt.getTime()) || startsAt < new Date()) redirect(`/providers/${id}?error=Pick+a+future+time`);
     const name = String(fd.get("name") ?? "").trim();
-    const email = String(fd.get("email") ?? "").trim();
     const description = String(fd.get("description") ?? "").trim();
-    if (!name || !/^\S+@\S+\.\S+$/.test(email) || !description) redirect(`/providers/${id}?error=Fill+in+all+fields`);
-    try {
-      await fetchMutation(api.bookings.create, { providerId: id, customerName: name, customerEmail: email, description, startsAt: startsAt.getTime(), endsAt: endsAt.getTime() });
-    } catch {
-      redirect(`/providers/${id}?error=Could+not+send+request`);
-    }
-    redirect(`/providers/${id}?sent=1`);
+    if (!name || !description) redirect(`/providers/${id}?error=Fill+in+all+fields`);
+    const r = await attempt(async () =>
+      fetchMutation(api.bookings.create, { providerId: id, customerName: name, description, startsAt: startsAt.getTime(), endsAt: endsAt.getTime() }, await authOpts()));
+    redirect(r.ok ? `/providers/${id}?sent=1` : `/providers/${id}?error=${encodeURIComponent(r.message)}`);
   }
 
   return (
@@ -46,14 +46,17 @@ export default async function Provider({ params, searchParams }: { params: Promi
       <h2>Request a booking</h2>
       {sent && <p className="msg">Request sent. {p.name} will accept or decline. A request does not guarantee the slot.</p>}
       {error && <p className="msg">{error}</p>}
-      <form action={submit} className="stack">
-        <input name="name" placeholder="Your name" required />
-        <input name="email" type="email" placeholder="Email" required />
-        <label>Start (Auckland time)<input name="start" type="datetime-local" required /></label>
-        <label>Hours<input name="hours" type="number" min={1} max={12} defaultValue={2} /></label>
-        <textarea name="description" placeholder="Describe the job" rows={4} required />
-        <button>Send request</button>
-      </form>
+      {me ? (
+        <form action={submit} className="stack">
+          <input name="name" placeholder="Your name" defaultValue={me.name ?? ""} required />
+          <label>Start (Auckland time)<input name="start" type="datetime-local" required /></label>
+          <label>Hours<input name="hours" type="number" min={1} max={12} defaultValue={2} /></label>
+          <textarea name="description" placeholder="Describe the job" rows={4} required />
+          <button>Send request</button>
+        </form>
+      ) : (
+        <p className="msg"><Link href="/signin">Sign in</Link> to request a booking.</p>
+      )}
     </>
   );
 }
