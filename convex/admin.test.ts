@@ -130,3 +130,36 @@ describe("admin.review", () => {
     expect(await t.query(api.providers.list, {})).toEqual([]);
   });
 });
+
+describe("admin.getStats and admin.listRecentBookings", () => {
+  test("calculates marketplace stats and lists recent bookings for admin", async () => {
+    const t = newT();
+    const admin = asUser(t, await createUser(t, "admin"));
+    const p1 = await createProvider(t); // approved
+    const { providerId: pendingId } = await apply(t, "applicant@example.nz");
+
+    // Add a booking
+    await t.run((ctx) =>
+      ctx.db.insert("bookings", {
+        providerId: p1,
+        customerName: "Sarah Kim",
+        customerEmail: "sarah@example.nz",
+        description: "Lawn mowing",
+        startsAt: Date.now() + 100000,
+        endsAt: Date.now() + 200000,
+        status: "accepted",
+      })
+    );
+
+    const stats = await admin.query(api.admin.getStats, {});
+    expect(stats.totalProviders).toBeGreaterThanOrEqual(1);
+    expect(stats.totalBookings).toBeGreaterThanOrEqual(1);
+    expect(stats.pendingApprovals).toBe(1);
+
+    const bookings = await admin.query(api.admin.listRecentBookings, {});
+    expect(bookings.length).toBeGreaterThanOrEqual(1);
+    expect(bookings[0].customerName).toBe("Sarah Kim");
+    expect(bookings[0].providerName).toBeDefined();
+  });
+});
+

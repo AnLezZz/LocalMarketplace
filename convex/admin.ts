@@ -42,3 +42,50 @@ export const review = mutation({
     return null;
   },
 });
+
+export const getStats = query({
+  args: {},
+  handler: async (ctx) => {
+    await requireRole(ctx, "admin");
+    const providers = await ctx.db
+      .query("providers")
+      .withIndex("by_approved", (q) => q.eq("approved", true))
+      .take(500);
+
+    const pending = await ctx.db
+      .query("providers")
+      .withIndex("by_approved_and_reviewedAt", (q) => q.eq("approved", false).eq("reviewedAt", undefined))
+      .take(100);
+
+    const bookings = await ctx.db.query("bookings").take(500);
+
+    const totalRatings = providers.reduce((acc, p) => acc + (p.ratingAvg || 0), 0);
+    const averageRating = providers.length > 0 ? Number((totalRatings / providers.length).toFixed(1)) : 0;
+
+    return {
+      totalProviders: providers.length,
+      totalBookings: bookings.length,
+      averageRating,
+      pendingApprovals: pending.length,
+    };
+  },
+});
+
+export const listRecentBookings = query({
+  args: {},
+  handler: async (ctx) => {
+    await requireRole(ctx, "admin");
+    const bookings = await ctx.db.query("bookings").order("desc").take(20);
+    return await Promise.all(
+      bookings.map(async (b) => {
+        const provider = await ctx.db.get(b.providerId);
+        return {
+          ...b,
+          providerName: provider?.name ?? "Unknown provider",
+          service: provider?.category ?? "General service",
+        };
+      })
+    );
+  },
+});
+
