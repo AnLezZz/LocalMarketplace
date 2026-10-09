@@ -2,6 +2,8 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { fetchQuery, fetchMutation } from "convex/nextjs";
 import { api } from "../../../lib/convex";
+import { authOpts, getMe } from "../../../lib/auth";
+import { attempt } from "../../../lib/actions";
 import { meta, price } from "../../../lib/ui";
 import { Hero, Reveal } from "../../../components/motion";
 
@@ -21,6 +23,7 @@ export default async function Provider({ params, searchParams }: { params: Promi
   const { sent, error } = await searchParams;
   const p = await fetchQuery(api.providers.get, { id });
   if (!p) notFound();
+  const me = await getMe();
   const m = meta(p.category);
 
   async function submit(fd: FormData) {
@@ -30,15 +33,11 @@ export default async function Provider({ params, searchParams }: { params: Promi
     const endsAt = new Date(startsAt.getTime() + hours * 3600_000);
     if (isNaN(startsAt.getTime()) || startsAt < new Date()) redirect(`/providers/${id}?error=Pick+a+future+time`);
     const name = String(fd.get("name") ?? "").trim();
-    const email = String(fd.get("email") ?? "").trim();
     const description = String(fd.get("description") ?? "").trim();
-    if (!name || !/^\S+@\S+\.\S+$/.test(email) || !description) redirect(`/providers/${id}?error=Fill+in+all+fields`);
-    try {
-      await fetchMutation(api.bookings.create, { providerId: id, customerName: name, customerEmail: email, description, startsAt: startsAt.getTime(), endsAt: endsAt.getTime() });
-    } catch {
-      redirect(`/providers/${id}?error=Could+not+send+request`);
-    }
-    redirect(`/providers/${id}?sent=1`);
+    if (!name || !description) redirect(`/providers/${id}?error=Fill+in+all+fields`);
+    const r = await attempt(async () =>
+      fetchMutation(api.bookings.create, { providerId: id, customerName: name, description, startsAt: startsAt.getTime(), endsAt: endsAt.getTime() }, await authOpts()));
+    redirect(r.ok ? `/providers/${id}?sent=1` : `/providers/${id}?error=${encodeURIComponent(r.message)}`);
   }
 
   return (
@@ -69,16 +68,19 @@ export default async function Provider({ params, searchParams }: { params: Promi
             <div style={{ color: "var(--muted)", fontSize: 14 }}>Usually answered within a day.</div>
             {sent && <div className="toast ok">✓ Request sent. {p.name} will accept or decline.</div>}
             {error && <div className="toast err">{error}</div>}
-            <form action={submit} className="form">
-              <label className="field">Your name<input name="name" placeholder="Jane Smith" required /></label>
-              <label className="field">Email<input name="email" type="email" placeholder="jane@example.com" required /></label>
-              <div className="two">
-                <label className="field">Start (Auckland)<input name="start" type="datetime-local" required /></label>
-                <label className="field">Hours<input name="hours" type="number" min={1} max={12} defaultValue={2} /></label>
-              </div>
-              <label className="field">The job<textarea name="description" rows={4} placeholder="Tell them what you need done" required /></label>
-              <button className="btn">Send request →</button>
-            </form>
+            {me ? (
+              <form action={submit} className="form">
+                <label className="field">Your name<input name="name" defaultValue={me.name ?? ""} placeholder="Jane Smith" required /></label>
+                <div className="two">
+                  <label className="field">Start (Auckland)<input name="start" type="datetime-local" required /></label>
+                  <label className="field">Hours<input name="hours" type="number" min={1} max={12} defaultValue={2} /></label>
+                </div>
+                <label className="field">The job<textarea name="description" rows={4} placeholder="Tell them what you need done" required /></label>
+                <button className="btn">Send request →</button>
+              </form>
+            ) : (
+              <div className="form"><Link href="/signin" className="btn">Sign in to request →</Link></div>
+            )}
           </div>
         </Reveal>
       </div>

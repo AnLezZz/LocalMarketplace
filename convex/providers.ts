@@ -1,5 +1,7 @@
-import { queryGeneric as query } from "convex/server";
-import { v } from "convex/values";
+import { ConvexError, v } from "convex/values";
+import { mutation, query } from "./_generated/server";
+import { getUser, requireUser } from "./model/auth";
+import { getProviderForUser, providerStatus, validateProfile } from "./model/providers";
 
 export const list = query({
   args: { category: v.optional(v.string()), suburb: v.optional(v.string()), q: v.optional(v.string()) },
@@ -19,5 +21,42 @@ export const get = query({
     const pid = ctx.db.normalizeId("providers", id);
     const p = pid && (await ctx.db.get(pid));
     return p && p.approved ? p : null;
+  },
+});
+
+/** The signed-in user's own provider profile, with its review status. */
+export const mine = query({
+  args: {},
+  handler: async (ctx) => {
+    const user = await getUser(ctx);
+    if (!user) return null;
+    const p = await getProviderForUser(ctx, user._id);
+    return p ? { ...p, status: providerStatus(p) } : null;
+  },
+});
+
+/** Apply to become a provider, or fix a pending/rejected application. Approved profiles are locked. */
+export const submitProfile = mutation({
+  args: {
+    name: v.string(), bio: v.string(), category: v.string(), suburb: v.string(),
+    rateCents: v.number(), rateBasis: v.union(v.literal("hourly"), v.literal("fixed")),
+  },
+  handler: async (ctx, args) => {
+    const user = await requireUser(ctx);
+    if (user.role === "admin") throw new ConvexError("Admins cannot be providers");
+    const fields = validateProfile(args);
+    const existing = await getProviderForUser(ctx, user._id);
+    if (existing?.approved) throw new ConvexError("Approved profiles can't be edited yet. Contact support.");
+    if (existing) {
+      // Strictly increasing, so two submits in the same millisecond still get distinct stamps.
+      const submittedAt = Math.max(Date.now(), (existing.submittedAt ?? 0) + 1);
+      await ctx.db.patch(existing._id, { ...fields, submittedAt, reviewedAt: undefined, rejectionReason: undefined });
+      return existing._id;
+    }
+    const id = await ctx.db.insert("providers", {
+      ...fields, userId: user._id, ratingAvg: 0, reviewCount: 0, approved: false, submittedAt: Date.now(),
+    });
+    await ctx.db.patch(user._id, { role: "provider" });
+    return id;
   },
 });
