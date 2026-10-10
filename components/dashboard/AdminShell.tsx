@@ -11,7 +11,7 @@ export default async function AdminShell({ active, title, sub, err, ok, children
   const me = await getMe();
   if (me?.role !== "admin") notFound();
   const opts = await authOpts();
-  const counts = (await fetchQuery(api.admin.sidebarCounts, {}, opts)) as { applications: number; reports: number; disputes: number };
+  const counts = (await fetchQuery(api.admin.sidebarCounts, {}, opts)) as { applications: number; reports: number; disputes: number; categoryRequests: number };
   return (
     <div className="d-layout">
       <DashboardSidebar portal="admin" activeId={active} user={{ name: me.name || "Platform Admin", subtext: "Admin" }}

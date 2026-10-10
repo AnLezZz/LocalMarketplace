@@ -1,5 +1,5 @@
 import { ConvexError } from "convex/values";
-import type { Doc } from "../_generated/dataModel";
+import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
 
 /** The built-in categories. They apply until an admin saves the list to the database (categories.initDefaults). */
@@ -122,4 +122,68 @@ export async function resolveProviderCategories(ctx: QueryCtx | MutationCtx, pri
   const kept = existing ? providerSlugs(existing) : new Set<string>();
   for (const s of slugs) if (!active.has(s) && !kept.has(s)) throw new ConvexError("Unknown category");
   return slugs;
+}
+
+/**
+ * Adds a main category, or a subcategory/service under `parentId`, and returns its id. Every way of creating one goes through here
+ * so the limits and the duplicate check are the same. A child's key is prefixed with its parent's, so "Cleaning" can exist under
+ * Home Services and as a main category.
+ */
+export async function insertCategory(
+  ctx: MutationCtx, rows: Row[],
+  a: { label: string; icon: string; hue: string; parentId?: Id<"categories">; featured?: boolean },
+): Promise<{ id: Id<"categories">; slug: string; label: string }> {
+  if (rows.length >= MAX_CATEGORIES) throw new ConvexError(`You can have up to ${MAX_CATEGORIES} categories`);
+  const fields = validateCategoryInput(a);
+  const parent = a.parentId ? rows.find((r) => r._id === a.parentId) : undefined;
+  if (a.parentId && !parent) throw new ConvexError("Parent category not found");
+  if (parent && depthOf(rows, parent) >= MAX_DEPTH - 1) throw new ConvexError("Categories go three levels deep: category, subcategory, service");
+  const slug = slugify(parent ? `${parent.slug} ${fields.label}` : fields.label);
+  if (!slug) throw new ConvexError("Use letters or numbers in the name");
+  if (rows.some((r) => r.slug === slug)) throw new ConvexError("There is already a category with that name here");
+  const order = Math.max(-1, ...rows.filter((r) => r.parentId === parent?._id).map((r) => r.order)) + 1;
+  const id = await ctx.db.insert("categories", { slug, ...fields, order, enabled: true, featured: a.featured ?? false, ...(parent ? { parentId: parent._id } : {}) });
+  return { id, slug, label: fields.label };
+}
+
+/** Compact comparison form: lowercase letters and digits only, so "Window-Tinting", "window tinting" and "WINDOW  TINTING" match. */
+export const squash = (label: string) => slugify(label).replace(/\s/g, "");
+
+function distance(a: string, b: string): number {
+  const prev = Array.from({ length: b.length + 1 }, (_, j) => j);
+  for (let i = 1; i <= a.length; i++) {
+    let diag = prev[0]; prev[0] = i;
+    for (let j = 1; j <= b.length; j++) {
+      const up = prev[j];
+      prev[j] = Math.min(prev[j] + 1, prev[j - 1] + 1, diag + (a[i - 1] === b[j - 1] ? 0 : 1));
+      diag = up;
+    }
+  }
+  return prev[b.length];
+}
+
+const words = (label: string) => slugify(label).split(" ").filter((w) => w.length > 2);
+
+/**
+ * Existing categories a proposed name could be mistaken for.
+ *  - `exact`: same name or key once case, spacing and punctuation are ignored. A request for it is refused.
+ *  - `similar`: one contains the other, they share most of their words, or they are a typo apart. An admin decides.
+ * Rows are checked whether or not they are enabled, so a switched-off category is not quietly recreated.
+ */
+export function findDuplicates(rows: Row[], name: string): { exact: Row[]; similar: Row[] } {
+  const want = squash(name);
+  const wantWords = new Set(words(name));
+  const exact: Row[] = [], similar: Row[] = [];
+  for (const r of rows) {
+    const label = squash(r.label), key = squash(r.slug);
+    if (want && (label === want || key === want)) { exact.push(r); continue; }
+    if (!want || !label) continue;
+    const theirs = words(r.label);
+    const shared = theirs.filter((w) => wantWords.has(w)).length;
+    const overlap = wantWords.size > 0 && theirs.length > 0 && shared / Math.min(wantWords.size, theirs.length) >= 0.5;
+    const contains = Math.min(want.length, label.length) >= 4 && (label.includes(want) || want.includes(label));
+    const typo = Math.min(want.length, label.length) >= 5 && distance(want, label) <= (want.length >= 9 ? 2 : 1);
+    if (overlap || contains || typo) similar.push(r);
+  }
+  return { exact, similar };
 }

@@ -5,7 +5,7 @@ import type { QueryCtx } from "./_generated/server";
 import { requireRole } from "./model/auth";
 import { audit } from "./model/audit";
 import { checkImage } from "./model/photos";
-import { activeRows, DEFAULT_CATEGORIES, depthOf, loadCategoryRows, MAX_CATEGORIES, MAX_DEPTH, slugify, STARTER, validateCategoryInput, type StarterNode } from "./model/categories";
+import { activeRows, DEFAULT_CATEGORIES, depthOf, insertCategory, loadCategoryRows, MAX_CATEGORIES, MAX_DEPTH, slugify, STARTER, validateCategoryInput, type StarterNode } from "./model/categories";
 
 /** Rows in tree order (a parent, then its children), siblings by their order. */
 function inTreeOrder(rows: Doc<"categories">[]): Doc<"categories">[] {
@@ -82,18 +82,10 @@ export const create = mutation({
   handler: async (ctx, a) => {
     const admin = await requireRole(ctx, "admin");
     const rows = await all(ctx);
-    if (rows.length >= MAX_CATEGORIES) throw new ConvexError(`You can have up to ${MAX_CATEGORIES} categories`);
-    const fields = validateCategoryInput(a);
+    const made = await insertCategory(ctx, rows, a);
     const parent = a.parentId ? rows.find((r) => r._id === a.parentId) : undefined;
-    if (a.parentId && !parent) throw new ConvexError("Parent category not found");
-    if (parent && depthOf(rows, parent) >= MAX_DEPTH - 1) throw new ConvexError("Categories go three levels deep: category, subcategory, service");
-    const slug = slugify(parent ? `${parent.slug} ${fields.label}` : fields.label);
-    if (!slug) throw new ConvexError("Use letters or numbers in the name");
-    if (rows.some((r) => r.slug === slug)) throw new ConvexError("There is already a category with that name here");
-    const order = Math.max(-1, ...siblings(rows, parent?._id).map((r) => r.order)) + 1;
-    const id = await ctx.db.insert("categories", { slug, ...fields, order, enabled: true, featured: a.featured ?? false, ...(parent ? { parentId: parent._id } : {}) });
-    await audit(ctx, admin._id, "category.create", "category", id, parent ? `${parent.label} > ${fields.label}` : fields.label);
-    return id;
+    await audit(ctx, admin._id, "category.create", "category", made.id, parent ? `${parent.label} > ${made.label}` : made.label);
+    return made.id;
   },
 });
 

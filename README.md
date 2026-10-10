@@ -51,6 +51,14 @@ npx convex env set EMAIL_FROM "Localo <bookings@your-verified-domain>"   # optio
 ```
 `SITE_URL` (already set for auth) is used for the links in the emails. Until you verify a domain in Resend, the default sender (`onboarding@resend.dev`) only delivers to the email address of your own Resend account, so test by signing up with that address. Add `--prod` for the production deployment. A failed send is logged and never blocks or retries the booking action.
 
+## Category requests
+A provider whose service is not in the category list uses **Can't find your category?** on the apply form, or `/provider/category-requests` any time. They name the service, describe it and may suggest a parent, then carry on with their profile. Admins decide at **Admin → Category requests**: create the category, map it to an existing one, ask a question, or reject. Each request is `pending`, `approved`, `assigned` (to an existing category), `more_info` or `rejected`, and the provider is notified of every decision.
+
+- Names are checked against every existing category (same name or key ignoring case and punctuation is refused; similar names are flagged for the admin).
+- A service can be saved as a draft that waits on a request. Approving or assigning gives it the category but never turns it on; the provider does that, and a listing is only public for an approved provider.
+- Providers only ever read and answer their own requests; deciding and the queue are admin-only (`convex/categoryRequests.ts`).
+- Deploy the backend (`npx convex deploy`) before the frontend: this adds a table, a services field and new functions.
+
 ## Roles
 - `customer` (default at sign-up) can request, reschedule, cancel and review bookings, and keep favourites.
 - `provider` is assigned when someone applies at `/provider/register`. Providers appear in search only after an admin approves them at `/admin`.

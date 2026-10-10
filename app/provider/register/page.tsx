@@ -7,6 +7,9 @@ import { authOpts } from "../../../lib/auth";
 import { attempt } from "../../../lib/actions";
 import Banner from "../../../components/Banner";
 import CategoryPicker from "../../../components/CategoryPicker";
+import CategoryRequestFields from "../../../components/CategoryRequestFields";
+import CategoryRequestList from "../../../components/CategoryRequestList";
+import { isOpen, type MyRequest } from "../../../lib/categoryRequests";
 import "../../categories/categories.css";
 
 export const dynamic = "force-dynamic";
@@ -15,8 +18,11 @@ export default async function Register({ searchParams }: { searchParams: Promise
   const { err } = await searchParams;
   const cats = await loadCategories();
   const places = await loadLocations();
-  const profile = await fetchQuery(api.providers.mine, {}, await authOpts());
+  const opts = await authOpts();
+  const profile = await fetchQuery(api.providers.mine, {}, opts);
   if (profile?.status === "approved") redirect("/provider");
+  // Requests exist once the profile does, so a first-time applicant has none yet.
+  const requests = profile ? ((await fetchQuery(api.categoryRequests.listMine, {}, opts)) as MyRequest[]) : [];
 
   async function submit(fd: FormData) {
     "use server";
@@ -27,12 +33,26 @@ export default async function Register({ searchParams }: { searchParams: Promise
         bio: String(fd.get("bio") ?? ""),
         category: String(fd.get("category") ?? ""),
         more: fd.getAll("more").map(String),
-        categorySuggestion: String(fd.get("suggestion") ?? ""),
         suburb: String(fd.get("suburb") ?? ""),
         rateCents: Math.round(dollars * 100),
         rateBasis: fd.get("basis") === "fixed" ? "fixed" : "hourly",
       }, await authOpts()));
-    redirect(r.ok ? "/provider" : `/provider/register?err=${encodeURIComponent(r.message)}`);
+    if (!r.ok) redirect(`/provider/register?err=${encodeURIComponent(r.message)}`);
+
+    // "Can't find your category?": the application is saved first, then the request is filed against it. A problem with the request
+    // (say, that category already exists) does not lose the application.
+    const requestName = String(fd.get("requestName") ?? "").trim();
+    if (requestName) {
+      const asked = await attempt(async () =>
+        fetchMutation(api.categoryRequests.submit, {
+          name: requestName,
+          description: String(fd.get("requestDescription") ?? ""),
+          suggestedParentSlug: String(fd.get("requestParent") ?? "") || undefined,
+        }, await authOpts()));
+      if (!asked.ok) redirect(`/provider/register?err=${encodeURIComponent(`Your application was saved, but the category request was not: ${asked.message}`)}`);
+      redirect("/provider/category-requests?ok=sent");
+    }
+    redirect("/provider");
   }
 
   return (
@@ -47,11 +67,14 @@ export default async function Register({ searchParams }: { searchParams: Promise
           <input id="name" name="name" defaultValue={profile?.name} required maxLength={80} autoComplete="organization" />
         </div>
         <CategoryPicker rows={cats.all} primary={profile?.category} more={profile?.categorySlugs} />
-        <div className="field">
-          <label htmlFor="suggestion" className="field__label">Can&apos;t find your service? (optional)</label>
-          <input id="suggestion" name="suggestion" defaultValue={profile?.categorySuggestion} maxLength={100} placeholder="e.g. Window tinting" />
-          <p className="field__hint">Pick the closest main category above, then tell us what you do. We read every suggestion when we review your application.</p>
-        </div>
+        <details className="catreq" open={requests.some((r) => isOpen(r.status))}>
+          <summary className="field__label">Can&apos;t find your category?</summary>
+          <div className="form" style={{ marginTop: 12 }}>
+            <p className="field__hint">Pick the closest category above so you can finish your application, then tell us what you offer. We will review the request and let you know. You can follow it from your dashboard.</p>
+            <CategoryRequestFields parents={cats.enabled} idKey="reg" />
+            <CategoryRequestList requests={requests} compact />
+          </div>
+        </details>
         <div className="form__row">
           <div className="field field--grow">
             <label htmlFor="suburb" className="field__label">Suburb</label>

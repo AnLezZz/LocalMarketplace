@@ -36,7 +36,7 @@ export default defineSchema({
     category: v.string(),
     // Every category, subcategory or service the provider offers (the primary one included). Missing = just `category`.
     categorySlugs: v.optional(v.array(v.string())),
-    // Free text from an applicant whose service isn't in the category list. Admin-only: read in the review queue, never shown publicly.
+    // DEPRECATED: free text from before category requests existed (see `categoryRequests`). No longer written; kept so saved rows still validate.
     categorySuggestion: v.optional(v.string()),
     suburb: v.string(),
     rateCents: v.number(),
@@ -141,6 +141,9 @@ export default defineSchema({
     onlineNote: v.optional(v.string()), // for "online": shown publicly, e.g. "Video call"
     meetingLink: v.optional(v.string()), // for "online": PRIVATE. Never returned by a public query; copied to a booking and shown once it is accepted.
     questions: v.optional(v.array(questionValidator)), // asked of the customer in the booking flow
+    // Set while the service waits on a category the provider asked for. Such a service is a draft: it stays disabled until the request is
+    // approved or assigned, and approving never turns it on. The provider does that.
+    categoryRequestId: v.optional(v.id("categoryRequests")),
   }).index("by_provider", ["providerId"]),
 
   // One row per weekday a provider has configured. No rows at all means "never configured": 8am-5pm every day.
@@ -218,6 +221,22 @@ export default defineSchema({
     featured: v.optional(v.boolean()), // shown on the homepage. Missing = true for a main category (it was always shown before)
     imageStorageId: v.optional(v.id("_storage")),
   }).index("by_slug", ["slug"]).index("by_parent", ["parentId"]),
+
+  // A provider asking for a category that is not in the list. The provider keeps going with their profile; an admin decides.
+  categoryRequests: defineTable({
+    providerId: v.id("providers"), // the tenant: only that provider's owner can see or answer it
+    name: v.string(), // what they propose, e.g. "Window tinting"
+    slug: v.string(), // normalised name, for duplicate checks
+    description: v.string(),
+    suggestedParentSlug: v.optional(v.string()), // the existing category it might sit under
+    status: v.union(v.literal("pending"), v.literal("approved"), v.literal("assigned"), v.literal("more_info"), v.literal("rejected")),
+    resolvedCategorySlug: v.optional(v.string()), // approved: the new category. assigned: the existing one.
+    adminNote: v.optional(v.string()), // what the provider is told: the reason, or what we still need
+    providerReply: v.optional(v.string()), // the provider's answer to a "more information" request
+    decidedBy: v.optional(v.id("users")),
+    decidedAt: v.optional(v.number()),
+    updatedAt: v.number(),
+  }).index("by_provider", ["providerId"]).index("by_status", ["status"]),
 
   // Where the marketplace operates. No rows means "no restriction".
   suburbs: defineTable({
