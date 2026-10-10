@@ -41,6 +41,7 @@ export async function saveService(fd: FormData) {
     priceCents: priceType === "quote" || !Number.isFinite(dollars) ? undefined : Math.round(dollars * 100),
     durationMinutes: Number(fd.get("duration")),
     categorySlug: String(fd.get("categorySlug") ?? "") || undefined,
+    categoryRequestId: String(fd.get("categoryRequestId") ?? "") || undefined,
     ...location(fd),
     questions: questions(fd),
   };

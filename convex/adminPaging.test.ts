@@ -95,7 +95,7 @@ describe("admin tables page through any amount of data", () => {
     expect(log.rows).toHaveLength(18);
     expect(log.rows[0].action).toBe("thing.17");
     expect((await walk((c) => admin.query(api.admin.listDisputes, { paginationOpts: opts(c, 4) }))).rows).toHaveLength(9);
-    expect(await admin.query(api.admin.sidebarCounts, {})).toEqual({ applications: 0, reports: 0, disputes: 9 });
+    expect(await admin.query(api.admin.sidebarCounts, {})).toEqual({ applications: 0, reports: 0, disputes: 9, categoryRequests: 0 });
     await expect(t.query(api.admin.sidebarCounts, {})).rejects.toThrow();
     const customer = asUser(t, await createUser(t, "customer"));
     await expect(customer.query(api.admin.sidebarCounts, {})).rejects.toThrow();

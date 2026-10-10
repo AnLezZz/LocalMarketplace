@@ -13,12 +13,13 @@ import ServiceQuestionFields, { type Question } from "../../../components/Servic
 import { indented, loadCategories } from "../../../lib/categories";
 import { modeLabel, type ServiceMode, type Venue } from "../../../lib/serviceLocation";
 import { durationLabel, priceLabel } from "../../../components/format";
+import { isOpen, type MyRequest } from "../../../lib/categoryRequests";
 import { addServiceAreaFromForm, archiveService, removeServiceArea, saveService, saveServiceAreas, setServiceEnabled } from "./actions";
 import "../../providers/[id]/booking.css";
 
 export const dynamic = "force-dynamic";
 
-type Service = { _id: string; name: string; description: string; priceType: "fixed" | "hourly" | "quote"; priceCents?: number; durationMinutes: number; enabled: boolean; categorySlug?: string; locationMode?: ServiceMode; venue?: Venue; onlineNote?: string; meetingLink?: string; questions?: Question[] };
+type Service = { _id: string; name: string; description: string; priceType: "fixed" | "hourly" | "quote"; priceCents?: number; durationMinutes: number; enabled: boolean; categorySlug?: string; categoryRequestId?: string; locationMode?: ServiceMode; venue?: Venue; onlineNote?: string; meetingLink?: string; questions?: Question[] };
 
 const DONE: Record<string, string> = { saved: "Service saved.", enabled: "Service enabled.", disabled: "Service disabled. Customers can no longer book it.", archived: "Service archived.", areas: "Service area saved.", "area-added": "Place added to your service area.", "area-removed": "Place removed from your service area." };
 const DURATIONS = [15, 30, 45, 60, 90, 120, 180, 240, 300, 360, 480];
@@ -31,6 +32,9 @@ export default async function Services({ searchParams }: { searchParams: Promise
   const services = (await fetchQuery(api.services.listMine, {}, opts)) as Service[];
   const editing = services.find((s) => s._id === edit);
   const cats = await loadCategories();
+  const requests = ((await fetchQuery(api.categoryRequests.listMine, {}, opts)) as MyRequest[]);
+  const openRequests = requests.filter((r) => isOpen(r.status));
+  const requestName = (id?: string) => requests.find((r) => r._id === id)?.name;
   const showForm = !!editing || add === "1";
   type Place = { _id: string; name: string; kind: string; context: string; open: boolean };
   const mine = (await fetchQuery(api.locations.myAreas, {}, opts)) as { enabled: boolean; base: Place | null; areas: Place[] } | null;
@@ -70,9 +74,9 @@ export default async function Services({ searchParams }: { searchParams: Promise
                   <div className="svc-item__main">
                     <strong>{s.name}</strong>
                     {s.description && <span className="svc-item__desc">{s.description}</span>}
-                    <span className="svc-item__meta"><span className="num">{priceLabel(s)}</span> · {durationLabel(s.durationMinutes)} · {modeLabel(s.locationMode, s.venue)}{s.categorySlug && ` · ${cats.all.find((c) => c.slug === s.categorySlug)?.label ?? s.categorySlug}`}</span>
+                    <span className="svc-item__meta"><span className="num">{priceLabel(s)}</span> · {durationLabel(s.durationMinutes)} · {modeLabel(s.locationMode, s.venue)}{s.categorySlug && ` · ${cats.all.find((c) => c.slug === s.categorySlug)?.label ?? s.categorySlug}`}{s.categoryRequestId && !s.categorySlug && ` · Waiting on your category request${requestName(s.categoryRequestId) ? `: ${requestName(s.categoryRequestId)}` : ""}`}</span>
                   </div>
-                  <span className={`pill ${s.enabled ? "pill--completed" : "pill--neutral"}`}>{s.enabled ? "Active" : "Disabled"}</span>
+                  <span className={`pill ${s.enabled ? "pill--completed" : "pill--neutral"}`}>{s.enabled ? "Active" : s.categoryRequestId && !s.categorySlug ? "Draft" : "Disabled"}</span>
                   <div className="svc-item__actions">
                     <Link href={`/provider/services?edit=${s._id}#form`} className="btn btn--secondary btn--sm" aria-label={`Edit ${s.name}`}>Edit</Link>
                     <form action={setServiceEnabled.bind(null, s._id, !s.enabled)}><button className="btn btn--secondary btn--sm" aria-label={`${s.enabled ? "Disable" : "Enable"} ${s.name}`}>{s.enabled ? "Disable" : "Enable"}</button></form>
@@ -112,6 +116,14 @@ export default async function Services({ searchParams }: { searchParams: Promise
                   {cats.enabled.map((c) => <option key={c.slug} value={c.slug}>{indented(c)}</option>)}
                 </select>
                 <p className="field__hint">Customers browsing this category will find you. Setting one lists you under it.</p></div>
+              {(openRequests.length > 0 || editing?.categoryRequestId) && (
+                <div className="field"><label htmlFor="categoryRequestId" className="field__label">Or wait for a category you asked for</label>
+                  <select id="categoryRequestId" name="categoryRequestId" defaultValue={editing && !editing.categorySlug ? editing.categoryRequestId ?? "" : ""}>
+                    <option value="">None</option>
+                    {openRequests.map((r) => <option key={r._id} value={r._id}>{r.name}</option>)}
+                  </select>
+                  <p className="field__hint">The service is saved as a draft and stays off until that request is decided. Even then you turn it on yourself. <Link href="/provider/category-requests">Your requests</Link></p></div>
+              )}
               <ServiceLocationFields mode={editing?.locationMode} venue={editing?.venue} onlineNote={editing?.onlineNote} meetingLink={editing?.meetingLink} />
               <ServiceQuestionFields key={editing?._id ?? "new"} questions={editing?.questions} />
               <button className="btn btn--primary">{editing ? "Save changes" : "Add service"}</button>

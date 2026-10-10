@@ -37,3 +37,18 @@ export const updateCategory = async (fd: FormData) => run(fd, (o) => fetchMutati
 export const setCategoryEnabled = async (id: string, enabled: boolean, fd: FormData) => run(fd, (o) => fetchMutation(api.categories.setEnabled, { id, enabled }, o), enabled ? "Category enabled." : "Category disabled.");
 export const moveCategory = async (id: string, direction: "up" | "down", fd: FormData) => run(fd, (o) => fetchMutation(api.categories.move, { id, direction }, o), "Order updated.");
 
+
+// ---------- category requests ----------
+const decideRequest = (fd: FormData, decision: "approve" | "assign" | "more_info" | "reject", ok: string) =>
+  run(fd, (o) => fetchMutation(api.categoryRequests.decide, {
+    requestId: s(fd, "id"), decision, note: s(fd, "note") || undefined,
+    ...(decision === "assign" ? { categorySlug: s(fd, "categorySlug") } : {}),
+    ...(decision === "approve" ? {
+      label: s(fd, "label") || undefined, icon: s(fd, "icon") || undefined, hue: s(fd, "hue") || undefined,
+      parentId: s(fd, "parentId") || undefined, featured: fd.get("featured") === "on",
+    } : {}),
+  }, o), ok);
+export const approveCategoryRequest = async (fd: FormData) => decideRequest(fd, "approve", "Category created and the provider notified.");
+export const assignCategoryRequest = async (fd: FormData) => decideRequest(fd, "assign", "Mapped to the existing category and the provider notified.");
+export const askForMoreInfo = async (fd: FormData) => decideRequest(fd, "more_info", "Question sent to the provider.");
+export const rejectCategoryRequest = async (fd: FormData) => decideRequest(fd, "reject", "Request declined and the provider notified.");

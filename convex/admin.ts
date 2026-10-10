@@ -385,6 +385,7 @@ export const sidebarCounts = query({
       applications: await n(ctx.db.query("providers").withIndex("by_approved_and_reviewedAt", (q) => q.eq("approved", false).eq("reviewedAt", undefined))),
       reports: await n(ctx.db.query("reviewReports").withIndex("by_status", (q) => q.eq("status", "open"))),
       disputes: await n(ctx.db.query("disputes").withIndex("by_status", (q) => q.eq("status", "open"))),
+      categoryRequests: await n(ctx.db.query("categoryRequests").withIndex("by_status", (q) => q.eq("status", "pending"))),
     };
   },
 });

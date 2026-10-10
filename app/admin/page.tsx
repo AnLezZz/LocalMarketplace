@@ -224,7 +224,7 @@ export default async function Admin({
 
                       <p className="d-app-item__bio">{p.bio}</p>
                       {p.categorySuggestion && (
-                        <p className="d-app-item__bio"><strong>Suggested category:</strong> {p.categorySuggestion}</p>
+                        <p className="d-app-item__bio"><strong>Earlier category suggestion:</strong> {p.categorySuggestion}</p>
                       )}
 
                       <form className="d-app-item__form">

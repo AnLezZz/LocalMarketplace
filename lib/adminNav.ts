@@ -1,5 +1,5 @@
 /** Admin sidebar. Only pages that exist are listed. */
-export function adminSidebarItems(counts: { applications?: number; reports?: number; disputes?: number } = {}) {
+export function adminSidebarItems(counts: { applications?: number; reports?: number; disputes?: number; categoryRequests?: number } = {}) {
   const b = (n?: number) => (n && n > 0 ? n : undefined);
   return [
     { id: "dashboard", label: "Dashboard", icon: "grid" as const, href: "/admin" },
@@ -8,6 +8,7 @@ export function adminSidebarItems(counts: { applications?: number; reports?: num
     { id: "bookings", label: "Bookings", icon: "calendar" as const, href: "/admin/bookings" },
     { id: "reviews", label: "Reviews", icon: "star" as const, href: "/admin/reviews", badge: b(counts.reports) },
     { id: "categories", label: "Categories", icon: "tag" as const, href: "/admin/categories" },
+    { id: "category-requests", label: "Category requests", icon: "inbox" as const, href: "/admin/category-requests", badge: b(counts.categoryRequests) },
     { id: "disputes", label: "Disputes", icon: "alert" as const, href: "/admin/disputes", badge: b(counts.disputes) },
     { id: "audit", label: "Audit log", icon: "shield" as const, href: "/admin/audit" },
   ];
