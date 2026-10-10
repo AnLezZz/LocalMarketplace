@@ -37,3 +37,18 @@ export function priceLabel(s: { priceType: string; priceCents?: number }): strin
 export function durationLabel(min: number): string {
   return min % 60 === 0 ? `${min / 60} hr` : min < 60 ? `${min} min` : `${Math.floor(min / 60)} hr ${min % 60} min`;
 }
+
+type Priced = { priceType?: string; unitCents?: number; estimateCents?: number; quoteCents?: number; quoteStatus?: string; agreedCents?: number };
+
+/** One line describing a booking's price, e.g. "Estimated $90 ($45/hr × 2 hr)" or "Quote $380 (accepted)". Empty for old bookings. */
+export function bookingPriceLine(b: Priced, hours?: number): string {
+  if (b.priceType === "quote") {
+    if (b.quoteStatus === "accepted") return `Quote ${dollars(b.quoteCents ?? 0)} (accepted)`;
+    if (b.quoteStatus === "offered") return `Quote ${dollars(b.quoteCents ?? 0)} (awaiting reply)`;
+    if (b.quoteStatus === "declined") return "Quote declined, waiting for a new one";
+    return "Quote to be sent";
+  }
+  if (b.estimateCents === undefined) return "";
+  const basis = b.priceType === "hourly" && b.unitCents !== undefined && hours !== undefined ? ` (${dollars(b.unitCents)}/hr × ${durationLabel(Math.round(hours * 60))})` : "";
+  return `Estimated ${dollars(b.estimateCents)}${basis}`;
+}

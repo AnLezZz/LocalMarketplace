@@ -107,7 +107,7 @@ Notes: legacy bookings have no address (shown as "not recorded"); a provider-sid
 
 2. [x] Booking emails and reminders (Resend): see the review below. Needs `RESEND_API_KEY` on each deployment; a real send is unverified until a key is set.
 3. [x] Password reset and email verification: see the review below.
-4. Quotes and saved pricing: "quote" services promise a quote but there is no submit/accept workflow; bookings don't snapshot a price.
+4. [x] Quotes and saved pricing: see the review below.
 5. Admin moderation and support: review reporting, provider suspension, dispute handling (plus customers, bookings list, audit log from S7).
 6. Provider profile editing and photo uploads: approved profiles are locked; photos are seed-managed (needs Convex file storage).
 
@@ -122,6 +122,11 @@ NOT verified: a real delivery through Resend (no API key available here). Not bu
 Done: `convex/model/authEmail.ts` (8-digit codes, Resend delivery, dev-only `AUTH_LOG_CODES`); `convex/auth.ts` enables Password `reset` whenever email is available and `verify` only when `REQUIRE_EMAIL_VERIFICATION=true`; `users.authFeatures` (UI flags only) and `users.markExistingVerified` (CLI); `/signin` shows "Forgot your password?" and a code step; `/signin/reset` (request, then code + new password).
 Verified: 92 convex tests (code shape/entropy, Resend request, failures, dev logging, feature flags, markExistingVerified) and real flows in Chrome against the dev deployment with `AUTH_LOG_CODES`: sign up, forgot password for known and unknown addresses (identical message), wrong code rejected, short password blocked, correct code resets and signs in, code is single use, old password rejected; verification on: new account must enter a code, wrong code rejected, verified user signs in directly, existing demo account is prompted until `markExistingVerified` is run. Dev settings were restored afterwards (both features off).
 NOT verified: delivery of a real email through Resend (no key). Known limits: a reset does not log out a browser holding an unexpired access token (up to an hour); there is no "resend code" button (signing in again sends a new one); test users e2e-reset-* and e2e-verify-* were created on the dev deployment.
+
+## Quotes and price snapshot review (2026-10-10)
+Done: bookings freeze `priceType`/`unitCents`/`estimateCents` at request time (hourly = rate x booked hours, fixed = price, quote = none until offered); quote workflow on quote-priced bookings: `bookings.submitQuote` (owning provider, request still open, not after the customer accepted) and `bookings.respondToQuote` (customer); `transition` refuses to accept a quote booking until the quote is accepted and records `agreedCents` (estimate or accepted quote); notifications + emails for quote offered/accepted/declined; customer detail shows price, quote note and Accept/Decline; provider detail has Send/Revise quote and hides Accept until the quote is accepted; the dashboard row shows "Send quote"/"Quote sent" instead of Accept; My bookings shows a price line.
+Verified: 102 convex tests (snapshot immutability, quote validation, accept/decline/revise/final, accept blocked until quote accepted, set-price bookings, role and status guards, notifications, field exposure); browser run as customer + provider: quote service, book, customer sees "Quote to be sent", provider row shows Send quote, quote, customer declines, provider revises, customer accepts, provider accepts with Agreed $320; hourly estimate line "Estimated $90 ($45/hr x 2 hr)".
+Not built: pricing changes after acceptance (e.g. a final invoice amount), a quote expiry, per-service deposit, price shown on bookings made before this change (they show no price line).
 
 # Before deploying (checklist)
 

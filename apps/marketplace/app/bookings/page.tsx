@@ -9,7 +9,7 @@ import Icon from "../../components/Icon";
 import Avatar from "../../components/Avatar";
 import Banner from "../../components/Banner";
 import { StatusPill } from "../../components/Pill";
-import { bookingWindow } from "../../components/format";
+import { bookingPriceLine, bookingWindow } from "../../components/format";
 import "./bookings.css";
 
 const TABS = [["upcoming", "Upcoming"], ["past", "Past"], ["cancelled", "Cancelled"]] as const;
@@ -82,6 +82,7 @@ export default async function MyBookings({ searchParams }: { searchParams: Promi
                 <div><dt className="sr-only">Time</dt><dd className="num"><Icon name="clock" size={18} />{w.time}</dd></div>
               </dl>
               <p className="booking__desc">{b.description}</p>
+              {bookingPriceLine(b, (b.endsAt - b.startsAt) / 3_600_000) && <p className="booking__price num">{bookingPriceLine(b, (b.endsAt - b.startsAt) / 3_600_000)}</p>}
               <div className="booking__actions">
                 <Link href={`/bookings/${b._id}`} className="btn btn--secondary">View details</Link>
                 {b.status === "completed" && (reviewed.has(b._id)

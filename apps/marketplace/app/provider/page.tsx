@@ -216,12 +216,18 @@ export default async function ProviderHome({
                             {b.status === "requested" ? (
                               <form className="d-table__actions">
                                 <input type="hidden" name="id" value={b._id} />
-                                <button
-                                  className="btn btn--primary btn--sm"
-                                  formAction={transitionBooking.bind(null, "accepted", `/provider?tab=${tab}`)}
-                                >
-                                  Accept
-                                </button>
+                                {b.priceType === "quote" && b.quoteStatus !== "accepted" ? (
+                                  <Link href={`/provider/bookings/${b._id}`} className="btn btn--primary btn--sm">
+                                    {b.quoteStatus === "offered" ? "Quote sent" : "Send quote"}
+                                  </Link>
+                                ) : (
+                                  <button
+                                    className="btn btn--primary btn--sm"
+                                    formAction={transitionBooking.bind(null, "accepted", `/provider?tab=${tab}`)}
+                                  >
+                                    Accept
+                                  </button>
+                                )}
                                 <button
                                   className="btn btn--danger btn--sm"
                                   formAction={transitionBooking.bind(null, "declined", `/provider?tab=${tab}`)}

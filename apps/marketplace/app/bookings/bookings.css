@@ -18,3 +18,7 @@ body:has(.btabs), body:has(.stars) { background: var(--ivory, #FAF9F6); }
 .detail > div { display: grid; gap: 2px; padding: var(--s-3) 0; border-top: 1px solid var(--hairline); font-size: 14px; }
 .detail dt { color: var(--ink-3); }
 .detail dd { margin: 0; overflow-wrap: anywhere; white-space: pre-wrap; }
+.quote-box { display: grid; gap: var(--s-2); padding: var(--s-4); margin: var(--s-3) 0; border: 1px solid #CFE0D6; border-radius: 14px; background: #F6FAF7; font-size: 14px; }
+.quote-box strong { font-size: 16px; }
+.quote-box span { color: var(--ink-2); }
+.booking__price { color: var(--ink-2); font-size: 14px; margin: 2px 0 0; }

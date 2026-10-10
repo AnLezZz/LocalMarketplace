@@ -4,11 +4,15 @@ import { fetchQuery } from "convex/nextjs";
 import { api } from "../../../../lib/convex";
 import { authOpts } from "../../../../lib/auth";
 import { transitionBooking } from "../../actions";
+import { redirect } from "next/navigation";
+import { revalidatePath } from "next/cache";
+import { fetchMutation } from "convex/nextjs";
+import { attempt } from "../../../../lib/actions";
 import Icon from "../../../../components/Icon";
 import Avatar from "../../../../components/Avatar";
 import Banner from "../../../../components/Banner";
 import { StatusPill } from "../../../../components/Pill";
-import { bookingWindow } from "../../../../components/format";
+import { bookingPriceLine, bookingWindow, dollars } from "../../../../components/format";
 
 import "../../../providers/[id]/booking.css";
 import "../../../bookings/bookings.css";
@@ -26,6 +30,16 @@ export default async function BookingDetails({ params, searchParams }: { params:
   const w = bookingWindow(b.startsAt, b.endsAt);
   const back = `/provider/bookings/${id}`;
   const act = (to: "accepted" | "declined" | "completed" | "cancelled") => transitionBooking.bind(null, to, back);
+
+  async function sendQuote(fd: FormData) {
+    "use server";
+    const dollarsIn = Number(fd.get("amount"));
+    const r = await attempt(async () => fetchMutation(api.bookings.submitQuote, { bookingId: id, amountCents: Math.round(dollarsIn * 100), note: String(fd.get("note") ?? "") || undefined }, await authOpts()));
+    revalidatePath("/provider", "layout");
+    redirect(r.ok ? back : `${back}?err=${encodeURIComponent(r.message)}`);
+  }
+  const needsQuote = b.priceType === "quote" && b.quoteStatus !== "accepted";
+  const priceLine = bookingPriceLine(b, (b.endsAt - b.startsAt) / 3_600_000);
 
   return (
     <div className="page page--narrow">
@@ -47,6 +61,8 @@ export default async function BookingDetails({ params, searchParams }: { params:
         </dl>
         {b.serviceName && <p className="booking__sub"><strong>Service:</strong> {b.serviceName}</p>}
         <dl className="detail">
+          {priceLine && <div><dt>Price</dt><dd>{priceLine}{b.agreedCents !== undefined && <><br /><strong>Agreed: {dollars(b.agreedCents)}</strong></>}</dd></div>}
+          {b.quoteNote && <div><dt>Quote note</dt><dd>{b.quoteNote}</dd></div>}
           <div><dt>Suburb</dt><dd>{b.suburb ?? "Not recorded"}</dd></div>
           {b.address && <div><dt>Address</dt><dd>{b.address}, {b.suburb}</dd></div>}
           {b.accessNotes && <div><dt>Access instructions</dt><dd>{b.accessNotes}</dd></div>}
@@ -57,12 +73,24 @@ export default async function BookingDetails({ params, searchParams }: { params:
         <h3 className="card__title">Job description</h3>
         <p className="booking__desc">{b.description}</p>
 
+        {b.status === "requested" && b.priceType === "quote" && b.quoteStatus !== "accepted" && (
+          <form action={sendQuote} className="quote-box">
+            <strong>{b.quoteStatus === "offered" ? "Revise your quote" : b.quoteStatus === "declined" ? "The customer declined. Send a new quote" : "Send a quote"}</strong>
+            <span>The customer must accept the quote before you can accept this booking.</span>
+            <div className="field"><label htmlFor="amount" className="field__label">Amount in NZD</label>
+              <input id="amount" name="amount" type="number" min={1} max={50000} step="0.01" inputMode="decimal" defaultValue={b.quoteCents ? b.quoteCents / 100 : ""} required /></div>
+            <div className="field"><label htmlFor="note" className="field__label">What the quote includes (optional)</label>
+              <textarea id="note" name="note" rows={2} maxLength={500} defaultValue={b.quoteNote ?? ""} /></div>
+            <button className="btn btn--forest">{b.quoteStatus === "offered" ? "Update quote" : "Send quote"}</button>
+          </form>
+        )}
+
         {(b.status === "requested" || b.status === "accepted") && (
           <form className="booking__actions">
             <input type="hidden" name="id" value={b._id} />
             {b.status === "requested" ? (
               <>
-                <button className="btn btn--forest" formAction={act("accepted")}>Accept</button>
+                {!needsQuote && <button className="btn btn--forest" formAction={act("accepted")}>Accept</button>}
                 <button className="btn btn--danger" formAction={act("declined")}>Decline</button>
               </>
             ) : (

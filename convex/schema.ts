@@ -62,6 +62,16 @@ export default defineSchema({
     // Contact details the customer chose to share. The provider only sees them while the booking is accepted or completed.
     shareContact: v.optional(v.boolean()),
     customerPhone: v.optional(v.string()),
+    // Price as it was when the booking was requested, so later edits to a service never rewrite history.
+    priceType: v.optional(v.union(v.literal("fixed"), v.literal("hourly"), v.literal("quote"))),
+    unitCents: v.optional(v.number()), // the fixed price or the hourly rate; absent for quotes
+    estimateCents: v.optional(v.number()), // unit x booked hours for hourly, the price for fixed; absent for quotes
+    // Quote workflow for quote-priced bookings: the provider offers an amount, the customer accepts or declines.
+    quoteCents: v.optional(v.number()),
+    quoteNote: v.optional(v.string()),
+    quoteStatus: v.optional(v.union(v.literal("offered"), v.literal("accepted"), v.literal("declined"))),
+    // What the job was agreed at when the provider accepted (the estimate, or the accepted quote).
+    agreedCents: v.optional(v.number()),
     // Set when the 24 hour reminder has gone out, so it is only sent once.
     reminderSentAt: v.optional(v.number()),
     // The service requested, with its name copied so later edits or archiving do not rewrite history.
