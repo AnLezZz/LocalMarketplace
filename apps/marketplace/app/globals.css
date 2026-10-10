@@ -1354,3 +1354,22 @@ body:has(.d-layout) { background: var(--ivory, #FAF9F6); }
 .bell__badge { position: absolute; top: 4px; right: 2px; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 999px; background: #C0392B; color: #fff; font-size: 11px; font-weight: 700; display: grid; place-items: center; }
 .topbar__end { display: flex; align-items: center; gap: var(--s-1); }
 @media (min-width: 720px) { .topbar__end { flex: 1; justify-content: flex-end; } }
+
+/* Admin tools */
+.pill--danger { background: var(--danger-tint); color: var(--danger); }
+.adm-filters { display: flex; gap: var(--s-2); flex-wrap: wrap; align-items: center; margin-bottom: var(--s-4); }
+.adm-filters a { display: inline-flex; align-items: center; min-height: 40px; padding: 0 var(--s-4); border-radius: 999px; border: 1px solid var(--hairline); background: var(--surface); color: var(--ink-2); font-size: 14px; text-decoration: none; }
+.adm-filters a[aria-current="page"] { background: var(--ink); border-color: var(--ink); color: #fff; }
+.adm-search { display: flex; gap: var(--s-2); margin-left: auto; }
+.adm-search input { min-height: 40px; border: 1px solid var(--hairline-strong); border-radius: 10px; padding: 0 var(--s-3); font: inherit; }
+.adm-list { list-style: none; margin: 0; padding: 0; display: grid; }
+.adm-row { display: flex; gap: var(--s-4); align-items: flex-start; flex-wrap: wrap; padding: var(--s-4) 0; border-top: 1px solid var(--hairline); }
+.adm-row:first-child { border-top: 0; }
+.adm-row__main { flex: 1; min-width: 240px; display: grid; gap: 2px; font-size: 14px; }
+.adm-row__main strong { font-size: 15px; }
+.adm-row__main span { color: var(--ink-3); overflow-wrap: anywhere; }
+.adm-act { display: flex; gap: var(--s-2); align-items: center; flex-wrap: wrap; }
+.adm-act input[name="reason"] { min-height: 40px; min-width: 220px; border: 1px solid var(--hairline-strong); border-radius: 10px; padding: 0 var(--s-3); font: inherit; }
+.adm-act form { display: flex; gap: var(--s-2); flex-wrap: wrap; }
+.adm-quote { margin: 4px 0 0; padding: var(--s-3); background: var(--surface-sunk); border-radius: 10px; overflow-wrap: anywhere; color: var(--ink); }
+.suspended-bar { background: var(--danger-tint); color: var(--danger); border-bottom: 1px solid var(--danger-line); padding: var(--s-3) var(--s-4); text-align: center; font-size: 14px; font-weight: 500; }

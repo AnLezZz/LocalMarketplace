@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { providerSidebarItems } from "../../lib/providerNav";
-import { transitionBooking } from "./actions";
+import { reportReview, transitionBooking } from "./actions";
 import "../bookings/bookings.css";
 import "../providers/[id]/booking.css";
 import { redirect } from "next/navigation";
@@ -23,9 +23,9 @@ export const dynamic = "force-dynamic";
 export default async function ProviderHome({
   searchParams,
 }: {
-  searchParams: Promise<{ err?: string; tab?: string }>;
+  searchParams: Promise<{ err?: string; tab?: string; reported?: string }>;
 }) {
-  const { err, tab: t } = await searchParams;
+  const { err, tab: t, reported } = await searchParams;
   const opts = await authOpts();
   const profile = await fetchQuery(api.providers.mine, {}, opts);
   if (!profile) redirect("/provider/register");
@@ -87,6 +87,7 @@ export default async function ProviderHome({
 
         {/* Status / Alert Banners */}
         {err && <Banner tone="error">{err}</Banner>}
+        {reported && <Banner tone="success">Thanks, we'll look at that review and let you know.</Banner>}
 
         {profile.status === "pending" && (
           <div className="card d-banner d-banner--pending">
@@ -103,6 +104,16 @@ export default async function ProviderHome({
             <Link href="/provider/register" className="btn btn--secondary btn--sm">
               Edit application
             </Link>
+          </div>
+        )}
+
+        {profile.status === "suspended" && (
+          <div className="card d-banner d-banner--rejected">
+            <div className="d-banner__icon"><Icon name="alert" size={24} /></div>
+            <div className="d-banner__content">
+              <h2 className="d-banner__title">Your listing is suspended</h2>
+              <p className="d-banner__text">Customers can&apos;t find you or book you right now. <strong>Reason:</strong> {profile.suspendedReason}. Contact support to appeal.</p>
+            </div>
           </div>
         )}
 
@@ -281,6 +292,14 @@ export default async function ProviderHome({
                   <li key={r._id} className="rv">
                     <div className="rv__head"><strong>{r.customerName}</strong><span className="rv__stars" aria-label={`${r.rating} out of 5`}>{"★".repeat(r.rating)}{"☆".repeat(5 - r.rating)}</span></div>
                     {r.text && <p>{r.text}</p>}
+                    <details className="rv__report">
+                      <summary>Report this review</summary>
+                      <form action={reportReview} className="adm-act">
+                        <input type="hidden" name="id" value={r._id} />
+                        <input name="reason" required minLength={10} maxLength={500} placeholder="What is wrong with it?" aria-label="Why are you reporting this review?" />
+                        <button className="btn btn--secondary btn--sm">Send report</button>
+                      </form>
+                    </details>
                   </li>
                 ))}
               </ul>

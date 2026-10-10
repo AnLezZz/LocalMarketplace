@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { fetchQuery } from "convex/nextjs";
 import { api } from "../../../../lib/convex";
 import { authOpts } from "../../../../lib/auth";
-import { transitionBooking } from "../../actions";
+import { openProviderDispute, transitionBooking } from "../../actions";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { fetchMutation } from "convex/nextjs";
@@ -83,6 +83,25 @@ export default async function BookingDetails({ params, searchParams }: { params:
               <textarea id="note" name="note" rows={2} maxLength={500} defaultValue={b.quoteNote ?? ""} /></div>
             <button className="btn btn--forest">{b.quoteStatus === "offered" ? "Update quote" : "Send quote"}</button>
           </form>
+        )}
+
+        {b.dispute && (
+          <div className={`quote-box${b.dispute.status === "open" ? " quote-box--warn" : ""}`}>
+            <strong>{b.dispute.status === "open" ? "A dispute is open" : "Dispute resolved"}</strong>
+            <span>Raised by the {b.dispute.openedBy}: {b.dispute.reason}</span>
+            {b.dispute.resolution && <span><strong>Decision:</strong> {b.dispute.resolution}</span>}
+            {b.dispute.status === "open" && <span>An admin is looking into it. You&apos;ll get a notification when it is resolved.</span>}
+          </div>
+        )}
+        {(b.status === "accepted" || b.status === "completed" || b.status === "cancelled") && (!b.dispute || b.dispute.status === "resolved") && (
+          <details className="rv__report">
+            <summary>Report a problem with this booking</summary>
+            <form action={openProviderDispute.bind(null, id)} className="form">
+              <div className="field"><label htmlFor="dispute" className="field__label">What went wrong?</label>
+                <textarea id="dispute" name="reason" rows={3} required minLength={10} maxLength={1000} placeholder="Tell us what happened so an admin can look into it" /></div>
+              <button className="btn btn--secondary">Send to Localo</button>
+            </form>
+          </details>
         )}
 
         {(b.status === "requested" || b.status === "accepted") && (

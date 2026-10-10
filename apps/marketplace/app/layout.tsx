@@ -47,6 +47,7 @@ export default async function Root({ children }: { children: React.ReactNode }) 
                 </div>
               </div>
             </header>
+            {me?.suspended && <div className="suspended-bar" role="alert">Your account is suspended. You can look around, but you can&apos;t make changes. Contact support if you think this is a mistake.</div>}
             <main>{children}</main>
             <footer className="footer">Localo does not collect, hold or guarantee payment. Pay your provider directly.</footer>
             <TabBar signedIn={!!me} userRole={me?.role} />

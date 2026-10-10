@@ -22,3 +22,7 @@ body:has(.btabs), body:has(.stars) { background: var(--ivory, #FAF9F6); }
 .quote-box strong { font-size: 16px; }
 .quote-box span { color: var(--ink-2); }
 .booking__price { color: var(--ink-2); font-size: 14px; margin: 2px 0 0; }
+.quote-box--warn { border-color: var(--danger-line); background: var(--danger-tint); }
+.rv__report { margin-top: var(--s-3); font-size: 14px; }
+.rv__report summary { cursor: pointer; color: var(--forest); min-height: 32px; }
+.rv__report form { margin-top: var(--s-2); }

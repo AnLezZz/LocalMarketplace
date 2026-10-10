@@ -8,7 +8,7 @@ export const me = query({
   handler: async (ctx) => {
     const user = await getUser(ctx);
     if (!user) return null;
-    return { id: user._id, name: user.name ?? null, email: user.email ?? null, role: user.role };
+    return { id: user._id, name: user.name ?? null, email: user.email ?? null, role: user.role, suspended: user.suspendedAt !== undefined };
   },
 });
 

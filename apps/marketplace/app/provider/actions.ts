@@ -14,3 +14,17 @@ export async function transitionBooking(to: "accepted" | "declined" | "completed
   const reason = !r.ok ? r.message : r.value.ok ? "" : r.value.reason;
   redirect(reason ? `${back}${back.includes("?") ? "&" : "?"}err=${encodeURIComponent(reason)}` : back);
 }
+
+export async function reportReview(fd: FormData) {
+  const r = await attempt(async () => fetchMutation(api.reviews.report, { reviewId: String(fd.get("id")), reason: String(fd.get("reason") ?? "") }, await authOpts()));
+  revalidatePath("/provider");
+  redirect(r.ok ? "/provider?reported=1#reviews" : `/provider?err=${encodeURIComponent(r.message)}#reviews`);
+}
+
+/** Opens a dispute on one of the provider's bookings, then returns to its details page. */
+export async function openProviderDispute(bookingId: string, fd: FormData) {
+  const back = `/provider/bookings/${bookingId}`;
+  const r = await attempt(async () => fetchMutation(api.disputes.open, { bookingId, reason: String(fd.get("reason") ?? "") }, await authOpts()));
+  revalidatePath("/provider", "layout");
+  redirect(r.ok ? back : `${back}?err=${encodeURIComponent(r.message)}`);
+}

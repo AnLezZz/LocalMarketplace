@@ -14,6 +14,8 @@ export async function getUser(ctx: Ctx): Promise<Doc<"users"> | null> {
 export async function requireUser(ctx: Ctx): Promise<Doc<"users">> {
   const user = await getUser(ctx);
   if (!user) throw new ConvexError("Sign in required");
+  // Every write goes through here, so one check covers them all.
+  if (user.suspendedAt !== undefined) throw new ConvexError("Your account is suspended. Contact support.");
   return user;
 }
 

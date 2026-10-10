@@ -108,7 +108,7 @@ Notes: legacy bookings have no address (shown as "not recorded"); a provider-sid
 2. [x] Booking emails and reminders (Resend): see the review below. Needs `RESEND_API_KEY` on each deployment; a real send is unverified until a key is set.
 3. [x] Password reset and email verification: see the review below.
 4. [x] Quotes and saved pricing: see the review below.
-5. Admin moderation and support: review reporting, provider suspension, dispute handling (plus customers, bookings list, audit log from S7).
+5. [x] Admin moderation and support: see the S7 review below.
 6. Provider profile editing and photo uploads: approved profiles are locked; photos are seed-managed (needs Convex file storage).
 
 ---
@@ -128,6 +128,26 @@ Done: bookings freeze `priceType`/`unitCents`/`estimateCents` at request time (h
 Verified: 102 convex tests (snapshot immutability, quote validation, accept/decline/revise/final, accept blocked until quote accepted, set-price bookings, role and status guards, notifications, field exposure); browser run as customer + provider: quote service, book, customer sees "Quote to be sent", provider row shows Send quote, quote, customer declines, provider revises, customer accepts, provider accepts with Agreed $320; hourly estimate line "Estimated $90 ($45/hr x 2 hr)".
 Not built: pricing changes after acceptance (e.g. a final invoice amount), a quote expiry, per-service deposit, price shown on bookings made before this change (they show no price line).
 
+---
+
+# S7: Admin moderation and support (backlog priority 5)
+
+Decisions: provider suspension reuses `approved=false` plus `suspendedAt`, so every existing "approved only" check (search, booking, favourites, services, reviews, availability) excludes suspended providers automatically; `submitProfile` must refuse a suspended provider (it would otherwise reset them to pending); `requireUser` refuses suspended users, which blocks every write at once; suspending a user also suspends their provider; reviews are hidden/restored (never edited) with a reason, and the provider's rating is adjusted in the same transaction; every admin action writes an audit row.
+
+- [x] Schema: users/providers suspension, reviews.hidden, reviewReports, disputes, auditLog
+- [x] Provider suspend/reactivate, user suspend/reactivate (guards: not admins, not self)
+- [x] Review reporting by the provider; admin hide/dismiss/restore with reasons and aggregate adjustment
+- [x] Disputes opened by either participant; admin resolves with a note; both notified
+- [x] Admin lists: providers, customers, bookings (+ detail, force cancel), reports, disputes, audit log
+- [x] Provider dashboard banner for suspension; participants see dispute status
+- [x] Tests for every rule; browser verification as admin, provider, customer
+
+## S7 review (2026-10-10)
+Done: provider suspension (approved=false + suspendedAt, so every public check excludes them; resubmitting and accepting are refused); account suspension via `requireUser` (all writes refused, reads and sign-in still work; takes the owner's listing down; reactivating the account does not silently relist); review reports by the provider; admin hide/dismiss/restore with required reasons, the rating adjusted exactly and reversibly, the review author and reporter notified; disputes opened by either participant on accepted/completed/cancelled bookings and resolved by an admin with a note shown to both; admin lists and filters for providers, accounts, bookings, report queue, disputes; admin booking detail with force-cancel; append-only audit log written by every admin action; suspension banners for the provider and the account; "Report a problem" on both booking pages; "Report this review" on the provider dashboard. Admin pages are guarded to 404 for non-admins before any data is fetched.
+Verified: 114 convex tests (admin guards across every function, suspension reaches search/get/book/favourite/services/reviews/availability, resubmit and accept refused, cascade and deliberate reactivation, self/admin protection, exact rating maths and restore, report ownership and duplicates, dispute rules and notifications, booking list/detail/force-cancel, audit order); browser run as admin + provider + customer for every flow above, including the customer being blocked from saving a favourite while suspended and the rating returning to 4.8 (30) after cleanup.
+Not built: categories and locations management (S8), an appeals flow (users contact support), admin notes on accounts, bulk actions, pagination beyond the newest 300 rows, notifying admins when a report/dispute arrives (they see the sidebar badges), moderation of text other than reviews (provider bios, service descriptions).
+Test data left on dev: reviews/disputes/bookings tagged "S7a", resolved, plus the audit rows.
+
 # Before deploying (checklist)
 
 The repo is public and the demo data is dev-only. Do these before pointing anything at a production Convex deployment:
@@ -136,6 +156,7 @@ The repo is public and the demo data is dev-only. Do these before pointing anyth
 - [ ] Remove the demo/E2E data from any shared deployment: users `*@localhub.nz` and `e2e-*@example.nz`, provider "E2E Test Provider (delete me)", and the demo bookings, services and reviews created while testing.
 - [ ] Don't run `seed:run`, `seed:setupDemoAccounts` or `seed:setDemoPhotos` on prod (demo providers, placeholder 4.8/12 ratings, stock portraits).
 - [ ] Replace the placeholder ratings on seeded providers, or remove those providers.
+- [ ] Decide the support contact shown to suspended users (the banner says "Contact support" without a link).
 - [ ] Grant the first admin with `npx convex run users:grantAdmin` on prod (CLI-only by design).
 - [ ] Set the production auth env vars and site URL for Convex Auth; confirm `NEXT_PUBLIC_CONVEX_URL` points at prod.
 - [ ] Set `RESEND_API_KEY`, a verified-domain `EMAIL_FROM` and `SITE_URL` on the production deployment, then send a real test booking.

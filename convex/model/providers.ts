@@ -3,9 +3,10 @@ import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
 import { CATEGORIES } from "./categories";
 
-export type ProviderStatus = "pending" | "approved" | "rejected";
+export type ProviderStatus = "pending" | "approved" | "rejected" | "suspended";
 
 export function providerStatus(p: Doc<"providers">): ProviderStatus {
+  if (p.suspendedAt !== undefined) return "suspended";
   if (p.approved) return "approved";
   return p.reviewedAt !== undefined ? "rejected" : "pending";
 }

@@ -4,6 +4,7 @@ import { getUser, requireUser } from "./model/auth";
 import { canTransition, type Actor } from "./model/bookingRules";
 import { getProviderForUser } from "./model/providers";
 import { notify } from "./model/notify";
+import { latestDispute } from "./model/disputes";
 import { providerMaySeePrivate, servesSuburb, validateJob } from "./model/jobDetails";
 import { snapshotPrice, validateQuote, type PriceType } from "./model/pricing";
 import { addDays, availabilityFor, fits, utcToLocal } from "./model/availability";
@@ -111,6 +112,7 @@ export const transition = mutation({
     if (!canTransition(actor, b.status, a.to)) {
       return { ok: false as const, reason: `cannot go ${b.status} → ${a.to}` };
     }
+    if (a.to === "accepted" && !provider?.approved) return { ok: false as const, reason: "Your listing is not currently active" };
     if (a.to === "accepted" && b.priceType === "quote" && b.quoteStatus !== "accepted") {
       return { ok: false as const, reason: "Send a quote and wait for the customer to accept it first" };
     }
@@ -166,6 +168,7 @@ export const getForProvider = query({
       address: open ? b.address : undefined, accessNotes: open ? b.accessNotes : undefined,
       contact: open && b.shareContact ? { email: b.customerEmail, phone: b.customerPhone } : undefined,
       privateHidden: !open && !!b.address,
+      dispute: await latestDispute(ctx, b._id),
       events: events.map((e) => ({ at: e._creationTime, from: e.fromStatus, to: e.toStatus, byCustomer: e.actorId === b.customerId })),
     };
   },
@@ -183,7 +186,7 @@ export const getForCustomer = query({
     const events = await ctx.db.query("bookingEvents").withIndex("by_booking", (i) => i.eq("bookingId", b._id)).take(50);
     const { customerEmail: _e, ...rest } = b;
     return {
-      ...rest, providerName: provider?.name ?? "Unknown provider", providerSuburb: provider?.suburb,
+      ...rest, providerName: provider?.name ?? "Unknown provider", providerSuburb: provider?.suburb, dispute: await latestDispute(ctx, b._id),
       events: events.map((e) => ({ at: e._creationTime, to: e.toStatus, byProvider: e.actorId !== b.customerId })),
     };
   },

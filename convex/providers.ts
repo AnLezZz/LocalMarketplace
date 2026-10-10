@@ -46,6 +46,8 @@ export const submitProfile = mutation({
     if (user.role === "admin") throw new ConvexError("Admins cannot be providers");
     const fields = validateProfile(args);
     const existing = await getProviderForUser(ctx, user._id);
+    // A suspended provider must not be able to resubmit and come back as "pending".
+    if (existing?.suspendedAt !== undefined) throw new ConvexError("This listing is suspended. Contact support.");
     if (existing?.approved) throw new ConvexError("Approved profiles can't be edited yet. Contact support.");
     if (existing) {
       // Strictly increasing, so two submits in the same millisecond still get distinct stamps.

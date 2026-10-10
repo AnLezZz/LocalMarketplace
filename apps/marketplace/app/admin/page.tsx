@@ -11,6 +11,7 @@ import Banner from "../../components/Banner";
 import { StatusPill } from "../../components/Pill";
 import { categoryMeta } from "../../components/categories";
 import { bookingWindow } from "../../components/format";
+import { adminSidebarItems } from "../../lib/adminNav";
 import DashboardSidebar from "../../components/dashboard/DashboardSidebar";
 import StatCard from "../../components/dashboard/StatCard";
 
@@ -52,17 +53,7 @@ export default async function Admin({
     redirect(r.ok ? "/admin" : `/admin?err=${encodeURIComponent(r.message)}`);
   }
 
-  const sidebarItems = [
-    { id: "dashboard", label: "Dashboard", icon: "grid" as const, href: "/admin" },
-    {
-      id: "providers",
-      label: "Providers",
-      icon: "users" as const,
-      href: "/admin#providers",
-      badge: pending.length > 0 ? pending.length : undefined,
-    },
-    { id: "bookings", label: "Bookings", icon: "calendar" as const, href: "/admin#bookings" },
-  ];
+  const sidebarItems = adminSidebarItems({ applications: pending.length });
 
   return (
     <div className="d-layout">

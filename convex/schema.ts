@@ -16,6 +16,9 @@ export default defineSchema({
     phoneVerificationTime: v.optional(v.number()),
     isAnonymous: v.optional(v.boolean()),
     role: roleValidator,
+    // Set by an admin. Suspended users can sign in and read, but every write is refused.
+    suspendedAt: v.optional(v.number()),
+    suspendedReason: v.optional(v.string()),
   })
     .index("email", ["email"])
     .index("phone", ["phone"]),
@@ -41,6 +44,9 @@ export default defineSchema({
     photo: v.optional(v.string()),
     // Suburbs the provider travels to, besides their own. Empty or absent means they take bookings anywhere.
     serviceSuburbs: v.optional(v.array(v.string())),
+    // Set by an admin. A suspended provider has approved=false, so public searches and bookings exclude them.
+    suspendedAt: v.optional(v.number()),
+    suspendedReason: v.optional(v.string()),
   })
     .index("by_approved", ["approved"])
     .index("by_userId", ["userId"])
@@ -134,7 +140,39 @@ export default defineSchema({
     customerName: v.string(),
     rating: v.number(),
     text: v.string(),
+    // Hidden by moderation, never edited. The reason is kept and the provider's rating excludes it.
+    hidden: v.optional(v.boolean()),
+    hiddenReason: v.optional(v.string()),
   }).index("by_booking", ["bookingId"]).index("by_provider", ["providerId"]).index("by_customer", ["customerId"]),
+
+  reviewReports: defineTable({
+    reviewId: v.id("reviews"),
+    providerId: v.id("providers"),
+    reporterId: v.id("users"),
+    reason: v.string(),
+    status: v.union(v.literal("open"), v.literal("dismissed"), v.literal("upheld")),
+    resolvedById: v.optional(v.id("users")),
+    resolutionNote: v.optional(v.string()),
+  }).index("by_status", ["status"]).index("by_review", ["reviewId"]),
+
+  disputes: defineTable({
+    bookingId: v.id("bookings"),
+    openedById: v.id("users"),
+    openedBy: v.union(v.literal("customer"), v.literal("provider")),
+    reason: v.string(),
+    status: v.union(v.literal("open"), v.literal("resolved")),
+    resolution: v.optional(v.string()),
+    resolvedById: v.optional(v.id("users")),
+  }).index("by_booking", ["bookingId"]).index("by_status", ["status"]),
+
+  // Append-only record of admin actions.
+  auditLog: defineTable({
+    actorId: v.id("users"),
+    action: v.string(),
+    targetType: v.string(),
+    targetId: v.string(),
+    reason: v.optional(v.string()),
+  }).index("by_target", ["targetType", "targetId"]),
 
   notifications: defineTable({
     userId: v.id("users"),

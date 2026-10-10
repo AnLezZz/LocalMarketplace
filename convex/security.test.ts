@@ -8,8 +8,8 @@ const sources = Object.entries(all).filter(([path]) => !path.endsWith(".test.ts"
 
 // When this fails, a public mutation was added or removed. Add it to the signed-out sweep below.
 const PUBLIC_MUTATIONS = [
-  "admin.review", "availability.addTimeOff", "availability.removeTimeOff", "availability.setHours",
-  "bookings.create", "bookings.respondToQuote", "bookings.submitQuote", "bookings.transition", "favourites.toggle", "notifications.markAllRead", "notifications.markRead", "providers.setServiceAreas", "providers.submitProfile", "reviews.create",
+  "admin.cancelBooking", "admin.reactivateProvider", "admin.reactivateUser", "admin.resolveDispute", "admin.resolveReviewReport", "admin.restoreReview", "admin.review", "admin.suspendProvider", "admin.suspendUser", "availability.addTimeOff", "availability.removeTimeOff", "availability.setHours",
+  "bookings.create", "bookings.respondToQuote", "bookings.submitQuote", "bookings.transition", "disputes.open", "favourites.toggle", "notifications.markAllRead", "notifications.markRead", "providers.setServiceAreas", "providers.submitProfile", "reviews.create", "reviews.report",
   "services.archive", "services.create", "services.setEnabled", "services.update",
 ];
 // A public action can write via ctx.runMutation. Add one here deliberately and give it its own signed-out check.
@@ -50,6 +50,10 @@ test("every public mutation refuses a signed-out caller", async () => {
       startsAt, endsAt: startsAt + 3_600_000, status: "requested",
     }),
   );
+  const customerId = await createUser(t, "customer");
+  const reviewId = await t.run((ctx) => ctx.db.insert("reviews", { bookingId, providerId, customerId, customerName: "x", rating: 5, text: "" }));
+  const reportId = await t.run((ctx) => ctx.db.insert("reviewReports", { reviewId, providerId, reporterId: owner, reason: "unfair review", status: "open" }));
+  const disputeId = await t.run((ctx) => ctx.db.insert("disputes", { bookingId, openedById: customerId, openedBy: "customer", reason: "something went wrong", status: "open" }));
   const calls = [
     () => t.mutation(api.admin.review, { providerId, decision: "approve", submittedAt: 1 }),
     () => t.mutation(api.bookings.create, { address: "12 Test Street", suburb: "Ponsonby", providerId, customerName: "A", description: "d", startsAt, endsAt: startsAt + 3_600_000 }),
@@ -57,6 +61,16 @@ test("every public mutation refuses a signed-out caller", async () => {
     () => t.mutation(api.providers.submitProfile, {
       name: "N", bio: "B", category: "cleaning", suburb: "S", rateCents: 4500, rateBasis: "hourly",
     }),
+    () => t.mutation(api.admin.suspendProvider, { providerId, reason: "reason" }),
+    () => t.mutation(api.admin.reactivateProvider, { providerId }),
+    () => t.mutation(api.admin.suspendUser, { userId: customerId, reason: "reason" }),
+    () => t.mutation(api.admin.reactivateUser, { userId: customerId }),
+    () => t.mutation(api.admin.cancelBooking, { bookingId, reason: "reason" }),
+    () => t.mutation(api.disputes.open, { bookingId, reason: "something went wrong here" }),
+    () => t.mutation(api.reviews.report, { reviewId: reviewId, reason: "this is unfair and untrue" }),
+    () => t.mutation(api.admin.resolveReviewReport, { reportId: reportId, action: "dismiss" }),
+    () => t.mutation(api.admin.restoreReview, { reviewId: reviewId }),
+    () => t.mutation(api.admin.resolveDispute, { disputeId: disputeId, resolution: "resolved for the test" }),
     () => t.mutation(api.bookings.submitQuote, { bookingId, amountCents: 5000 }),
     () => t.mutation(api.bookings.respondToQuote, { bookingId, accept: true }),
     () => t.mutation(api.providers.setServiceAreas, { suburbs: [] }),

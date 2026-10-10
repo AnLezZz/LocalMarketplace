@@ -26,6 +26,13 @@ export default async function BookingDetail({ params, searchParams }: { params: 
   const reviewed = ((await fetchQuery(api.reviews.mine, {}, await authOpts())) as { bookingId: string }[]).some((r) => r.bookingId === id);
   const w = bookingWindow(b.startsAt, b.endsAt);
 
+  async function openDispute(fd: FormData) {
+    "use server";
+    const r = await attempt(async () => fetchMutation(api.disputes.open, { bookingId: id, reason: String(fd.get("reason") ?? "") }, await authOpts()));
+    revalidatePath("/bookings", "layout");
+    redirect(r.ok ? `/bookings/${id}` : `/bookings/${id}?err=${encodeURIComponent(r.message)}`);
+  }
+
   async function cancel() {
     "use server";
     const r = await attempt(async () => fetchMutation(api.bookings.transition, { bookingId: id, to: "cancelled" }, await authOpts()));
@@ -79,6 +86,25 @@ export default async function BookingDetail({ params, searchParams }: { params: 
           </div>
         )}
         {b.status === "requested" && <p className="note"><Icon name="info" size={18} />{b.providerName} will see only your suburb until they accept. Your full address and instructions are shown once they do.</p>}
+        {b.dispute && (
+          <div className={`quote-box${b.dispute.status === "open" ? " quote-box--warn" : ""}`}>
+            <strong>{b.dispute.status === "open" ? "A dispute is open" : "Dispute resolved"}</strong>
+            <span>Raised by the {b.dispute.openedBy}: {b.dispute.reason}</span>
+            {b.dispute.resolution && <span><strong>Decision:</strong> {b.dispute.resolution}</span>}
+            {b.dispute.status === "open" && <span>An admin is looking into it. You&apos;ll get a notification when it is resolved.</span>}
+          </div>
+        )}
+        {(b.status === "accepted" || b.status === "completed" || b.status === "cancelled") && (!b.dispute || b.dispute.status === "resolved") && (
+          <details className="rv__report">
+            <summary>Report a problem with this booking</summary>
+            <form action={openDispute} className="form">
+              <div className="field"><label htmlFor="dispute" className="field__label">What went wrong?</label>
+                <textarea id="dispute" name="reason" rows={3} required minLength={10} maxLength={1000} placeholder="Tell us what happened so an admin can look into it" /></div>
+              <button className="btn btn--secondary">Send to Localo</button>
+            </form>
+          </details>
+        )}
+
         <div className="booking__actions">
           <Link href={`/providers/${b.providerId}`} className="btn btn--secondary">View provider</Link>
           {b.status === "completed" && !reviewed && <Link href={`/bookings/${id}/review`} className="btn btn--forest">Leave a review</Link>}

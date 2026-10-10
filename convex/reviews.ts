@@ -2,6 +2,7 @@ import { ConvexError, v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { getUser, requireUser } from "./model/auth";
 import { notify } from "./model/notify";
+import { withReview } from "./model/reviewStats";
 
 /** Newest reviews of a provider, for their public profile. */
 export const forProvider = query({
@@ -10,7 +11,7 @@ export const forProvider = query({
     const provider = await ctx.db.get(providerId);
     if (!provider?.approved) return [];
     const rows = await ctx.db.query("reviews").withIndex("by_provider", (q) => q.eq("providerId", providerId)).order("desc").take(50);
-    return rows.map((r) => ({ _id: r._id, customerName: r.customerName, rating: r.rating, text: r.text, at: r._creationTime }));
+    return rows.filter((r) => !r.hidden).map((r) => ({ _id: r._id, customerName: r.customerName, rating: r.rating, text: r.text, at: r._creationTime }));
   },
 });
 
@@ -44,7 +45,24 @@ export const create = mutation({
     await ctx.db.insert("reviews", { bookingId: booking._id, providerId: provider._id, customerId: user._id, customerName: name, rating: a.rating, text });
     await notify(ctx, provider.userId, { kind: "review_received", title: "New review", body: `${name} left ${a.rating} ${a.rating === 1 ? "star" : "stars"}.`, href: "/provider#reviews" });
     // Incremental, so any rating already on the profile keeps its weight.
-    const count = provider.reviewCount + 1;
-    await ctx.db.patch(provider._id, { reviewCount: count, ratingAvg: Math.round(((provider.ratingAvg * provider.reviewCount + a.rating) / count) * 100) / 100 });
+    await ctx.db.patch(provider._id, withReview(provider, a.rating));
+  },
+});
+
+/** The provider asks admins to look at a review of their business. One open report per review. */
+export const report = mutation({
+  args: { reviewId: v.id("reviews"), reason: v.string() },
+  handler: async (ctx, a) => {
+    const user = await requireUser(ctx);
+    const review = await ctx.db.get(a.reviewId);
+    const provider = review ? await ctx.db.get(review.providerId) : null;
+    // Only the owner of the reviewed business may report; everyone else learns nothing.
+    if (!review || !provider || provider.userId !== user._id || review.hidden) throw new ConvexError("review not found");
+    const reason = a.reason.trim();
+    if (reason.length < 10) throw new ConvexError("Tell us what is wrong with this review (at least 10 characters)");
+    if (reason.length > 500) throw new ConvexError("That reason is too long");
+    const open = await ctx.db.query("reviewReports").withIndex("by_review", (q) => q.eq("reviewId", review._id)).take(20);
+    if (open.some((x) => x.status === "open")) throw new ConvexError("This review has already been reported");
+    return await ctx.db.insert("reviewReports", { reviewId: review._id, providerId: provider._id, reporterId: user._id, reason, status: "open" });
   },
 });
