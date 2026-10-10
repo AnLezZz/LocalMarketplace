@@ -63,7 +63,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<Par
             <div className="lp-search__field">
               <Icon name="pin" size={18} />
               {places.places
-                ? <PlaceInput name="where" idName="place" label="Where" placeholder="Suburb or region" defaultValue={suburb} />
+                ? <PlaceInput name="where" idName="place" label="Where" placeholder="Region or district" defaultValue={suburb} />
                 : <input name="suburb" aria-label="Suburb" placeholder="Your suburb" defaultValue={suburb} autoComplete="address-level2" />}
             </div>
             <button className="btn btn--forest">Search</button>

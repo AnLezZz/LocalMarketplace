@@ -114,14 +114,14 @@ export default async function Services({ searchParams }: { searchParams: Promise
               {(mine.areas.length > 0) && (
                 <ul className="adm-list">
                   {mine.areas.map((a) => (
-                    <li key={a._id} className="adm-row"><div className="adm-row__main"><strong>{a.name}</strong> <span className="field__hint">{a.kind === "region" ? "Whole region" : a.kind === "territorial_authority" ? "Whole council area" : a.context}</span></div>
+                    <li key={a._id} className="adm-row"><div className="adm-row__main"><strong>{a.name}</strong> <span className="field__hint">{a.kind === "region" ? "Whole region" : a.kind === "territorial_authority" || a.kind === "subdivision" ? "Whole district" : a.context}</span></div>
                       <form action={removeServiceArea.bind(null, a._id)}><button className="btn btn--secondary btn--sm" aria-label={`Remove ${a.name}`}>Remove</button></form></li>
                   ))}
                 </ul>
               )}
               <form action={addServiceAreaFromForm} className="area-add">
                 <div className="field field--grow"><label htmlFor="area-input" className="field__label">Add a place</label>
-                  <PlaceInput id="area-input" name="area" idName="placeId" label="Add a place" placeholder="Choose a region, district or suburb" submitOnPick /></div>
+                  <PlaceInput id="area-input" name="area" idName="placeId" label="Add a place" placeholder="Choose a region or district" submitOnPick /></div>
               </form>
             </div>
           ) : (

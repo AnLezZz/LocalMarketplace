@@ -67,7 +67,7 @@ export default async function ProviderSearch({ params, basePath, lockedCategory 
           <div className="srch__field">
             <Icon name="pin" size={18} />
             {places.places
-              ? <PlaceInput name="where" idName="place" label="Where" placeholder="Suburb or region" defaultValue={where} defaultId={placeId ?? ""} />
+              ? <PlaceInput name="where" idName="place" label="Where" placeholder="Region or district" defaultValue={where} defaultId={placeId ?? ""} />
               : <input name="suburb" aria-label="Suburb" placeholder="Suburb" defaultValue={suburb} autoComplete="address-level2" list="suburb-options" />}
           </div>
           <button className="srch__go" aria-label="Search">

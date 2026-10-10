@@ -96,12 +96,12 @@ export const removeSuburb = mutation({
 
 /** Type-ahead over recognised places: prefix match on the normalised name, with context to tell duplicates apart. Public reference data. */
 export const searchPlaces = query({
-  args: { q: v.string(), limit: v.optional(v.number()) },
-  handler: async (ctx, { q, limit }) => {
+  args: { q: v.string(), limit: v.optional(v.number()), kinds: v.optional(v.array(v.string())) }, // kinds: only these kinds of place. The pickers ask for regions and districts only, so a council that is browsed through its local boards (Auckland) is left out
+  handler: async (ctx, { q, limit, kinds }) => {
     const key = suburbKey(q.slice(0, 60));
     if (key.length < 2) return [];
     const rows = await ctx.db.query("places").withIndex("by_key", (i) => i.gte("key", key).lt("key", key + "\uffff")).take(200);
-    const found = rows.filter((p) => p.selectable && p.active).slice(0, Math.min(limit ?? 15, 25));
+    const found = rows.filter((p) => p.selectable && p.active && (!kinds || (kinds.includes(p.kind) && !p.flags.includes("has_districts")))).slice(0, Math.min(limit ?? 15, 25));
     return await Promise.all(found.map(async (p) => ({ ...(await describePlace(ctx, p)), open: !(await isClosed(ctx, p)) })));
   },
 });
@@ -220,11 +220,24 @@ export const regions = query({
 
 /** One level down for browsing: a region's council areas, or a council area's suburbs and localities. */
 export const children = query({
-  args: { parentId: v.id("places") },
-  handler: async (ctx, { parentId }) => {
+  args: { parentId: v.id("places"), kinds: v.optional(v.array(v.string())) },
+  handler: async (ctx, { parentId, kinds }) => {
     const edges = await ctx.db.query("placeParents").withIndex("by_parent", (q) => q.eq("parentId", parentId)).take(400);
-    const rows = (await Promise.all(edges.map((e) => ctx.db.get(e.childId)))).flatMap((p) => (p && p.selectable && p.active ? [p] : []));
+    const rows = (await Promise.all(edges.map((e) => ctx.db.get(e.childId)))).flatMap((p) => (p && p.selectable && p.active && (!kinds || kinds.includes(p.kind)) ? [p] : []));
     rows.sort((a, b) => a.name.localeCompare(b.name));
     return await Promise.all(rows.map(async (p) => ({ ...(await describePlace(ctx, p)), open: !(await isClosed(ctx, p)) })));
+  },
+});
+
+/** A chosen place as the picker's selection: its region, then the place itself when it is a district. Lets the panel reopen on what is already chosen. */
+export const trailOf = query({
+  args: { placeId: v.id("places") },
+  handler: async (ctx, { placeId }) => {
+    const p = await ctx.db.get(placeId);
+    if (!p) return [];
+    const withOpen = async (x: typeof p) => ({ ...(await describePlace(ctx, x)), open: !(await isClosed(ctx, x)) });
+    if (p.kind === "region") return [await withOpen(p)];
+    const region = p.regionIds[0] ? await ctx.db.get(p.regionIds[0]) : null;
+    return [...(region ? [await withOpen(region)] : []), await withOpen(p)];
   },
 });

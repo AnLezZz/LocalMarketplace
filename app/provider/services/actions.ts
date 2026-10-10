@@ -50,7 +50,7 @@ export async function addServiceArea(placeId: string) {
 /** The picker form: the chosen place's ID arrives as `placeId`; typing without picking sends none. */
 export async function addServiceAreaFromForm(fd: FormData) {
   const placeId = String(fd.get("placeId") ?? "");
-  if (!placeId) return done({ ok: false, message: "Pick a suburb, district or region from the list" });
+  if (!placeId) return done({ ok: false, message: "Pick a region or district from the list" });
   return addServiceArea(placeId);
 }
 

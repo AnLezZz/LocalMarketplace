@@ -57,6 +57,21 @@ describe("coverage states", () => {
 });
 
 describe("search", () => {
+  test("trailOf gives the picker its selection: a region alone, or its region then the district", async () => {
+    const { t, ids } = await setup();
+    expect((await t.query(api.locations.trailOf, { placeId: ids.akl })).map((x) => x.name)).toEqual(["Auckland"]);
+    expect((await t.query(api.locations.trailOf, { placeId: ids.ponsonby })).map((x) => x.name)).toEqual(["Auckland", "Ponsonby"]);
+  });
+  test("kinds limits results to those kinds (the admin page lists no suburbs)", async () => {
+    const { t } = await setup();
+    const all = await t.query(api.locations.searchPlaces, { q: "auck" });
+    expect(all.map((x) => x.kind).sort()).toEqual(["region", "territorial_authority"]);
+    expect(await t.query(api.locations.searchPlaces, { q: "pons", kinds: ["region", "territorial_authority"] })).toEqual([]);
+    // a council that is browsed through its districts (Auckland local boards) is not offered itself
+    await t.run(async (ctx) => { const ta = await ctx.db.query("places").withIndex("by_key", (q) => q.eq("key", "auckland ta")).first(); await ctx.db.patch(ta!._id, { flags: ["has_districts"] }); });
+    expect((await t.query(api.locations.searchPlaces, { q: "auck", kinds: ["region", "territorial_authority", "subdivision"] })).map((x) => x.kind)).toEqual(["region"]);
+    expect((await t.query(api.locations.searchPlaces, { q: "pons" })).map((x) => x.name)).toEqual(["Ponsonby"]);
+  });
   test("macron- and case-insensitive prefix, with context to tell two Newtowns apart", async () => {
     const { t } = await setup();
     const r = await t.query(api.locations.searchPlaces, { q: "newt" });

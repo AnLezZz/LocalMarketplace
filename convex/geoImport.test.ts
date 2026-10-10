@@ -159,6 +159,7 @@ describe("subdivisions", () => {
     expect(council.filter((c) => c.kind === "subdivision").map((c) => c.name)).toEqual(["Hill North Subdivision"]);
     const other = await t.query(api.locations.children, { parentId: await id("otherland") });
     expect(other.map((c) => c.name)).toContain("Hill South Subdivision"); // districts sit under the region their suburbs are in
+    expect((await t.query(api.locations.children, { parentId: await id("testland"), kinds: ["subdivision"] })).map((c) => c.name)).toEqual(["Hill North Subdivision"]); // kinds filters what is listed
     const north = await t.query(api.locations.children, { parentId: await id("hill north subdivision") });
     expect(north.map((c) => c.name)).toContain("Ponsonby");
     expect(council.map((c) => c.name)).not.toContain("Ponsonby"); // suburbs hang off their district, not the region
