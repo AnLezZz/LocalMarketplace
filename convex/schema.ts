@@ -36,6 +36,8 @@ export default defineSchema({
     category: v.string(),
     // Every category, subcategory or service the provider offers (the primary one included). Missing = just `category`.
     categorySlugs: v.optional(v.array(v.string())),
+    // Free text from an applicant whose service isn't in the category list. Admin-only: read in the review queue, never shown publicly.
+    categorySuggestion: v.optional(v.string()),
     suburb: v.string(),
     rateCents: v.number(),
     rateBasis: v.union(v.literal("hourly"), v.literal("fixed")),

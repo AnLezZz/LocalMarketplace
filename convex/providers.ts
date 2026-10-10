@@ -112,11 +112,14 @@ export const submitProfile = mutation({
     name: v.string(), bio: v.string(), category: v.string(), suburb: v.string(),
     rateCents: v.number(), rateBasis: v.union(v.literal("hourly"), v.literal("fixed")),
     more: v.optional(v.array(v.string())), // other categories, subcategories or services they offer
+    categorySuggestion: v.optional(v.string()), // "My service isn't listed": what they do, for the admin to read
   },
-  handler: async (ctx, { more, ...args }) => {
+  handler: async (ctx, { more, categorySuggestion, ...args }) => {
     const user = await requireUser(ctx);
     if (user.role === "admin") throw new ConvexError("Admins cannot be providers");
     const fields = validateProfile(args);
+    const suggestion = categorySuggestion?.trim().replace(/\s+/g, " ") || undefined;
+    if (suggestion && suggestion.length > 100) throw new ConvexError("Keep the service description under 100 characters");
     const existingForCats = await getProviderForUser(ctx, user._id);
     const categorySlugs = await resolveProviderCategories(ctx, fields.category, more, existingForCats ?? undefined);
     await requireSupportedSuburb(ctx, fields.suburb, (s) => `We don't operate in ${s} yet. Pick a suburb from the list.`);
@@ -127,12 +130,13 @@ export const submitProfile = mutation({
     if (existing) {
       // Strictly increasing, so two submits in the same millisecond still get distinct stamps.
       const submittedAt = Math.max(Date.now(), (existing.submittedAt ?? 0) + 1);
-      await ctx.db.patch(existing._id, { ...fields, categorySlugs, submittedAt, reviewedAt: undefined, rejectionReason: undefined });
+      await ctx.db.patch(existing._id, { ...fields, categorySlugs, categorySuggestion: suggestion, submittedAt, reviewedAt: undefined, rejectionReason: undefined });
       if (await hasPlaces(ctx)) await linkBase(ctx, existing, fields.suburb);
       return existing._id;
     }
     const id = await ctx.db.insert("providers", {
-      ...fields, categorySlugs, userId: user._id, ratingAvg: 0, reviewCount: 0, approved: false, submittedAt: Date.now(),
+      ...fields, categorySlugs, ...(suggestion ? { categorySuggestion: suggestion } : {}),
+      userId: user._id, ratingAvg: 0, reviewCount: 0, approved: false, submittedAt: Date.now(),
     });
     await ctx.db.patch(user._id, { role: "provider" });
     const created = await ctx.db.get(id);

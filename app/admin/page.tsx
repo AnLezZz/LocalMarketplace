@@ -223,6 +223,9 @@ export default async function Admin({
                       </div>
 
                       <p className="d-app-item__bio">{p.bio}</p>
+                      {p.categorySuggestion && (
+                        <p className="d-app-item__bio"><strong>Suggested category:</strong> {p.categorySuggestion}</p>
+                      )}
 
                       <form className="d-app-item__form">
                         <input type="hidden" name="id" value={p._id} />
