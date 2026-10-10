@@ -34,7 +34,7 @@ export default async function Book({ params, searchParams }: { params: Promise<{
   async function submit(_prev: BookResult, fd: FormData): Promise<BookResult> {
     "use server";
     const startsAt = aucklandToDate(String(fd.get("start")));
-    const hours = Math.max(0.5, Math.min(12, Number(fd.get("hours")) || 1));
+    const hours = Math.max(0.25, Math.min(12, Number(fd.get("hours")) || 1));
     const serviceId = String(fd.get("serviceId") ?? "") || undefined;
     const endsAt = new Date(startsAt.getTime() + hours * 3600_000);
     if (isNaN(startsAt.getTime()) || startsAt < new Date()) return { error: "That time has passed. Please pick another time." };
@@ -80,7 +80,7 @@ export default async function Book({ params, searchParams }: { params: Promise<{
       {error && <Banner tone="error">{error}</Banner>}
 
       {me ? (
-        <BookingForm action={submit} backHref={`/providers/${id}`} city={places.city} suburbOptions={places.suburbs} savedAddresses={acct?.addresses ?? []} savedPhone={acct?.contactPhone ?? ""} availability={av.days} services={services} initialServiceId={service} now={aucklandNow()} defaultName={first} provider={{ name: p.name, category: cat.label, suburb: p.suburb, rateCents: p.rateCents, rateBasis: p.rateBasis, serviceSuburbs: p.serviceSuburbs }} />
+        <BookingForm action={submit} backHref={`/providers/${id}`} city={places.city} suburbOptions={places.suburbs} savedAddresses={acct?.addresses ?? []} savedPhone={acct?.contactPhone ?? ""} availability={av.days} services={services} initialServiceId={service} now={aucklandNow()} defaultName={first} provider={{ name: p.name, category: cat.label, suburb: p.suburb, rateCents: p.rateCents, rateBasis: p.rateBasis }} />
       ) : (
         <section className="bk__card signin-prompt">
           <span className="signin-prompt__icon"><Icon name="user" size={24} /></span>

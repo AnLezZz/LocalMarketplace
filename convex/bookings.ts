@@ -10,7 +10,7 @@ import { withdrawPendingReschedules } from "./model/reschedules";
 import { latestDispute } from "./model/disputes";
 import { latestReschedule } from "./model/reschedules";
 import { providerMaySeePrivate, validateJob } from "./model/jobDetails";
-import { bookingMode, bookingModeValidator, validateContact } from "./model/serviceLocation";
+import { bookingMode, bookingModeValidator, validateContact, validateMeetingLink } from "./model/serviceLocation";
 import { snapshotPrice, validateQuote, type PriceType } from "./model/pricing";
 import { isTimeAvailable } from "./model/availability";
 import { requireSupportedSuburb } from "./model/locations";
@@ -297,6 +297,23 @@ export const submitQuote = mutation({
     const q = validateQuote(a.amountCents, a.note);
     await ctx.db.patch(b._id, { quoteCents: q.amountCents, quoteNote: q.note, quoteStatus: "offered" });
     await notify(ctx, b.customerId, { kind: "quote_offered", title: "You have a quote", body: `${provider.name} quoted $${q.amountCents / 100} for ${b.serviceName ?? "your booking"}.`, href: `/bookings/${b._id}` });
+  },
+});
+
+/** The provider adds (or changes) the private meeting link on one online booking, e.g. when the service had none to copy. The customer sees it once accepted. */
+export const setMeetingLink = mutation({
+  args: { bookingId: v.id("bookings"), meetingLink: v.string() },
+  handler: async (ctx, a) => {
+    const user = await requireUser(ctx);
+    const b = await ctx.db.get(a.bookingId);
+    const provider = b ? await ctx.db.get(b.providerId) : null;
+    if (!b || !provider || provider.userId !== user._id) throw new ConvexError("booking not found");
+    if (b.locationMode !== "online") throw new ConvexError("Only online bookings have a meeting link");
+    if (b.status !== "requested" && b.status !== "accepted") throw new ConvexError("The meeting link can only be changed while the booking is open");
+    const link = validateMeetingLink(a.meetingLink);
+    if (!link) throw new ConvexError("Enter the meeting link");
+    await ctx.db.patch(b._id, { meetingLink: link });
+    if (b.status === "accepted") await notify(ctx, b.customerId, { kind: "booking_update", title: "Meeting details added", body: `${provider.name} added the meeting link for ${b.serviceName ?? "your booking"}.`, href: `/bookings/${b._id}` });
   },
 });
 

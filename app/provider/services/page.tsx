@@ -20,7 +20,7 @@ export const dynamic = "force-dynamic";
 type Service = { _id: string; name: string; description: string; priceType: "fixed" | "hourly" | "quote"; priceCents?: number; durationMinutes: number; enabled: boolean; categorySlug?: string; locationMode?: ServiceMode; venue?: Venue; onlineNote?: string; meetingLink?: string };
 
 const DONE: Record<string, string> = { saved: "Service saved.", enabled: "Service enabled.", disabled: "Service disabled. Customers can no longer book it.", archived: "Service archived.", areas: "Service area saved.", "area-added": "Place added to your service area.", "area-removed": "Place removed from your service area." };
-const DURATIONS = [30, 45, 60, 90, 120, 180, 240, 300, 360, 480];
+const DURATIONS = [15, 30, 45, 60, 90, 120, 180, 240, 300, 360, 480];
 
 export default async function Services({ searchParams }: { searchParams: Promise<{ err?: string; edit?: string; ok?: string; add?: string }> }) {
   const { err, edit, ok, add } = await searchParams;

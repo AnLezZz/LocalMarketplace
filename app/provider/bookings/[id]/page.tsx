@@ -40,6 +40,12 @@ export default async function BookingDetails({ params, searchParams }: { params:
     revalidatePath("/provider", "layout");
     redirect(r.ok ? back : `${back}?err=${encodeURIComponent(r.message)}`);
   }
+  async function saveLink(fd: FormData) {
+    "use server";
+    const r = await attempt(async () => fetchMutation(api.bookings.setMeetingLink, { bookingId: id, meetingLink: String(fd.get("meetingLink") ?? "") }, await authOpts()));
+    revalidatePath("/provider", "layout");
+    redirect(r.ok ? back : `${back}?err=${encodeURIComponent(r.message)}`);
+  }
   const needsQuote = b.priceType === "quote" && b.quoteStatus !== "accepted";
   const priceLine = bookingPriceLine(b, (b.endsAt - b.startsAt) / 3_600_000);
 
@@ -72,6 +78,16 @@ export default async function BookingDetails({ params, searchParams }: { params:
         {(b.status === "accepted" || b.status === "completed") && !b.contact && b.address && <p className="note"><Icon name="info" size={18} />The customer chose not to share contact details. Use the address and instructions above.</p>}
         <h3 className="card__title">Job description</h3>
         <p className="booking__desc">{b.description}</p>
+
+        {b.locationMode === "online" && (b.status === "requested" || b.status === "accepted") && (
+          <form action={saveLink} className="quote-box">
+            <strong>{b.meetingLink ? "Change the meeting link" : "Add the meeting link"}</strong>
+            <span>Only this customer sees it, and only once the booking is accepted.</span>
+            <div className="field"><label htmlFor="meetingLink" className="field__label">Meeting link</label>
+              <input id="meetingLink" name="meetingLink" type="url" inputMode="url" defaultValue={b.meetingLink ?? ""} placeholder="https://meet.example.nz/your-room" maxLength={300} required /></div>
+            <button className="btn btn--secondary btn--sm" type="submit">Save link</button>
+          </form>
+        )}
 
         {b.status === "requested" && b.priceType === "quote" && b.quoteStatus !== "accepted" && (
           <form action={sendQuote} className="quote-box">

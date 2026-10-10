@@ -39,7 +39,7 @@ type Props = {
   defaultName: string;
   /** Where Back on the first step goes: the provider's profile. */
   backHref: string;
-  provider: { name: string; category: string; suburb: string; rateCents: number; rateBasis: string; serviceSuburbs?: string[] };
+  provider: { name: string; category: string; suburb: string; rateCents: number; rateBasis: string };
 };
 
 /** Sending is one tap: while the request is in flight the button is disabled and says so, so a double tap can't send two. */
@@ -109,8 +109,6 @@ export default function BookingForm({ action, now, defaultName, backHref, provid
   const serviceMode: ServiceMode = service?.locationMode ?? "customer";
   const mode: BookingMode | null = serviceMode === "either" ? (choice || null) : serviceMode;
   const venue = service?.venue;
-  const area = provider.serviceSuburbs?.length ? [provider.suburb, ...provider.serviceSuburbs] : [];
-  const outside = mode === "customer" && area.length > 0 && suburb.trim() !== "" && !area.some((x) => x.trim().toLowerCase() === suburb.trim().replace(/\s+/g, " ").toLowerCase());
   const problems = {
     name: name.trim() === "" ? "Enter your name" : "",
     description: desc.trim() === "" ? "Describe the job so the provider knows what to expect" : "",
@@ -119,7 +117,7 @@ export default function BookingForm({ action, now, defaultName, backHref, provid
     suburb: mode === "customer" && suburb.trim() === "" ? "Enter the suburb" : "",
     phone: share && phone.trim() === "" ? "Add a phone number to share your contact details" : "",
   };
-  const detailsOk = Object.values(problems).every((p) => p === "") && !outside;
+  const detailsOk = Object.values(problems).every((p) => p === "");
   const [showErrors, setShowErrors] = useState(false);
   const err = (k: keyof typeof problems) => (showErrors && problems[k] ? <p className="field__error" role="alert">{problems[k]}</p> : null);
 
@@ -278,10 +276,8 @@ export default function BookingForm({ action, now, defaultName, backHref, provid
               </div>
               <div className="field">
                 <label htmlFor="suburb" className="field__label">Suburb</label>
-                <input id="suburb" value={suburb} onChange={(e) => setSuburb(e.target.value)} autoComplete="address-level2" maxLength={60} placeholder="Ponsonby" aria-describedby="area-hint" list="suburb-options" aria-invalid={(showErrors && !!problems.suburb) || outside} />
-                <p id="area-hint" className={outside ? "field__error" : "field__hint"} role={outside ? "alert" : undefined}>
-                  {outside ? `${provider.name} doesn't service ${suburb.trim()}. They cover ${area.join(", ")}.` : area.length ? `${provider.name} covers ${area.join(", ")}.` : "Your full address is only shown to the provider after they accept."}
-                </p>
+                <input id="suburb" value={suburb} onChange={(e) => setSuburb(e.target.value)} autoComplete="address-level2" maxLength={60} placeholder="Ponsonby" aria-describedby="area-hint" list="suburb-options" aria-invalid={showErrors && !!problems.suburb} />
+                <p id="area-hint" className="field__hint">Your full address is only shown to the provider after they accept. We check they cover this suburb when you send.</p>
                 {err("suburb")}
               </div>
               <div className="field">

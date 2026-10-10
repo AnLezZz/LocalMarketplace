@@ -1,6 +1,6 @@
 import type { BookingMode, Venue } from "../lib/serviceLocation";
 
-type B = { locationMode?: BookingMode; venue?: Venue; onlineNote?: string; meetingLink?: string; address?: string; suburb?: string; accessNotes?: string };
+type B = { status?: string; locationMode?: BookingMode; venue?: Venue; onlineNote?: string; meetingLink?: string; address?: string; suburb?: string; accessNotes?: string };
 
 /**
  * The "where" rows of a booking, from what was copied onto it when it was requested (so later service edits never change them).
@@ -24,7 +24,9 @@ export default function BookingWhere({ b, role, open = true }: { b: B; role: "cu
           <dt>Meeting link</dt>
           <dd>
             {b.meetingLink ? <a href={b.meetingLink} target="_blank" rel="noopener noreferrer">{b.meetingLink}</a>
-              : role === "customer" ? <em>Shared by the provider once they accept your booking.</em> : <em>None set. It would be shared with the customer once you accept.</em>}
+              : role === "customer"
+                ? <em>{b.status === "accepted" ? "Your provider hasn't added the link yet. It will appear here (you'll get a notification)." : "Shared by the provider once they accept your booking."}</em>
+                : <em>None set. Add it below; the customer sees it once you accept.</em>}
             {role === "provider" && b.meetingLink && <><br /><small>The customer receives this link only after you accept.</small></>}
           </dd>
         </div>

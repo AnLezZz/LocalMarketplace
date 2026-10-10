@@ -134,6 +134,28 @@ describe("online bookings", () => {
   });
 });
 
+describe("meeting link added on the booking", () => {
+  test("a provider can supply it later; only the owner, only online, only https, only while open; the customer sees it once accepted", async () => {
+    const { owner, otherOwner, customer, service, book, t } = await setup();
+    const bookingId = await book(await service(owner, { locationMode: "online" })); // the service has no link to copy
+    await expect(otherOwner.mutation(api.bookings.setMeetingLink, { bookingId, meetingLink: "https://meet.example.nz/x" })).rejects.toThrow("booking not found");
+    await expect(customer.mutation(api.bookings.setMeetingLink, { bookingId, meetingLink: "https://meet.example.nz/x" })).rejects.toThrow("booking not found");
+    await expect(owner.mutation(api.bookings.setMeetingLink, { bookingId, meetingLink: "http://meet.example.nz/x" })).rejects.toThrow("https");
+    await expect(owner.mutation(api.bookings.setMeetingLink, { bookingId, meetingLink: "  " })).rejects.toThrow("Enter the meeting link");
+    await owner.mutation(api.bookings.setMeetingLink, { bookingId, meetingLink: "https://meet.example.nz/later" });
+    expect(JSON.stringify(await customer.query(api.bookings.getForCustomer, { id: bookingId }))).not.toContain("meet.example.nz"); // still requested
+    await owner.mutation(api.bookings.transition, { bookingId, to: "accepted" });
+    expect(await customer.query(api.bookings.getForCustomer, { id: bookingId })).toMatchObject({ meetingLink: "https://meet.example.nz/later" });
+    await owner.mutation(api.bookings.setMeetingLink, { bookingId, meetingLink: "https://meet.example.nz/changed" }); // still open when accepted
+    expect(await customer.query(api.bookings.getForCustomer, { id: bookingId })).toMatchObject({ meetingLink: "https://meet.example.nz/changed" });
+    await owner.mutation(api.bookings.transition, { bookingId, to: "completed" });
+    await expect(owner.mutation(api.bookings.setMeetingLink, { bookingId, meetingLink: "https://meet.example.nz/late" })).rejects.toThrow("open");
+    const atVenue = await book(await service(owner, { locationMode: "provider", venue }));
+    await expect(owner.mutation(api.bookings.setMeetingLink, { bookingId: atVenue, meetingLink: "https://meet.example.nz/x" })).rejects.toThrow("online");
+    expect((await t.run((ctx) => ctx.db.get(atVenue)))?.meetingLink).toBeUndefined();
+  });
+});
+
 describe('"either" services', () => {
   test("the customer chooses, and each choice follows its own rules", async () => {
     const { owner, service, book, t } = await setup();
