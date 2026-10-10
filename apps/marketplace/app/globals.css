@@ -1347,3 +1347,10 @@ body:has(.d-layout) { background: var(--ivory, #FAF9F6); }
 .fav--on { color: #C0392B; border-color: #F0C9C3; background: #FDF2F0; }
 .fav--on svg { fill: currentColor; }
 .fav:focus-visible { outline: 3px solid var(--forest); outline-offset: 2px; }
+
+/* Notification bell */
+.bell { position: relative; display: grid; place-items: center; width: 44px; height: 44px; border-radius: 50%; color: var(--ink-2); text-decoration: none; }
+.bell:hover { background: rgba(0, 0, 0, 0.05); }
+.bell__badge { position: absolute; top: 4px; right: 2px; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 999px; background: #C0392B; color: #fff; font-size: 11px; font-weight: 700; display: grid; place-items: center; }
+.topbar__end { display: flex; align-items: center; gap: var(--s-1); }
+@media (min-width: 720px) { .topbar__end { flex: 1; justify-content: flex-end; } }

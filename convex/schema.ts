@@ -113,6 +113,15 @@ export default defineSchema({
     text: v.string(),
   }).index("by_booking", ["bookingId"]).index("by_provider", ["providerId"]).index("by_customer", ["customerId"]),
 
+  notifications: defineTable({
+    userId: v.id("users"),
+    kind: v.string(),
+    title: v.string(),
+    body: v.string(),
+    href: v.string(),
+    read: v.boolean(),
+  }).index("by_user", ["userId"]).index("by_user_and_read", ["userId", "read"]),
+
   bookingEvents: defineTable({
     bookingId: v.id("bookings"),
     actorId: v.optional(v.id("users")),

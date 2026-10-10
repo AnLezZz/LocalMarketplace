@@ -3,6 +3,7 @@ import { mutation, query } from "./_generated/server";
 import { getUser, requireUser } from "./model/auth";
 import { canTransition, type Actor } from "./model/bookingRules";
 import { getProviderForUser } from "./model/providers";
+import { notify } from "./model/notify";
 import { addDays, availabilityFor, fits, utcToLocal } from "./model/availability";
 
 export const create = mutation({
@@ -41,6 +42,7 @@ export const create = mutation({
       description, startsAt: a.startsAt, endsAt: a.endsAt, status: "requested",
     });
     await ctx.db.insert("bookingEvents", { bookingId: id, actorId: user._id, toStatus: "requested" });
+    await notify(ctx, provider.userId, { kind: "booking_requested", title: "New booking request", body: `${customerName} asked for ${service?.name ?? "a booking"}.`, href: `/provider/bookings/${id}` });
     return id;
   },
 });
@@ -111,6 +113,18 @@ export const transition = mutation({
     }
     await ctx.db.patch(b._id, { status: a.to });
     await ctx.db.insert("bookingEvents", { bookingId: b._id, actorId: user._id, fromStatus: b.status, toStatus: a.to });
+    const what = b.serviceName ?? "your booking";
+    if (actor === "customer") {
+      await notify(ctx, provider?.userId, { kind: "booking_cancelled", title: "Booking cancelled", body: `${b.customerName} cancelled ${what}.`, href: `/provider/bookings/${b._id}` });
+    } else {
+      const text = {
+        accepted: ["Booking accepted", `${provider?.name} accepted ${what}.`, "/bookings"],
+        declined: ["Booking declined", `${provider?.name} can't take ${what}.`, "/bookings?tab=cancelled"],
+        cancelled: ["Booking cancelled", `${provider?.name} cancelled ${what}.`, "/bookings?tab=cancelled"],
+        completed: ["Job completed", `${provider?.name} marked ${what} as done. How did it go?`, `/bookings/${b._id}/review`],
+      }[a.to];
+      await notify(ctx, b.customerId, { kind: `booking_${a.to}`, title: text[0], body: text[1], href: text[2] });
+    }
     return { ok: true as const };
   },
 });

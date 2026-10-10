@@ -1,6 +1,7 @@
 import { ConvexError, v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { getUser, requireUser } from "./model/auth";
+import { notify } from "./model/notify";
 
 /** Newest reviews of a provider, for their public profile. */
 export const forProvider = query({
@@ -41,6 +42,7 @@ export const create = mutation({
     if (!provider) throw new ConvexError("booking not found");
     const name = (user.name ?? booking.customerName).trim().split(/\s+/)[0] || "Customer";
     await ctx.db.insert("reviews", { bookingId: booking._id, providerId: provider._id, customerId: user._id, customerName: name, rating: a.rating, text });
+    await notify(ctx, provider.userId, { kind: "review_received", title: "New review", body: `${name} left ${a.rating} ${a.rating === 1 ? "star" : "stars"}.`, href: "/provider#reviews" });
     // Incremental, so any rating already on the profile keeps its weight.
     const count = provider.reviewCount + 1;
     await ctx.db.patch(provider._id, { reviewCount: count, ratingAvg: Math.round(((provider.ratingAvg * provider.reviewCount + a.rating) / count) * 100) / 100 });

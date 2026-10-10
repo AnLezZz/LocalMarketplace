@@ -61,7 +61,7 @@ Dead/decorative UI | removed dead sidebar links this session | sidebar items for
 - [~] S4 Customer: favourites DONE; booking detail, reschedule request, profile/settings still open
 - [x] S5 (reviews) was built together with S4: see review below
 - [x] S5 Reviews: eligibility, duplicate guard, aggregates (report/moderation moves to S7)
-- [ ] S6 Notifications: bell, centre, realtime
+- [x] S6 Notifications: in-app bell + centre, realtime (email not built: no email integration)
 - [ ] S7 Admin: provider status enum + suspend, customers, bookings, moderation, audit log
 - [ ] S8 Categories + locations
 - [ ] Polish: reactive queries, skeletons, responsive pass
@@ -93,3 +93,8 @@ Demo data: Alex Morgan's hours were left Mon-Sun 8-5 (same as the old default).
 Done: `favourites` table, `favourites.{toggle,mineIds,listMine}`, heart buttons on search and profile (return to the same filtered page), `/favourites`, header link, middleware guard; `reviews` table, `reviews.{create,forProvider,mine}` (completed bookings only, owner only, one per booking, 1-5 stars, text optional <=1000, first name only shown), `/bookings/[id]/review` with a star picker, "Leave a review"/"Reviewed" on My bookings, reviews list on the provider profile, recent reviews card + sidebar item on the provider dashboard.
 Verified: 65 convex tests; browser run as customer + provider (heart signed-out -> sign-in, heart keeps filters, favourites list/remove, request -> accept -> complete -> review, required-star validation, review on profile and provider dashboard, rating 4.9 (28) -> (29)).
 Notes: provider rating is updated incrementally so the seeded placeholder rating keeps its weight (the demo "Alex Morgan" rating drifted from 4.9/28 to roughly 4.8/30 during testing). Review reporting/hiding is S7. Booking detail page for customers, reschedule requests and account settings are still open.
+
+## S6 review (2026-10-10)
+Done: `notifications` table; `notify()` helper called inside the booking/review mutations (request -> provider; accept/decline/complete/provider-cancel -> customer; customer-cancel -> provider; review -> provider); `notifications.{mine,unreadCount,markRead,markAllRead}`; header bell with live unread badge (desktop + mobile), `/notifications` live list with skeleton/empty states, click-through marks read; middleware guard.
+Verified: 71 convex tests (each trigger, refused transitions send nothing, owner-only read/mark, orphan seeded providers); browser run with two sessions: provider page updated live (badge none -> 1, new item) when a customer booked, click opened the booking and cleared the badge, customer notified on accept, provider notified on cancel, signed-out redirected.
+Not done: email notifications, reschedule-request notice (feature not built), notification preferences, pruning old rows.

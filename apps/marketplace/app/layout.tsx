@@ -6,6 +6,7 @@ import { ConvexAuthNextjsServerProvider } from "@convex-dev/auth/nextjs/server";
 import ConvexClientProvider from "./ConvexClientProvider";
 import { getMe } from "../lib/auth";
 import Logo from "../components/Logo";
+import NotificationBell from "../components/NotificationBell";
 import { HeaderNav, TabBar, type NavLink } from "../components/Nav";
 
 const inter = Inter({ subsets: ["latin"], weight: ["400", "500", "600", "700"], variable: "--font-inter", display: "swap" });
@@ -40,7 +41,10 @@ export default async function Root({ children }: { children: React.ReactNode }) 
             <header className="topbar">
               <div className="topbar__inner">
                 <Logo />
-                <HeaderNav signedIn={!!me} userRole={me?.role} />
+                <div className="topbar__end">
+                  <HeaderNav signedIn={!!me} userRole={me?.role} />
+                  {me && <NotificationBell />}
+                </div>
               </div>
             </header>
             <main>{children}</main>
