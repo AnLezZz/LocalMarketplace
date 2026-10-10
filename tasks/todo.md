@@ -151,6 +151,7 @@ Test data left on dev: reviews/disputes/bookings tagged "S7a", resolved, plus th
 # Before deploying (checklist)
 
 Vercel facts found on 2026-10-10 (project `localmarketplace-marketplace`):
+- [ ] **Production Branch is still `claude/new-session-e1nnli`**, so a push to `main` only builds a preview (target null) and the production site stays on the last manual deploy. Until this is changed (Vercel dashboard: Settings > Environments > Production > Branch Tracking > `main`; the API refused the field), production must be updated by redeploying with target production. The 2026-10-10 deploys of `7c55beb`, `6470e7b` and `78183b2` were done that way.
 - [ ] Production `NEXT_PUBLIC_CONVEX_URL` points at the DEV Convex deployment (`benevolent-boar-32`). Fine while everything is dev; switch it to the production deployment URL before real users.
 - [ ] `NEXT_PUBLIC_CONVEX_URL` exists for the Production target only, so Preview deployments (other branches) build but fail at runtime. Add it for Preview if previews are needed.
 - [ ] Vercel Authentication is on for `*.vercel.app` (all except custom domains), so the site needs a Vercel login to open. Add a custom domain or relax this when the site should be public.
