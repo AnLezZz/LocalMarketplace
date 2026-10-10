@@ -1,7 +1,7 @@
 import "./tokens.css";
 import "./globals.css";
 import "./landing.css";
-import { Inter, Instrument_Serif } from "next/font/google";
+import localFont from "next/font/local";
 import { ConvexAuthNextjsServerProvider } from "@convex-dev/auth/nextjs/server";
 import ConvexClientProvider from "./ConvexClientProvider";
 import { getMe } from "../lib/auth";
@@ -9,8 +9,9 @@ import Logo from "../components/Logo";
 import NotificationBell from "../components/NotificationBell";
 import { HeaderNav, TabBar, type NavLink } from "../components/Nav";
 
-const inter = Inter({ subsets: ["latin"], weight: ["400", "500", "600", "700"], variable: "--font-inter", display: "swap" });
-const serif = Instrument_Serif({ subsets: ["latin"], weight: "400", variable: "--font-serif", display: "swap" });
+// Self-hosted (SIL Open Font License, see app/fonts), so a build never depends on fetching Google Fonts.
+const inter = localFont({ src: "./fonts/inter-latin-wght-normal.woff2", weight: "100 900", style: "normal", variable: "--font-inter", display: "swap" });
+const serif = localFont({ src: "./fonts/instrument-serif-latin-400-normal.woff2", weight: "400", style: "normal", variable: "--font-serif", display: "swap" });
 
 export const metadata = { title: "Localo — trusted local help", description: "Find and book trusted local cleaners, gardeners, handymen and more." };
 export const viewport = { width: "device-width", initialScale: 1, viewportFit: "cover", themeColor: "#F0F5F9" };
