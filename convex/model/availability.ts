@@ -55,7 +55,7 @@ type Ctx = QueryCtx | MutationCtx;
 export type DayAvailability = { date: string; windows: [number, number][]; busy: [number, number][] };
 
 /** Working windows (break removed) and busy intervals, in Auckland minutes, for `days` days from `from`. */
-export async function availabilityFor(ctx: Ctx, providerId: Id<"providers">, from: string, days: number, now = Date.now()) {
+export async function availabilityFor(ctx: Ctx, providerId: Id<"providers">, from: string, days: number, now = Date.now(), excludeBookingId?: Id<"bookings">) {
   const hours = await ctx.db.query("workingHours").withIndex("by_provider", (q) => q.eq("providerId", providerId)).take(7);
   const configured = hours.length > 0;
   const byDay = new Map(hours.map((h) => [h.weekday, h]));
@@ -67,7 +67,8 @@ export async function availabilityFor(ctx: Ctx, providerId: Id<"providers">, fro
   // Accepted and completed bookings hold their time; pending requests do not.
   for (const status of ["accepted", "completed"] as const) {
     for await (const b of ctx.db.query("bookings").withIndex("by_provider_and_status_and_endsAt", (q) => q.eq("providerId", providerId).eq("status", status).gt("endsAt", now))) {
-      if (b.startsAt < horizonEnd) blocks.push([b.startsAt, b.endsAt]);
+      // A booking being moved must not clash with its own current slot.
+      if (b._id !== excludeBookingId && b.startsAt < horizonEnd) blocks.push([b.startsAt, b.endsAt]);
     }
   }
   const out: DayAvailability[] = [];
@@ -94,4 +95,17 @@ export async function availabilityFor(ctx: Ctx, providerId: Id<"providers">, fro
 /** Does [startMinute, endMinute) on a day sit inside a working window and clear of every busy interval? */
 export function fits(day: DayAvailability, startMinute: number, endMinute: number): boolean {
   return day.windows.some(([s, e]) => startMinute >= s && endMinute <= e) && !day.busy.some(([s, e]) => startMinute < e && s < endMinute);
+}
+
+/**
+ * Is [startsAt, endsAt) free to book? Inside the provider's working hours and breaks (when they have set any), clear of
+ * blocked time and of their accepted bookings. Providers who never set hours are only held to blocks and bookings.
+ * `excludeBookingId` leaves one booking out, for moving it.
+ */
+export async function isTimeAvailable(ctx: Ctx, providerId: Id<"providers">, startsAt: number, endsAt: number, excludeBookingId?: Id<"bookings">): Promise<boolean> {
+  const from = utcToLocal(startsAt), to = utcToLocal(endsAt);
+  const endMinute = to.date === from.date ? to.minute : to.date === addDays(from.date, 1) && to.minute === 0 ? 1440 : -1;
+  const av = await availabilityFor(ctx, providerId, from.date, 1, Date.now(), excludeBookingId);
+  if (endMinute === -1) return !av.configured;
+  return fits(av.configured ? av.days[0] : { ...av.days[0], windows: [[0, 1440]] }, from.minute, endMinute);
 }

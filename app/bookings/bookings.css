@@ -1,4 +1,4 @@
-body:has(.btabs), body:has(.stars) { background: var(--ivory, #FAF9F6); }
+body:has(.btabs), body:has(.stars), body:has(.detail) { background: var(--ivory, #FAF9F6); }
 .btabs { display: flex; gap: var(--s-5); border-bottom: 1px solid #E6E1D6; margin: var(--s-4) 0; overflow-x: auto; }
 .btabs__tab { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; border-bottom: 2px solid transparent; margin-bottom: -1px; color: var(--ink-3); text-decoration: none; font-size: 15px; white-space: nowrap; }
 .btabs__tab span { font-size: 12px; background: #EFEDE7; border-radius: 999px; padding: 1px 8px; }

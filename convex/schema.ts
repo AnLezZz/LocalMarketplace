@@ -178,6 +178,16 @@ export default defineSchema({
     resolutionNote: v.optional(v.string()),
   }).index("by_status", ["status"]).index("by_review", ["reviewId"]),
 
+  rescheduleRequests: defineTable({
+    bookingId: v.id("bookings"),
+    proposedBy: v.union(v.literal("customer"), v.literal("provider")),
+    proposerId: v.id("users"),
+    newStartsAt: v.number(),
+    newEndsAt: v.number(),
+    note: v.optional(v.string()),
+    status: v.union(v.literal("pending"), v.literal("accepted"), v.literal("declined"), v.literal("withdrawn")),
+  }).index("by_booking", ["bookingId"]),
+
   disputes: defineTable({
     bookingId: v.id("bookings"),
     openedById: v.id("users"),

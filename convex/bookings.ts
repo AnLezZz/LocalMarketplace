@@ -4,10 +4,12 @@ import { getUser, requireUser } from "./model/auth";
 import { canTransition, type Actor } from "./model/bookingRules";
 import { getProviderForUser } from "./model/providers";
 import { notify } from "./model/notify";
+import { withdrawPendingReschedules } from "./model/reschedules";
 import { latestDispute } from "./model/disputes";
+import { latestReschedule } from "./model/reschedules";
 import { providerMaySeePrivate, servesSuburb, validateJob } from "./model/jobDetails";
 import { snapshotPrice, validateQuote, type PriceType } from "./model/pricing";
-import { addDays, availabilityFor, fits, utcToLocal } from "./model/availability";
+import { isTimeAvailable } from "./model/availability";
 
 export const create = mutation({
   args: {
@@ -31,12 +33,7 @@ export const create = mutation({
     if (!servesSuburb(provider, job.suburb)) throw new ConvexError(`${provider.name} doesn't service ${job.suburb}`);
     // Refuse times the provider has closed or blocked. Providers who never set hours are only checked
     // against blocked time and accepted bookings, so existing listings keep working.
-    const from = utcToLocal(a.startsAt), to = utcToLocal(a.endsAt);
-    const endMinute = to.date === from.date ? to.minute : to.date === addDays(from.date, 1) && to.minute === 0 ? 1440 : -1;
-    const av = await availabilityFor(ctx, provider._id, from.date, 1);
-    if (endMinute === -1 ? av.configured : !fits(av.configured ? av.days[0] : { ...av.days[0], windows: [[0, 1440]] }, from.minute, endMinute)) {
-      throw new ConvexError("That time isn't available");
-    }
+    if (!(await isTimeAvailable(ctx, provider._id, a.startsAt, a.endsAt))) throw new ConvexError("That time isn't available");
     let service: { _id: typeof a.serviceId; name: string; priceType: PriceType; priceCents?: number } | null = null;
     if (a.serviceId) {
       const s = await ctx.db.get(a.serviceId);
@@ -131,6 +128,7 @@ export const transition = mutation({
     }
     await ctx.db.patch(b._id, { status: a.to, ...(a.to === "accepted" ? { agreedCents: b.priceType === "quote" ? b.quoteCents : b.estimateCents } : {}) });
     await ctx.db.insert("bookingEvents", { bookingId: b._id, actorId: user._id, fromStatus: b.status, toStatus: a.to });
+    if (a.to === "cancelled" || a.to === "completed") await withdrawPendingReschedules(ctx, b._id);
     const what = b.serviceName ?? "your booking";
     if (actor === "customer") {
       await notify(ctx, provider?.userId, { kind: "booking_cancelled", title: "Booking cancelled", body: `${b.customerName} cancelled ${what}.`, href: `/provider/bookings/${b._id}` });
@@ -168,7 +166,7 @@ export const getForProvider = query({
       address: open ? b.address : undefined, accessNotes: open ? b.accessNotes : undefined,
       contact: open && b.shareContact ? { email: b.customerEmail, phone: b.customerPhone } : undefined,
       privateHidden: !open && !!b.address,
-      dispute: await latestDispute(ctx, b._id),
+      dispute: await latestDispute(ctx, b._id), reschedule: await latestReschedule(ctx, b._id),
       events: events.map((e) => ({ at: e._creationTime, from: e.fromStatus, to: e.toStatus, byCustomer: e.actorId === b.customerId })),
     };
   },
@@ -186,7 +184,7 @@ export const getForCustomer = query({
     const events = await ctx.db.query("bookingEvents").withIndex("by_booking", (i) => i.eq("bookingId", b._id)).take(50);
     const { customerEmail: _e, ...rest } = b;
     return {
-      ...rest, providerName: provider?.name ?? "Unknown provider", providerSuburb: provider?.suburb, dispute: await latestDispute(ctx, b._id),
+      ...rest, providerName: provider?.name ?? "Unknown provider", providerSuburb: provider?.suburb, dispute: await latestDispute(ctx, b._id), reschedule: await latestReschedule(ctx, b._id),
       events: events.map((e) => ({ at: e._creationTime, to: e.toStatus, byProvider: e.actorId !== b.customerId })),
     };
   },

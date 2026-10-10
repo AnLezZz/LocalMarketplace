@@ -10,7 +10,7 @@ const sources = Object.entries(all).filter(([path]) => !path.endsWith(".test.ts"
 const PUBLIC_MUTATIONS = [
   "account.addAddress", "account.generateUploadUrl", "account.removeAddress", "account.removePhoto", "account.setDefaultAddress", "account.setEmailPrefs", "account.setPhoto", "account.updateProfile",
   "admin.cancelBooking", "admin.reactivateProvider", "admin.reactivateUser", "admin.resolveDispute", "admin.resolveReviewReport", "admin.restoreReview", "admin.review", "admin.suspendProvider", "admin.suspendUser", "availability.addTimeOff", "availability.removeTimeOff", "availability.setHours",
-  "bookings.create", "bookings.respondToQuote", "bookings.submitQuote", "bookings.transition", "disputes.open", "favourites.toggle", "notifications.markAllRead", "notifications.markRead", "providers.addGalleryPhoto", "providers.generateUploadUrl", "providers.removeGalleryPhoto", "providers.removePhoto", "providers.setPhoto", "providers.setServiceAreas", "providers.submitProfile", "providers.updateProfile", "reviews.create", "reviews.report",
+  "bookings.create", "bookings.respondToQuote", "bookings.submitQuote", "bookings.transition", "disputes.open", "favourites.toggle", "notifications.markAllRead", "notifications.markRead", "providers.addGalleryPhoto", "providers.generateUploadUrl", "providers.removeGalleryPhoto", "providers.removePhoto", "providers.setPhoto", "providers.setServiceAreas", "providers.submitProfile", "providers.updateProfile", "reschedules.propose", "reschedules.respond", "reschedules.withdraw", "reviews.create", "reviews.report",
   "services.archive", "services.create", "services.setEnabled", "services.update",
 ];
 // A public action can write via ctx.runMutation. Add one here deliberately and give it its own signed-out check.
@@ -56,6 +56,7 @@ test("every public mutation refuses a signed-out caller", async () => {
   const reportId = await t.run((ctx) => ctx.db.insert("reviewReports", { reviewId, providerId, reporterId: owner, reason: "unfair review", status: "open" }));
   const disputeId = await t.run((ctx) => ctx.db.insert("disputes", { bookingId, openedById: customerId, openedBy: "customer", reason: "something went wrong", status: "open" }));
   const storageId = await t.run((ctx) => ctx.storage.store(new Blob(["x"], { type: "image/png" })));
+  const requestId = await t.run((ctx) => ctx.db.insert("rescheduleRequests", { bookingId, proposedBy: "customer", proposerId: customerId, newStartsAt: startsAt + 86_400_000, newEndsAt: startsAt + 90_000_000, status: "pending" }));
   const calls = [
     () => t.mutation(api.admin.review, { providerId, decision: "approve", submittedAt: 1 }),
     () => t.mutation(api.bookings.create, { address: "12 Test Street", suburb: "Ponsonby", providerId, customerName: "A", description: "d", startsAt, endsAt: startsAt + 3_600_000 }),
@@ -73,6 +74,9 @@ test("every public mutation refuses a signed-out caller", async () => {
     () => t.mutation(api.admin.resolveReviewReport, { reportId: reportId, action: "dismiss" }),
     () => t.mutation(api.admin.restoreReview, { reviewId: reviewId }),
     () => t.mutation(api.admin.resolveDispute, { disputeId: disputeId, resolution: "resolved for the test" }),
+    () => t.mutation(api.reschedules.propose, { bookingId, newStartsAt: startsAt + 86_400_000 }),
+    () => t.mutation(api.reschedules.respond, { requestId, accept: true }),
+    () => t.mutation(api.reschedules.withdraw, { requestId }),
     () => t.mutation(api.bookings.submitQuote, { bookingId, amountCents: 5000 }),
     () => t.mutation(api.bookings.respondToQuote, { bookingId, accept: true }),
     () => t.mutation(api.account.updateProfile, { name: "N" }),

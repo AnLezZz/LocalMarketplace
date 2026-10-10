@@ -13,13 +13,14 @@ import Avatar from "../../../../components/Avatar";
 import Banner from "../../../../components/Banner";
 import { StatusPill } from "../../../../components/Pill";
 import { bookingPriceLine, bookingWindow, dollars } from "../../../../components/format";
+import RescheduleBox from "../../../../components/RescheduleBox";
 
 import "../../../providers/[id]/booking.css";
 import "../../../bookings/bookings.css";
 
 export const dynamic = "force-dynamic";
 
-const EVENT_LABEL: Record<string, string> = { requested: "Requested", accepted: "Accepted", declined: "Declined", cancelled: "Cancelled", completed: "Marked completed" };
+const EVENT_LABEL: Record<string, string> = { requested: "Requested", accepted: "Accepted", declined: "Declined", cancelled: "Cancelled", completed: "Marked completed", rescheduled: "Rescheduled" };
 const when = new Intl.DateTimeFormat("en-NZ", { timeZone: "Pacific/Auckland", day: "numeric", month: "short", hour: "numeric", minute: "2-digit" });
 
 export default async function BookingDetails({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ err?: string }> }) {
@@ -84,6 +85,8 @@ export default async function BookingDetails({ params, searchParams }: { params:
             <button className="btn btn--forest">{b.quoteStatus === "offered" ? "Update quote" : "Send quote"}</button>
           </form>
         )}
+
+        <RescheduleBox role="provider" bookingId={id} status={b.status} startsAt={b.startsAt} reschedule={b.reschedule} otherName={b.customerName} />
 
         {b.dispute && (
           <div className={`quote-box${b.dispute.status === "open" ? " quote-box--warn" : ""}`}>

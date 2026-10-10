@@ -10,12 +10,13 @@ import Avatar from "../../../components/Avatar";
 import Banner from "../../../components/Banner";
 import { StatusPill } from "../../../components/Pill";
 import { bookingPriceLine, bookingWindow, dollars } from "../../../components/format";
+import RescheduleBox from "../../../components/RescheduleBox";
 import "../bookings.css";
 import "../../providers/[id]/booking.css";
 
 export const dynamic = "force-dynamic";
 
-const LABEL: Record<string, string> = { requested: "Requested", accepted: "Accepted", declined: "Declined", cancelled: "Cancelled", completed: "Completed" };
+const LABEL: Record<string, string> = { requested: "Requested", accepted: "Accepted", declined: "Declined", cancelled: "Cancelled", completed: "Completed", rescheduled: "Rescheduled" };
 const when = new Intl.DateTimeFormat("en-NZ", { timeZone: "Pacific/Auckland", day: "numeric", month: "short", hour: "numeric", minute: "2-digit" });
 
 export default async function BookingDetail({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ err?: string }> }) {
@@ -86,6 +87,8 @@ export default async function BookingDetail({ params, searchParams }: { params: 
           </div>
         )}
         {b.status === "requested" && <p className="note"><Icon name="info" size={18} />{b.providerName} will see only your suburb until they accept. Your full address and instructions are shown once they do.</p>}
+        <RescheduleBox role="customer" bookingId={id} status={b.status} startsAt={b.startsAt} reschedule={b.reschedule} otherName={b.providerName} />
+
         {b.dispute && (
           <div className={`quote-box${b.dispute.status === "open" ? " quote-box--warn" : ""}`}>
             <strong>{b.dispute.status === "open" ? "A dispute is open" : "Dispute resolved"}</strong>
