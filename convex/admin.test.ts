@@ -24,8 +24,8 @@ describe("admin access", () => {
   test("signed-out and non-admin callers are refused", async () => {
     const t = newT();
     const { u, providerId } = await apply(t);
-    await expect(t.query(api.admin.listPending, {})).rejects.toThrow("Sign in required");
-    await expect(u.query(api.admin.listPending, {})).rejects.toThrow("Not allowed");
+    await expect(t.query(api.admin.listPending, { paginationOpts: { numItems: 50, cursor: null } })).rejects.toThrow("Sign in required");
+    await expect(u.query(api.admin.listPending, { paginationOpts: { numItems: 50, cursor: null } })).rejects.toThrow("Not allowed");
     const submittedAt = await stamp(t, providerId);
     await expect(u.mutation(api.admin.review, { providerId, decision: "approve", submittedAt })).rejects.toThrow("Not allowed");
   });
@@ -39,7 +39,7 @@ describe("admin.listPending", () => {
     const rejected = await apply(t, "p2@example.nz");
     await t.run((ctx) => ctx.db.patch(rejected.providerId, { reviewedAt: 1, rejectionReason: "x" }));
     await createProvider(t); // approved, unowned seed-style listing
-    const rows = await admin.query(api.admin.listPending, {});
+    const rows = (await admin.query(api.admin.listPending, { paginationOpts: { numItems: 50, cursor: null } })).page;
     expect(rows.map((r) => r._id)).toEqual([pending.providerId]);
     expect(rows[0].ownerEmail).toBe("p1@example.nz");
   });
@@ -83,7 +83,7 @@ describe("admin.review", () => {
     const { u, providerId } = await apply(t);
     await admin.mutation(api.admin.review, { providerId, submittedAt: await stamp(t, providerId), decision: "reject", reason: "Add a photo" });
     await u.mutation(api.providers.submitProfile, profile);
-    expect((await admin.query(api.admin.listPending, {})).map((r) => r._id)).toEqual([providerId]);
+    expect((await admin.query(api.admin.listPending, { paginationOpts: { numItems: 50, cursor: null } })).page.map((r) => r._id)).toEqual([providerId]);
     await admin.mutation(api.admin.review, { providerId, submittedAt: await stamp(t, providerId), decision: "approve" });
     expect((await u.query(api.providers.mine, {}))?.status).toBe("approved");
   });

@@ -118,3 +118,5 @@ body:has(.bk) { background: var(--ivory, #FAF9F6); }
 .bk__failact { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
 .bk__recap { margin: var(--s-4) 0; text-align: left; }
 button[aria-busy="true"].bk__go { opacity: .7; cursor: progress; }
+
+.bk__more { justify-self: start; margin-top: var(--s-3); }

@@ -21,7 +21,10 @@ export default async function Provider({ params }: { params: Promise<{ id: strin
 
   const services = (await fetchQuery(api.services.listForProvider, { providerId: id })) as { _id: string; name: string; description: string; priceType: string; priceCents?: number; durationMinutes: number }[];
   const saved = ((await fetchQuery(api.favourites.savedAmong, { providerIds: [id as never] }, await authOpts())) as string[]).length > 0;
-  const reviews = (await fetchQuery(api.reviews.forProvider, { providerId: id })) as { _id: string; customerName: string; rating: number; text: string; at: number }[];
+  // Just the latest few here; the full list is its own page.
+  const latest = (await fetchQuery(api.reviews.forProvider, { providerId: id as never, paginationOpts: { numItems: 4, cursor: null } })) as unknown as { page: { _id: string; customerName: string; rating: number; text: string; at: number }[] };
+  const reviews = latest.page.slice(0, 3); // one extra was asked for, only to know whether there are more
+  const moreReviews = latest.page.length > 3;
   const gallery = (await fetchQuery(api.providers.gallery, { providerId: id })) as { _id: string; url: string; caption?: string }[];
   const price = rate(p.rateCents, p.rateBasis);
   const cats = await loadCategories();
@@ -80,8 +83,10 @@ export default async function Provider({ params }: { params: Promise<{ id: strin
               </div>
             ))}
           </section>
+        </div>
+        <aside className="bk__side">
           <section className="bk__card" aria-labelledby="rev-h">
-            <h2 id="rev-h" className="bk__h">Reviews</h2>
+            <h2 id="rev-h" className="bk__h bk__h--sm">Reviews</h2>
             {reviews.length === 0 ? (
               <p className="bk__sub">No written reviews yet. Customers can review a job once it is completed.</p>
             ) : (
@@ -95,9 +100,8 @@ export default async function Provider({ params }: { params: Promise<{ id: strin
                 ))}
               </ul>
             )}
+            {moreReviews && <Link href={`/providers/${id}/reviews`} className="btn btn--secondary btn--sm bk__more">More reviews →</Link>}
           </section>
-        </div>
-        <aside className="bk__side">
           <section className="bk__card">
             <h2 className="bk__h bk__h--sm">Good to know</h2>
             <ul className="bk__why">

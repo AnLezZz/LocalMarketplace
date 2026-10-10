@@ -72,7 +72,7 @@ describe("provider suspension", () => {
     expect((await customer.query(api.favourites.listPage, { paginationOpts: { numItems: 50, cursor: null } })).page).toEqual([]);
     expect(await t.query(api.services.listForProvider, { providerId })).toEqual([]);
     expect(await t.query(api.services.listPublic, {})).toEqual([]);
-    expect(await t.query(api.reviews.forProvider, { providerId })).toEqual([]);
+    expect((await t.query(api.reviews.forProvider, { providerId, paginationOpts: { numItems: 50, cursor: null } })).page).toEqual([]);
     expect((await t.query(api.availability.forProvider, { providerId, days: 3 })).days).toEqual([]);
     const startsAt = Date.now() + 200 * HOUR;
     await expect(customer.mutation(api.bookings.create, { address: "12 Test Street", suburb: "Ponsonby", providerId, customerName: "K", description: "d", startsAt, endsAt: startsAt + HOUR })).rejects.toThrow("provider not found");
@@ -157,7 +157,7 @@ describe("review reports and moderation", () => {
     await expect(admin.mutation(api.admin.resolveReviewReport, { reportId, action: "hide" })).rejects.toThrow("at least 5");
     await admin.mutation(api.admin.resolveReviewReport, { reportId, action: "hide", note: "Not a real customer experience" });
     expect(await rating()).toEqual({ avg: 5, n: 1 });
-    expect((await t.query(api.reviews.forProvider, { providerId })).map((r) => r._id)).toEqual([good]);
+    expect((await t.query(api.reviews.forProvider, { providerId, paginationOpts: { numItems: 50, cursor: null } })).page.map((r) => r._id)).toEqual([good]);
     expect((await admin.query(api.admin.listHiddenReviews, { paginationOpts: PAGE })).page[0]).toMatchObject({ _id: bad, hiddenReason: "Not a real customer experience" });
     expect((await admin.query(api.admin.listReviewReports, { status: "upheld", paginationOpts: PAGE })).page.map((r) => r._id)).toEqual([reportId]);
     expect((await customer.query(api.notifications.mine, {})).some((n) => n.kind === "review_hidden")).toBe(true);
@@ -167,7 +167,7 @@ describe("review reports and moderation", () => {
 
     await admin.mutation(api.admin.restoreReview, { reviewId: bad, note: "Reconsidered" });
     expect(await rating()).toEqual({ avg: 3, n: 2 });
-    expect((await t.query(api.reviews.forProvider, { providerId })).length).toBe(2);
+    expect((await t.query(api.reviews.forProvider, { providerId, paginationOpts: { numItems: 50, cursor: null } })).page.length).toBe(2);
     await expect(admin.mutation(api.admin.restoreReview, { reviewId: bad })).rejects.toThrow("not hidden");
     expect(await audit()).toEqual(expect.arrayContaining(["review.hide", "report.uphold", "review.restore"]));
   });
@@ -177,7 +177,7 @@ describe("review reports and moderation", () => {
     const id = await review(4, "fine");
     const reportId = await owner.mutation(api.reviews.report, { reviewId: id, reason: "I just disagree with it" });
     await admin.mutation(api.admin.resolveReviewReport, { reportId, action: "dismiss", note: "It follows the rules" });
-    expect((await t.query(api.reviews.forProvider, { providerId })).length).toBe(1);
+    expect((await t.query(api.reviews.forProvider, { providerId, paginationOpts: { numItems: 50, cursor: null } })).page.length).toBe(1);
     expect(await t.run((ctx) => ctx.db.get(providerId))).toMatchObject({ ratingAvg: 4, reviewCount: 1 });
     expect((await admin.query(api.admin.listReviewReports, { status: "dismissed", paginationOpts: PAGE })).page[0]).toMatchObject({ resolutionNote: "It follows the rules" });
   });

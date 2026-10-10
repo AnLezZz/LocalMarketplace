@@ -5,14 +5,15 @@ import { getUser, requireUser } from "./model/auth";
 import { notify } from "./model/notify";
 import { withReview } from "./model/reviewStats";
 
-/** Newest reviews of a provider, for their public profile. */
+/** Newest reviews of a provider for their public profile, a page at a time (hidden reviews are left out in the database, so pages stay full). */
 export const forProvider = query({
-  args: { providerId: v.id("providers") },
-  handler: async (ctx, { providerId }) => {
+  args: { providerId: v.id("providers"), paginationOpts: paginationOptsValidator },
+  handler: async (ctx, { providerId, paginationOpts }) => {
     const provider = await ctx.db.get(providerId);
-    if (!provider?.approved) return [];
-    const rows = await ctx.db.query("reviews").withIndex("by_provider", (q) => q.eq("providerId", providerId)).order("desc").take(50);
-    return rows.filter((r) => !r.hidden).map((r) => ({ _id: r._id, customerName: r.customerName, rating: r.rating, text: r.text, at: r._creationTime }));
+    if (!provider?.approved) return { page: [], isDone: true, continueCursor: "" };
+    const opts = { ...paginationOpts, numItems: Math.min(Math.max(paginationOpts.numItems, 1), 50) };
+    const r = await ctx.db.query("reviews").withIndex("by_provider", (q) => q.eq("providerId", providerId)).order("desc").filter((f) => f.neq(f.field("hidden"), true)).paginate(opts);
+    return { ...r, page: r.page.map((x) => ({ _id: x._id, customerName: x.customerName, rating: x.rating, text: x.text, at: x._creationTime })) };
   },
 });
 
@@ -26,17 +27,6 @@ export const minePage = query({
     const opts = { ...paginationOpts, numItems: Math.min(Math.max(paginationOpts.numItems, 1), 50) };
     const result = await ctx.db.query("reviews").withIndex("by_provider", (q) => q.eq("providerId", provider._id)).order("desc").filter((f) => f.neq(f.field("hidden"), true)).paginate(opts);
     return { ...result, page: result.page.map((r) => ({ _id: r._id, customerName: r.customerName, rating: r.rating, text: r.text, at: r._creationTime })) };
-  },
-});
-
-/** The signed-in customer's reviews, keyed by booking so My bookings can show "Reviewed". */
-export const mine = query({
-  args: {},
-  handler: async (ctx) => {
-    const user = await getUser(ctx);
-    if (!user) return [];
-    const rows = await ctx.db.query("reviews").withIndex("by_customer", (q) => q.eq("customerId", user._id)).take(200);
-    return rows.map((r) => ({ bookingId: r.bookingId, rating: r.rating }));
   },
 });
 

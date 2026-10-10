@@ -14,26 +14,30 @@ import { bookingWindow } from "../../components/format";
 import { adminSidebarItems } from "../../lib/adminNav";
 import DashboardSidebar from "../../components/dashboard/DashboardSidebar";
 import StatCard from "../../components/dashboard/StatCard";
+import AdminPager from "../../components/dashboard/AdminPager";
+import { loadAdminPage, type AdminPage } from "../../lib/adminPage";
 
 export const dynamic = "force-dynamic";
 
 export default async function Admin({
   searchParams,
 }: {
-  searchParams: Promise<{ err?: string }>;
+  searchParams: Promise<{ err?: string; pcursor?: string }>;
 }) {
   const me = await getMe();
   if (me?.role !== "admin") notFound();
 
-  const { err } = await searchParams;
+  const { err, pcursor } = await searchParams;
   const opts = await authOpts();
   const cats = await loadCategories();
 
-  const [pending, stats, recentBookings] = await Promise.all([
-    fetchQuery(api.admin.listPending, {}, opts),
+  const [pendingPage, stats, recentBookings] = await Promise.all([
+    loadAdminPage<any>("/admin", pcursor, async (c) => (await fetchQuery(api.admin.listPending, { paginationOpts: { numItems: 10, cursor: c } }, opts)) as unknown as AdminPage<any>),
     fetchQuery(api.admin.getStats, {}, opts),
     fetchQuery(api.admin.listRecentBookings, {}, opts),
   ]);
+
+  const pending = pendingPage.page;
 
   // The decision is bound per button (button name/value is not delivered to server actions here).
   async function decide(decision: "approve" | "reject", fd: FormData) {
@@ -54,7 +58,7 @@ export default async function Admin({
     redirect(r.ok ? "/admin" : `/admin?err=${encodeURIComponent(r.message)}`);
   }
 
-  const sidebarItems = adminSidebarItems({ applications: pending.length });
+  const sidebarItems = adminSidebarItems({ applications: stats.pendingApprovals });
 
   return (
     <div className="d-layout">
@@ -182,7 +186,7 @@ export default async function Admin({
             <div className="d-card__head">
               <div>
                 <h2 id="applications-title" className="d-card__title">Provider Applications</h2>
-                <span className="d-card__sub num">{pending.length} pending review</span>
+                <span className="d-card__sub num">{stats.pendingApprovals} pending review</span>
               </div>
               <Link href="#providers" className="d-card__link">
                 View all
@@ -258,6 +262,7 @@ export default async function Admin({
                 })}
               </ul>
             )}
+            <AdminPager base="/admin" cursor={pcursor} cursorParam="pcursor" nextLabel="Next applications →" result={pendingPage} />
           </section>
         </div>
       </div>

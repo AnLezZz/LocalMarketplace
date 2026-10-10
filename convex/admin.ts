@@ -11,16 +11,15 @@ import { latestDispute } from "./model/disputes";
 import type { Doc, Id } from "./_generated/dataModel";
 import type { MutationCtx } from "./_generated/server";
 
+/** Provider applications waiting for a decision, oldest first, a page at a time. */
 export const listPending = query({
-  args: {},
-  handler: async (ctx) => {
+  args: { paginationOpts: paginationOptsValidator },
+  handler: async (ctx, { paginationOpts }) => {
     await requireRole(ctx, "admin");
-    const rows = await ctx.db
-      .query("providers")
-      .withIndex("by_approved_and_reviewedAt", (q) => q.eq("approved", false).eq("reviewedAt", undefined))
-      .take(100);
-    return await Promise.all(
-      rows.map(async (p) => ({ ...p, ownerEmail: p.userId ? ((await ctx.db.get(p.userId))?.email ?? null) : null })),
+    return adminPage(
+      ctx.db.query("providers").withIndex("by_approved_and_reviewedAt", (q) => q.eq("approved", false).eq("reviewedAt", undefined)),
+      paginationOpts, false,
+      async (p) => ({ ...p, ownerEmail: p.userId ? ((await ctx.db.get(p.userId))?.email ?? null) : null }),
     );
   },
 });

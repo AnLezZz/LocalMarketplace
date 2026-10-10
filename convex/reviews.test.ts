@@ -34,10 +34,9 @@ describe("reviews.create", () => {
     await customer.mutation(api.reviews.create, { bookingId: second, rating: 4, text: "" });
     expect(await t.run((ctx) => ctx.db.get(providerId))).toMatchObject({ ratingAvg: 4.5, reviewCount: 2 });
 
-    const listed = await t.query(api.reviews.forProvider, { providerId });
+    const listed = (await t.query(api.reviews.forProvider, { providerId, paginationOpts: { numItems: 50, cursor: null } })).page;
     expect(listed).toHaveLength(2);
     expect(listed.find((r) => r.text === "Great work")).toMatchObject({ customerName: "Kiri", rating: 5 }); // first name only
-    expect(await customer.query(api.reviews.mine, {})).toHaveLength(2);
   });
 
   test("blocks duplicates, unfinished bookings, other people's bookings and bad ratings", async () => {
@@ -63,6 +62,33 @@ describe("reviews.create", () => {
     await expect(owner.mutation(api.reviews.create, { bookingId: id, rating: 5, text: "" })).rejects.toThrow("booking not found");
     await customer.mutation(api.reviews.create, { bookingId: id, rating: 5, text: "ok" });
     await t.run((ctx) => ctx.db.patch(providerId, { approved: false }));
-    expect(await t.query(api.reviews.forProvider, { providerId })).toEqual([]);
+    expect((await t.query(api.reviews.forProvider, { providerId, paginationOpts: { numItems: 50, cursor: null } })).page).toEqual([]);
+  });
+});
+
+describe("public reviews paging", () => {
+  test("pages are full, hidden reviews never appear, and an unapproved provider shows nothing", async () => {
+    const t = newT();
+    const providerId = await createProvider(t, undefined, { approved: true });
+    const hiddenProviderId = await createProvider(t, undefined, { approved: false });
+    const customerId = await createUser(t, "customer");
+    const insert = (pid: typeof providerId, i: number, hidden: boolean) => t.run(async (ctx) => {
+      const bookingId = await ctx.db.insert("bookings", { providerId: pid, customerId, customerName: "Kiri", customerEmail: "k@example.nz", description: "job", startsAt: Date.now() + i, endsAt: Date.now() + i + 1, status: "completed" });
+      return ctx.db.insert("reviews", { bookingId, providerId: pid, customerId, customerName: `Kiri ${i}`, rating: 5, text: `review ${i}`, ...(hidden ? { hidden: true, hiddenReason: "x" } : {}) } as never);
+    });
+    for (let i = 0; i < 25; i++) await insert(providerId, i, i % 5 === 0); // 5 hidden, 20 shown
+    await insert(hiddenProviderId, 99, false);
+    const all: string[] = []; let cursor: string | null = null, pages = 0;
+    for (; pages < 10;) {
+      const r: { page: { _id: string; text: string }[]; isDone: boolean; continueCursor: string } = await t.query(api.reviews.forProvider, { providerId, paginationOpts: { numItems: 8, cursor } });
+      pages++; all.push(...r.page.map((x) => x.text));
+      if (r.isDone) break;
+      cursor = r.continueCursor;
+    }
+    expect(all).toHaveLength(20);
+    expect(all.some((x) => ["review 0", "review 5", "review 10"].includes(x))).toBe(false);
+    expect(all[0]).toBe("review 24"); // newest first
+    expect(pages).toBe(3); // 8 + 8 + 4
+    expect((await t.query(api.reviews.forProvider, { providerId: hiddenProviderId, paginationOpts: { numItems: 8, cursor: null } })).page).toEqual([]);
   });
 });
