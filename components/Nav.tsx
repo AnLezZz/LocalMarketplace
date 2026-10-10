@@ -58,7 +58,6 @@ export function HeaderNav({ signedIn, userRole }: { signedIn: boolean; userRole?
             <div className="profile-nav__panel" onClick={(event) => {
               if ((event.target as HTMLElement).closest("a, button") && profile.current) profile.current.open = false;
             }}>
-              {link("/favourites", "Favourites")}
               {link("/account", "Account settings")}
               {userRole === "admin" && link("/admin", "Admin dashboard")}
               {userRole === "provider" && link("/provider", "Provider dashboard")}
