@@ -85,6 +85,13 @@ export default async function Provider({ params }: { params: Promise<{ id: strin
           </section>
         </div>
         <aside className="bk__side">
+          <section className="bk__card">
+            <h2 className="bk__h bk__h--sm">Good to know</h2>
+            <ul className="bk__why">
+              <li><Icon name="calendar" size={20} /><span><strong>Request a time</strong>The provider accepts or declines.</span></li>
+              <li><Icon name="shield" size={20} /><span><strong>Pay directly</strong>Localo does not collect or hold payment.</span></li>
+            </ul>
+          </section>
           <section className="bk__card" aria-labelledby="rev-h">
             <h2 id="rev-h" className="bk__h bk__h--sm">Reviews</h2>
             {reviews.length === 0 ? (
@@ -101,13 +108,6 @@ export default async function Provider({ params }: { params: Promise<{ id: strin
               </ul>
             )}
             {moreReviews && <Link href={`/providers/${id}/reviews`} className="btn btn--secondary btn--sm bk__more">More reviews →</Link>}
-          </section>
-          <section className="bk__card">
-            <h2 className="bk__h bk__h--sm">Good to know</h2>
-            <ul className="bk__why">
-              <li><Icon name="calendar" size={20} /><span><strong>Request a time</strong>The provider accepts or declines.</span></li>
-              <li><Icon name="shield" size={20} /><span><strong>Pay directly</strong>Localo does not collect or hold payment.</span></li>
-            </ul>
           </section>
         </aside>
       </div>
