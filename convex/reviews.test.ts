@@ -92,3 +92,28 @@ describe("public reviews paging", () => {
     expect((await t.query(api.reviews.forProvider, { providerId: hiddenProviderId, paginationOpts: { numItems: 8, cursor: null } })).page).toEqual([]);
   });
 });
+
+describe("numbered review pages", () => {
+  test("offset pages with a true total, hidden reviews excluded, and nothing for an unapproved provider", async () => {
+    const t = newT();
+    const providerId = await createProvider(t, undefined, { approved: true });
+    const unapproved = await createProvider(t, undefined, { approved: false });
+    const customerId = await createUser(t, "customer");
+    await t.run(async (ctx) => {
+      for (let i = 0; i < 23; i++) {
+        const bookingId = await ctx.db.insert("bookings", { providerId, customerId, customerName: "Kiri", customerEmail: "k@example.nz", description: "job", startsAt: Date.now() + i, endsAt: Date.now() + i + 1, status: "completed" });
+        await ctx.db.insert("reviews", { bookingId, providerId, customerId, customerName: "Kiri", rating: 5, text: `review ${i}`, ...(i === 3 ? { hidden: true, hiddenReason: "x" } : {}) } as never);
+      }
+    });
+    const first = await t.query(api.reviews.forProviderPage, { providerId, offset: 0, limit: 10 });
+    expect(first).toMatchObject({ total: 22, capped: false });
+    expect(first.rows).toHaveLength(10);
+    expect(first.rows[0].text).toBe("review 22"); // newest first
+    const seen = [...first.rows, ...(await t.query(api.reviews.forProviderPage, { providerId, offset: 10, limit: 10 })).rows, ...(await t.query(api.reviews.forProviderPage, { providerId, offset: 20, limit: 10 })).rows];
+    expect(seen).toHaveLength(22);
+    expect(new Set(seen.map((r) => r._id)).size).toBe(22);
+    expect(seen.some((r) => r.text === "review 3")).toBe(false);
+    expect((await t.query(api.reviews.forProviderPage, { providerId, offset: 40, limit: 10 })).rows).toEqual([]);
+    expect(await t.query(api.reviews.forProviderPage, { providerId: unapproved, offset: 0, limit: 10 })).toEqual({ rows: [], total: 0, capped: false });
+  });
+});

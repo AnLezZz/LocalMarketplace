@@ -4,6 +4,7 @@ import { fetchQuery } from "convex/nextjs";
 import { api } from "../lib/convex";
 import { indented, loadCategories, loadLocations, metaIn } from "../lib/categories";
 import SuburbOptions from "./SuburbOptions";
+import PageNav from "./PageNav";
 import PlaceInput from "./PlaceInput";
 import Icon from "./Icon";
 import ProviderPhoto from "./ProviderPhoto";
@@ -168,13 +169,7 @@ export default async function ProviderSearch({ params, basePath, lockedCategory 
           })}
         </ul>
       )}
-      {pages > 1 && (
-        <nav className="srch__pages" aria-label="Pages of results">
-          {page > 1 ? <Link href={pageHref(page - 1)} className="btn btn--secondary btn--sm" rel="prev">← Previous</Link> : <span />}
-          <span className="num">Page {page} of {pages}</span>
-          {page < pages ? <Link href={pageHref(page + 1)} className="btn btn--secondary btn--sm" rel="next">Next →</Link> : <span />}
-        </nav>
-      )}
+      <PageNav page={page} pages={pages} hrefFor={pageHref} label="Pages of results" />
     </div>
   );
 }

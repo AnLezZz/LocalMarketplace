@@ -17,6 +17,26 @@ export const forProvider = query({
   },
 });
 
+const REVIEW_POOL = 500;
+
+/**
+ * A numbered page of a provider's public reviews, with the true total, for the "all reviews" page. Hidden reviews are left out.
+ * Looks at up to REVIEW_POOL visible reviews; past that `capped` is true and the total is "at least".
+ */
+export const forProviderPage = query({
+  args: { providerId: v.id("providers"), offset: v.number(), limit: v.number() },
+  handler: async (ctx, { providerId, offset, limit }) => {
+    const provider = await ctx.db.get(providerId);
+    if (!provider?.approved) return { rows: [], total: 0, capped: false };
+    const all = await ctx.db.query("reviews").withIndex("by_provider", (q) => q.eq("providerId", providerId)).order("desc").filter((f) => f.neq(f.field("hidden"), true)).take(REVIEW_POOL + 1);
+    const from = Math.max(0, Math.floor(offset)), size = Math.min(50, Math.max(1, Math.floor(limit)));
+    return {
+      rows: all.slice(from, from + size).map((x) => ({ _id: x._id, customerName: x.customerName, rating: x.rating, text: x.text, at: x._creationTime })),
+      total: Math.min(all.length, REVIEW_POOL), capped: all.length > REVIEW_POOL,
+    };
+  },
+});
+
 /** The signed-in provider's own reviews, newest first, a page at a time (hidden ones are left out, as on their public profile). */
 export const minePage = query({
   args: { paginationOpts: paginationOptsValidator },

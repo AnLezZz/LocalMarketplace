@@ -1623,3 +1623,13 @@ a.cal-event { display: block; text-decoration: none; color: inherit; }
 /* admin tables: paging */
 .adm-pager { display: flex; justify-content: space-between; align-items: center; gap: var(--s-3); margin-top: var(--s-4); }
 .adm-pager__note { margin-top: var(--s-3); }
+
+/* numbered pagination */
+.pnav { display: flex; align-items: center; justify-content: space-between; gap: var(--s-3); margin: var(--s-6) 0 var(--s-2); font-size: 14px; }
+.pnav__list { display: flex; align-items: center; gap: 4px; list-style: none; margin: 0; padding: 0; }
+.pnav__num, .pnav__step { display: inline-grid; place-items: center; min-width: 44px; min-height: 44px; padding: 0 12px; border-radius: 12px; color: var(--ink-2); text-decoration: none; font-weight: 500; }
+.pnav__num:hover, .pnav__step:hover { background: #F0EDE5; color: var(--ink); }
+.pnav__num--on { background: #E7EFEA; color: var(--forest, #315C48); font-weight: 600; }
+.pnav__step--off { color: var(--ink-3); opacity: .5; }
+.pnav__gap { color: var(--ink-3); padding: 0 4px; }
+@media (max-width: 480px) { .pnav__step { padding: 0 8px; } .pnav__list li:not(:first-child):not(:last-child):not(:has([aria-current])):not(:has(.pnav__num[aria-label])) { display: none; } }
