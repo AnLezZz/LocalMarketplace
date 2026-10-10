@@ -26,7 +26,7 @@ export default async function BookingDetail({ params, searchParams }: { params: 
   const { err } = await searchParams;
   const b = await fetchQuery(api.bookings.getForCustomer, { id }, await authOpts());
   if (!b) notFound();
-  const reviewed = ((await fetchQuery(api.reviews.mine, {}, await authOpts())) as { bookingId: string }[]).some((r) => r.bookingId === id);
+  const reviewed = !!(await fetchQuery(api.reviews.forBooking, { bookingId: id }, await authOpts()));
   const w = bookingWindow(b.startsAt, b.endsAt);
 
   async function openDispute(fd: FormData) {

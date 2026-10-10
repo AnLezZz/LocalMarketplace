@@ -40,6 +40,18 @@ export const mine = query({
   },
 });
 
+/** The signed-in customer's rating of one booking, or null. Cheap, and not limited to their newest reviews. */
+export const forBooking = query({
+  args: { bookingId: v.string() },
+  handler: async (ctx, { bookingId }) => {
+    const user = await getUser(ctx);
+    const id = ctx.db.normalizeId("bookings", bookingId);
+    if (!user || !id) return null;
+    const review = (await ctx.db.query("reviews").withIndex("by_booking", (q) => q.eq("bookingId", id)).take(1))[0];
+    return review && review.customerId === user._id ? { rating: review.rating } : null;
+  },
+});
+
 export const create = mutation({
   args: { bookingId: v.id("bookings"), rating: v.number(), text: v.string() },
   handler: async (ctx, a) => {

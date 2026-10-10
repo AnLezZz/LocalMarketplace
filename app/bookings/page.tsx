@@ -10,31 +10,31 @@ import Avatar from "../../components/Avatar";
 import Banner from "../../components/Banner";
 import { StatusPill } from "../../components/Pill";
 import { bookingPriceLine, bookingWindow } from "../../components/format";
+import AdminPager from "../../components/dashboard/AdminPager";
+import { loadAdminPage, type AdminPage } from "../../lib/adminPage";
 import "./bookings.css";
 import AccountShell from "../../components/AccountShell";
 
+const PAGE = 20;
 const TABS = [["upcoming", "Upcoming"], ["past", "Past"], ["cancelled", "Cancelled"]] as const;
 type Tab = (typeof TABS)[number][0];
 
-/** Where a booking belongs: declined/cancelled, still ahead, or already over. */
-function tabOf(b: { status: string; endsAt: number }, now: number): Tab {
-  if (b.status === "cancelled" || b.status === "declined") return "cancelled";
-  if (b.status === "completed" || b.endsAt < now) return "past";
-  return "upcoming";
-}
-
 export const dynamic = "force-dynamic";
 
-export default async function MyBookings({ searchParams }: { searchParams: Promise<{ err?: string; tab?: string; reviewed?: string }> }) {
-  const { err, tab: t, reviewed: justReviewed } = await searchParams;
+export default async function MyBookings({ searchParams }: { searchParams: Promise<{ err?: string; tab?: string; reviewed?: string; cursor?: string; asOf?: string }> }) {
+  const { err, tab: t, reviewed: justReviewed, cursor, asOf: asOfParam } = await searchParams;
   const tab: Tab = TABS.some(([k]) => k === t) ? (t as Tab) : "upcoming";
   const opts = await authOpts();
-  const all = await fetchQuery(api.bookings.listMine, {}, opts);
-  const reviewed = new Map(((await fetchQuery(api.reviews.mine, {}, opts)) as { bookingId: string; rating: number }[]).map((r) => [r.bookingId, r.rating]));
-  const now = Date.now();
-  const counts = { upcoming: 0, past: 0, cancelled: 0 };
-  for (const b of all) counts[tabOf(b, now)]++;
-  const rows = all.filter((b: any) => tabOf(b, now) === tab);
+  // "Now" for the whole walk through pages, fixed on the first page and carried in the links (a cursor only fits the query that made it).
+  const asOf = Number(asOfParam) > 0 ? Math.min(Number(asOfParam), Date.now()) : Date.now();
+  const startUrl = tab === "upcoming" ? "/bookings" : `/bookings?tab=${tab}`;
+  const [counts, result] = await Promise.all([
+    fetchQuery(api.bookings.customerCounts, { asOf }, opts) as Promise<{ upcoming: number; past: number; cancelled: number; capped: boolean } | null>,
+    loadAdminPage<any>(startUrl, cursor, async (c) => (await fetchQuery(api.bookings.customerPage, { tab, paginationOpts: { numItems: PAGE, cursor: c }, asOf }, opts)) as unknown as AdminPage<any>),
+  ]);
+  const rows = result.page;
+  const total = (counts?.upcoming ?? 0) + (counts?.past ?? 0) + (counts?.cancelled ?? 0);
+  const countLabel = (n: number) => (n >= 1000 ? "1,000+" : n);
 
   async function cancel(fd: FormData) {
     "use server";
@@ -51,7 +51,7 @@ export default async function MyBookings({ searchParams }: { searchParams: Promi
       <nav className="btabs" aria-label="Booking status">
         {TABS.map(([k, label]) => (
           <Link key={k} href={k === "upcoming" ? "/bookings" : `/bookings?tab=${k}`} className="btabs__tab" aria-current={tab === k ? "page" : undefined}>
-            {label}<span className="num">{counts[k]}</span>
+            {label}<span className="num">{countLabel(counts?.[k] ?? 0)}</span>
           </Link>
         ))}
       </nav>
@@ -60,8 +60,8 @@ export default async function MyBookings({ searchParams }: { searchParams: Promi
       {rows.length === 0 && (
         <div className="empty card">
           <span className="empty__icon"><Icon name="calendar" size={26} /></span>
-          <h2 className="empty__title">{all.length === 0 ? "No bookings yet" : `No ${tab} bookings`}</h2>
-          <p className="empty__text">{all.length === 0 ? "You have not requested anything yet." : "Nothing here right now."}</p>
+          <h2 className="empty__title">{total === 0 ? "No bookings yet" : `No ${tab} bookings`}</h2>
+          <p className="empty__text">{total === 0 ? "You have not requested anything yet." : "Nothing here right now."}</p>
           <Link href="/search" className="btn btn--forest">Find a pro</Link>
         </div>
       )}
@@ -86,8 +86,8 @@ export default async function MyBookings({ searchParams }: { searchParams: Promi
               {bookingPriceLine(b, (b.endsAt - b.startsAt) / 3_600_000) && <p className="booking__price num">{bookingPriceLine(b, (b.endsAt - b.startsAt) / 3_600_000)}</p>}
               <div className="booking__actions">
                 <Link href={`/bookings/${b._id}`} className="btn btn--secondary">View details</Link>
-                {b.status === "completed" && (reviewed.has(b._id)
-                  ? <span className="booking__rated">Reviewed <b aria-label={`${reviewed.get(b._id)} out of 5`}>{"★".repeat(reviewed.get(b._id)!)}</b></span>
+                {b.status === "completed" && (b.reviewRating !== undefined
+                  ? <span className="booking__rated">Reviewed <b aria-label={`${b.reviewRating} out of 5`}>{"★".repeat(b.reviewRating)}</b></span>
                   : <Link href={`/bookings/${b._id}/review`} className="btn btn--forest">Leave a review</Link>)}
                 {(b.status === "requested" || b.status === "accepted") && (
                   <form action={cancel}>
@@ -100,6 +100,7 @@ export default async function MyBookings({ searchParams }: { searchParams: Promi
           );
         })}
       </ul>
+      <AdminPager base="/bookings" params={{ tab: tab === "upcoming" ? undefined : tab }} carry={{ asOf: String(asOf) }} cursor={cursor} result={result} nextLabel="Show more →" />
     </div></AccountShell>
   );
 }

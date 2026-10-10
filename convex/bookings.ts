@@ -203,7 +203,47 @@ export const providerRange = query({
   },
 });
 
-/** Bookings the signed-in user has requested as a customer. */
+const CUSTOMER_TABS = ["upcoming", "past", "cancelled"] as const;
+
+/** One customer tab as a database filter, so a page is always full and the count and rows agree. `asOf` is "now", passed in (a query must not read the clock). */
+function customerTab(f: any, tab: (typeof CUSTOMER_TABS)[number], asOf: number) {
+  const open = f.or(f.eq(f.field("status"), "requested"), f.eq(f.field("status"), "accepted"));
+  if (tab === "cancelled") return f.or(f.eq(f.field("status"), "cancelled"), f.eq(f.field("status"), "declined"));
+  if (tab === "upcoming") return f.and(open, f.gte(f.field("endsAt"), asOf));
+  return f.or(f.eq(f.field("status"), "completed"), f.and(open, f.lt(f.field("endsAt"), asOf)));
+}
+
+/** One page of the signed-in customer's bookings for a tab, newest request first, with whether each completed one was reviewed. */
+export const customerPage = query({
+  args: { tab: v.string(), paginationOpts: paginationOptsValidator, asOf: v.number() },
+  handler: async (ctx, { tab, paginationOpts, asOf }) => {
+    const user = await getUser(ctx);
+    if (!user) return { page: [], isDone: true, continueCursor: "" };
+    const t = CUSTOMER_TABS.find((x) => x === tab) ?? "upcoming";
+    const r = await ctx.db.query("bookings").withIndex("by_customerId", (i) => i.eq("customerId", user._id)).filter((f) => customerTab(f, t, asOf)).order("desc").paginate(paginationOpts);
+    const page = await Promise.all(r.page.map(async (b) => ({
+      ...withoutPrivateLink(b),
+      providerName: (await ctx.db.get(b.providerId))?.name ?? "Unknown provider",
+      reviewRating: b.status === "completed" ? (await ctx.db.query("reviews").withIndex("by_booking", (q) => q.eq("bookingId", b._id)).take(1))[0]?.rating : undefined,
+    })));
+    return { page, isDone: r.isDone, continueCursor: r.continueCursor };
+  },
+});
+
+/** The tab counts, each read from the database up to a cap (then "1,000+"), not worked out from a recent slice. */
+export const customerCounts = query({
+  args: { asOf: v.number() },
+  handler: async (ctx, { asOf }) => {
+    const user = await getUser(ctx);
+    if (!user) return null;
+    const count = async (tab: (typeof CUSTOMER_TABS)[number]) =>
+      (await ctx.db.query("bookings").withIndex("by_customerId", (i) => i.eq("customerId", user._id)).filter((f) => customerTab(f, tab, asOf)).take(SUMMARY_CAP + 1)).length;
+    const [upcoming, past, cancelled] = await Promise.all(CUSTOMER_TABS.map(count));
+    return { upcoming: Math.min(upcoming, SUMMARY_CAP), past: Math.min(past, SUMMARY_CAP), cancelled: Math.min(cancelled, SUMMARY_CAP), capped: [upcoming, past, cancelled].some((x) => x > SUMMARY_CAP) };
+  },
+});
+
+/** Bookings the signed-in user has requested as a customer (the newest 100; the list page uses customerPage). */
 export const listMine = query({
   args: {},
   handler: async (ctx) => {

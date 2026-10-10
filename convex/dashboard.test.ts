@@ -198,3 +198,51 @@ describe("the live pulse a customer's pages listen to", () => {
     expect(await t.query(api.bookings.customerPulse, {})).toBeNull();
   });
 });
+
+describe("a customer's bookings, by tab", () => {
+  async function customerWorld() {
+    const { t, providerId } = await world();
+    const customerId = await createUser(t, "customer", "kiri@example.nz");
+    const customer = asUser(t, customerId), stranger = asUser(t, await createUser(t, "customer"));
+    const now = Date.now(), asOf = now;
+    const add = (status: Status, startsAt: number) => t.run((ctx) => ctx.db.insert("bookings", { providerId, customerId, customerName: "Kiri", customerEmail: "kiri@example.nz", description: "job", startsAt, endsAt: startsAt + 3_600_000, status }));
+    return { t, customer, stranger, add, now, asOf };
+  }
+  const read = (c: ReturnType<typeof asUser>, tab: string, asOf: number, cursor: string | null, numItems = 4) => c.query(api.bookings.customerPage, { tab, paginationOpts: { numItems, cursor }, asOf });
+  async function walkTab(c: ReturnType<typeof asUser>, tab: string, asOf: number, numItems = 4) {
+    const ids: string[] = []; let cursor: string | null = null;
+    for (let i = 0; i < 40; i++) { const r = await read(c, tab, asOf, cursor, numItems); ids.push(...r.page.map((b) => b._id)); if (r.isDone) return ids; cursor = r.continueCursor; }
+    throw new Error("never finished");
+  }
+
+  test("every booking lands in exactly one tab, however many there are, and the counts agree", async () => {
+    const { customer, add, now, asOf } = await customerWorld();
+    const upcoming = [], past = [], cancelled = [];
+    for (let i = 0; i < 11; i++) upcoming.push(await add(i % 2 ? "requested" : "accepted", now + (i + 1) * DAY));
+    for (let i = 0; i < 9; i++) past.push(await add("completed", now - (i + 1) * DAY));
+    past.push(await add("accepted", now - 40 * DAY)); // never finished, now over: history, not upcoming
+    for (let i = 0; i < 6; i++) cancelled.push(await add(i % 2 ? "cancelled" : "declined", now + i * DAY));
+    expect((await walkTab(customer, "upcoming", asOf)).sort()).toEqual([...upcoming].sort());
+    expect((await walkTab(customer, "past", asOf)).sort()).toEqual([...past].sort());
+    expect((await walkTab(customer, "cancelled", asOf)).sort()).toEqual([...cancelled].sort());
+    expect((await read(customer, "upcoming", asOf, null)).page).toHaveLength(4); // full pages
+    expect(await customer.query(api.bookings.customerCounts, { asOf })).toEqual({ upcoming: 11, past: 10, cancelled: 6, capped: false });
+    expect((await read(customer, "nonsense", asOf, null, 50)).page).toHaveLength(11); // an unknown tab is the default one
+  });
+
+  test("a page says which completed bookings were reviewed, and nobody sees someone else's bookings", async () => {
+    const { t, customer, stranger, add, now, asOf } = await customerWorld();
+    const reviewed = await add("completed", now - DAY), plain = await add("completed", now - 2 * DAY);
+    const [{ providerId, customerId }] = await t.run((ctx) => ctx.db.query("bookings").take(1));
+    await t.run((ctx) => ctx.db.insert("reviews", { bookingId: reviewed, providerId, customerId, customerName: "Kiri", rating: 4, text: "good" } as never));
+    const page = (await read(customer, "past", asOf, null, 10)).page;
+    expect(page.find((b) => b._id === reviewed)?.reviewRating).toBe(4);
+    expect(page.find((b) => b._id === plain)?.reviewRating).toBeUndefined();
+    expect(await customer.query(api.reviews.forBooking, { bookingId: reviewed })).toEqual({ rating: 4 });
+    expect(await customer.query(api.reviews.forBooking, { bookingId: plain })).toBeNull();
+    expect(await stranger.query(api.reviews.forBooking, { bookingId: reviewed })).toBeNull();
+    expect((await read(stranger, "past", asOf, null, 10)).page).toEqual([]);
+    expect(await stranger.query(api.bookings.customerCounts, { asOf })).toEqual({ upcoming: 0, past: 0, cancelled: 0, capped: false });
+    expect(await t.query(api.bookings.customerCounts, { asOf })).toBeNull();
+  });
+});

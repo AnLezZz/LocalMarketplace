@@ -15,11 +15,9 @@ export default async function ReviewPage({ params, searchParams }: { params: Pro
   const { id } = await params;
   const { err } = await searchParams;
   const opts = await authOpts();
-  const mine = (await fetchQuery(api.bookings.listMine, {}, opts)) as any[];
-  const b = mine.find((x) => x._id === id);
+  const b = await fetchQuery(api.bookings.getForCustomer, { id }, opts);
   if (!b || b.status !== "completed") notFound();
-  const reviewed = (await fetchQuery(api.reviews.mine, {}, opts)) as { bookingId: string }[];
-  if (reviewed.some((r) => r.bookingId === id)) redirect("/bookings?tab=past");
+  if (await fetchQuery(api.reviews.forBooking, { bookingId: id }, opts)) redirect("/bookings?tab=past");
   const w = bookingWindow(b.startsAt, b.endsAt);
 
   return (
