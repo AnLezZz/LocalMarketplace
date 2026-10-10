@@ -41,10 +41,20 @@ export async function saveServiceAreas(fd: FormData) {
   done(await attempt(async () => fetchMutation(api.providers.setServiceAreas, { suburbs }, await authOpts())), `${BACK}?ok=areas`);
 }
 
+// An error must land on a plain URL (a query after "#" is lost), so only a success jumps back to the section.
 export async function addServiceArea(placeId: string) {
-  done(await attempt(async () => fetchMutation(api.providers.addServiceArea, { placeId }, await authOpts())), `${BACK}#area-h`);
+  const r = await attempt(async () => fetchMutation(api.providers.addServiceArea, { placeId }, await authOpts()));
+  done(r, r.ok ? `${BACK}#area-h` : BACK);
+}
+
+/** The picker form: the chosen place's ID arrives as `placeId`; typing without picking sends none. */
+export async function addServiceAreaFromForm(fd: FormData) {
+  const placeId = String(fd.get("placeId") ?? "");
+  if (!placeId) return done({ ok: false, message: "Pick a suburb, district or region from the list" });
+  return addServiceArea(placeId);
 }
 
 export async function removeServiceArea(placeId: string) {
-  done(await attempt(async () => fetchMutation(api.providers.removeServiceArea, { placeId }, await authOpts())), `${BACK}#area-h`);
+  const r = await attempt(async () => fetchMutation(api.providers.removeServiceArea, { placeId }, await authOpts()));
+  done(r, r.ok ? `${BACK}#area-h` : BACK);
 }
