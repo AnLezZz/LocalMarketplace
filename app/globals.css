@@ -1442,3 +1442,16 @@ body:has(.d-layout) { background: var(--ivory, #FAF9F6); }
   .d-sidebar__list::-webkit-scrollbar { display: none; }
   .d-sidebar__item { scroll-snap-align: start; }
 }
+
+/* Below desktop the dashboard sidebar must not eat the screen: it becomes one slim row of sections (no logo, no account block;
+   Profile and sign out live in the header). On phones a provider's tabs are in the bottom bar, so their row goes entirely. */
+@media (max-width: 1023px) {
+  .d-sidebar { padding: 0; gap: 0; background: transparent; border: 0; box-shadow: none; }
+  .d-sidebar .d-sidebar__brand, .d-sidebar .d-sidebar__footer { display: none; }
+  .d-sidebar .d-sidebar__list { padding-bottom: 0; }
+  .d-sidebar .d-sidebar__link { background: var(--surface); border: 1px solid var(--hairline); }
+  .d-sidebar .d-sidebar__link--active { background: var(--blue-tint); border-color: transparent; }
+}
+@media (max-width: 719px) {
+  .d-sidebar--business { display: none; }
+}

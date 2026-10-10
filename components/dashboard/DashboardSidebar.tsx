@@ -31,7 +31,7 @@ export default function DashboardSidebar({
   const isBusiness = portal === "business";
 
   return (
-    <aside className="d-sidebar">
+    <aside className={`d-sidebar d-sidebar--${isBusiness ? "business" : "admin"}`}>
       {/* Brand header */}
       <div className="d-sidebar__brand">
         <Link href="/" className="d-sidebar__logo">
