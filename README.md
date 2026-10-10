@@ -13,7 +13,14 @@ test-utils/   Test harness for the Convex tests
 tasks/        Plans, reviews and the pre-deploy checklist
 docs/         Specs and plans
 ```
-`PRODUCT.md` describes the product and design context.
+`PRODUCT.md` describes the product, what is built and what is not, and the design context.
+
+## What it does
+- **Customers** browse the category tree or search by keyword, price, rating and New Zealand place; pick a service; choose a time from the provider's real availability (Pacific/Auckland); and send a request through a four-step booking flow. They can answer the provider's booking questions, reuse saved addresses and choose whether to share contact details. A request is not a booking until the provider accepts. They then manage bookings (cancel, request another time, answer quotes, report a problem), review completed jobs, keep favourites and get live and email notifications, all from one account area.
+- **Services** are fixed, hourly or quote priced, belong to a category, and happen at the customer's address, the provider's premises, online or either of the first two. Location, price and answers are copied onto the booking when it is requested, so later edits never rewrite history.
+- **Providers** apply, get approved, and manage profile, gallery, services, service areas, working hours, time off and bookings from a dashboard that updates live. They accept, decline, quote, complete, cancel and propose new times.
+- **Admins** approve providers, suspend accounts, moderate reviews, resolve disputes, manage categories and read the audit log.
+- Payments are not part of the platform: customers pay providers directly.
 
 ## Run
 1. `pnpm install`
@@ -36,7 +43,7 @@ Both use one-time 8 digit codes (valid 20 minutes) sent through Resend, so they 
 - **Development without Resend:** `npx convex env set AUTH_LOG_CODES true` logs the codes in the Convex logs instead of emailing them. Never set it on production.
 
 ## Email (Resend)
-Booking and review notifications are also emailed, and a reminder goes to both sides once an accepted booking is within 24 hours (an hourly cron, `convex/crons.ts`). Emails are sent from Convex with Resend. Without a key the app still works: emails are skipped and logged.
+Booking and review notifications are also emailed, and a reminder goes to both sides once an accepted booking is within 24 hours (an hourly cron, `convex/crons.ts`). The same file has a daily job that deletes notifications older than 60 days. Emails are sent from Convex with Resend. Without a key the app still works: emails are skipped and logged. Real delivery through Resend has not been verified yet.
 
 ```
 npx convex env set RESEND_API_KEY re_xxxxxxxx
@@ -45,7 +52,7 @@ npx convex env set EMAIL_FROM "Localo <bookings@your-verified-domain>"   # optio
 `SITE_URL` (already set for auth) is used for the links in the emails. Until you verify a domain in Resend, the default sender (`onboarding@resend.dev`) only delivers to the email address of your own Resend account, so test by signing up with that address. Add `--prod` for the production deployment. A failed send is logged and never blocks or retries the booking action.
 
 ## Roles
-- `customer` (default at sign-up) can request and cancel bookings.
+- `customer` (default at sign-up) can request, reschedule, cancel and review bookings, and keep favourites.
 - `provider` is assigned when someone applies at `/provider/register`. Providers appear in search only after an admin approves them at `/admin`.
 - `admin` is granted only from the CLI.
 
@@ -62,4 +69,6 @@ Do not run the seed (`pnpm convex:seed`) on a production deployment: seeded list
 ## Notes
 - Overlap protection: the `bookings.transition` mutation checks overlaps inside a Convex transaction, so concurrent accepts cannot double-book.
 - Seeded listings have no owner and cannot be managed by anyone; they are demo data and should not be seeded in production.
-- Not yet built: payments, emails, email verification, password reset, reviews, messaging.
+- Place data (regions, districts, suburbs) comes from imported open data, not hand-entered lists; see `scripts/geo-import.mts` and `convex/geoImport.ts`. Search and provider service areas use it, and Convex enforces service-area coverage when a booking is requested.
+- Dashboards and account pages update live: a small reactive fingerprint of the user's bookings makes the page re-fetch in place.
+- Not yet built: payments, in-app messaging, job posting with competing quotes, recurring bookings, structured provider verification, street-address autocomplete, changing email or password while signed in, quote expiry, business reporting. The roadmap is in `docs/` and `tasks/todo.md`.
