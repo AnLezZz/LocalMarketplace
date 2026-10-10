@@ -8,7 +8,8 @@ const sources = Object.entries(all).filter(([path]) => !path.endsWith(".test.ts"
 
 // When this fails, a public mutation was added or removed. Add it to the signed-out sweep below.
 const PUBLIC_MUTATIONS = [
-  "admin.review", "bookings.create", "bookings.transition", "providers.submitProfile",
+  "admin.review", "availability.addTimeOff", "availability.removeTimeOff", "availability.setHours",
+  "bookings.create", "bookings.transition", "favourites.toggle", "providers.submitProfile", "reviews.create",
   "services.archive", "services.create", "services.setEnabled", "services.update",
 ];
 // A public action can write via ctx.runMutation. Add one here deliberately and give it its own signed-out check.
@@ -56,6 +57,11 @@ test("every public mutation refuses a signed-out caller", async () => {
     () => t.mutation(api.providers.submitProfile, {
       name: "N", bio: "B", category: "cleaning", suburb: "S", rateCents: 4500, rateBasis: "hourly",
     }),
+    () => t.mutation(api.favourites.toggle, { providerId }),
+    () => t.mutation(api.reviews.create, { bookingId, rating: 5, text: "" }),
+    () => t.mutation(api.availability.setHours, { hours: [] }),
+    () => t.mutation(api.availability.addTimeOff, { startsAt: startsAt, endsAt: startsAt + 3_600_000 }),
+    () => t.mutation(api.availability.removeTimeOff, { id: "x" }),
     () => t.mutation(api.services.create, { name: "Mow", description: "", priceType: "fixed", priceCents: 5000, durationMinutes: 60 }),
     () => t.mutation(api.services.update, { id: "x", name: "Mow", description: "", priceType: "fixed", priceCents: 5000, durationMinutes: 60 }),
     () => t.mutation(api.services.setEnabled, { id: "x", enabled: false }),

@@ -79,6 +79,40 @@ export default defineSchema({
     archived: v.boolean(),
   }).index("by_provider", ["providerId"]),
 
+  // One row per weekday a provider has configured. No rows at all means "never configured": 8am-5pm every day.
+  workingHours: defineTable({
+    providerId: v.id("providers"),
+    weekday: v.number(), // 0 = Sunday ... 6 = Saturday (Auckland)
+    enabled: v.boolean(),
+    startMinute: v.number(), // minutes after midnight, Auckland time
+    endMinute: v.number(),
+    breakStartMinute: v.optional(v.number()),
+    breakEndMinute: v.optional(v.number()),
+  }).index("by_provider", ["providerId"]),
+
+  // Blocked time: holidays, unavailable dates, manual blocks. Absolute UTC instants.
+  timeOff: defineTable({
+    providerId: v.id("providers"),
+    startsAt: v.number(),
+    endsAt: v.number(),
+    reason: v.optional(v.string()),
+  }).index("by_provider_and_endsAt", ["providerId", "endsAt"]),
+
+  favourites: defineTable({
+    userId: v.id("users"),
+    providerId: v.id("providers"),
+  }).index("by_user", ["userId"]).index("by_user_and_provider", ["userId", "providerId"]),
+
+  // One review per completed booking. Aggregates on `providers` are updated in the same mutation.
+  reviews: defineTable({
+    bookingId: v.id("bookings"),
+    providerId: v.id("providers"),
+    customerId: v.id("users"),
+    customerName: v.string(),
+    rating: v.number(),
+    text: v.string(),
+  }).index("by_booking", ["bookingId"]).index("by_provider", ["providerId"]).index("by_customer", ["customerId"]),
+
   bookingEvents: defineTable({
     bookingId: v.id("bookings"),
     actorId: v.optional(v.id("users")),

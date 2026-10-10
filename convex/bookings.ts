@@ -3,6 +3,7 @@ import { mutation, query } from "./_generated/server";
 import { getUser, requireUser } from "./model/auth";
 import { canTransition, type Actor } from "./model/bookingRules";
 import { getProviderForUser } from "./model/providers";
+import { addDays, availabilityFor, fits, utcToLocal } from "./model/availability";
 
 export const create = mutation({
   args: {
@@ -20,6 +21,14 @@ export const create = mutation({
     const description = a.description.trim();
     if (!customerName || !description) throw new ConvexError("missing fields");
     if (customerName.length > 100 || description.length > 2000) throw new ConvexError("One of the fields is too long");
+    // Refuse times the provider has closed or blocked. Providers who never set hours are only checked
+    // against blocked time and accepted bookings, so existing listings keep working.
+    const from = utcToLocal(a.startsAt), to = utcToLocal(a.endsAt);
+    const endMinute = to.date === from.date ? to.minute : to.date === addDays(from.date, 1) && to.minute === 0 ? 1440 : -1;
+    const av = await availabilityFor(ctx, provider._id, from.date, 1);
+    if (endMinute === -1 ? av.configured : !fits(av.configured ? av.days[0] : { ...av.days[0], windows: [[0, 1440]] }, from.minute, endMinute)) {
+      throw new ConvexError("That time isn't available");
+    }
     let service: { _id: typeof a.serviceId; name: string } | null = null;
     if (a.serviceId) {
       const s = await ctx.db.get(a.serviceId);

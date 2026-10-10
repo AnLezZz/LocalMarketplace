@@ -57,9 +57,10 @@ Dead/decorative UI | removed dead sidebar links this session | sidebar items for
 
 - [x] S1 Provider bookings: provider cancel, details, history, exact overlap index (notifications table deferred to S6)
 - [x] S2 Services: `services` CRUD + booking page uses real services (images deferred: needs file storage)
-- [ ] S3 Availability: weekly hours, exceptions, blocks, customer-facing slot filtering, day/week/month views
-- [ ] S4 Customer: favourites, booking detail, reschedule request, profile
-- [ ] S5 Reviews: eligibility, duplicate guard, aggregates, report
+- [x] S3 Availability: weekly hours + breaks, blocked time, customer slot filtering, server-side enforcement (day/week/month calendar views not built)
+- [~] S4 Customer: favourites DONE; booking detail, reschedule request, profile/settings still open
+- [x] S5 (reviews) was built together with S4: see review below
+- [x] S5 Reviews: eligibility, duplicate guard, aggregates (report/moderation moves to S7)
 - [ ] S6 Notifications: bell, centre, realtime
 - [ ] S7 Admin: provider status enum + suspend, customers, bookings, moderation, audit log
 - [ ] S8 Categories + locations
@@ -81,3 +82,14 @@ Not done: reschedule requests, provider notifications (S6), by-status tab counts
 Done: `services` table (+ `serviceId`/`serviceName` on bookings); `services.{listMine,listForProvider,create,update,setEnabled,archive}`; `/provider/services` (list, add, edit, enable/disable, archive); profile page lists real services (falls back to the general rate when none); booking page has a service picker, per-service price and duration (30 min steps); service name shown on customer/provider bookings.
 Verified: 54 convex tests (ownership, validation, quote, customer visibility, booking snapshot, signed-out sweep); browser run as provider + customer (create, validation error, edit, profile, book, provider sees it, disable hides it, archive, customer redirected away).
 Not done: service images (no file storage yet), category per service, quote workflow after a quote-required request (provider just sees the request).
+
+## S3 review (2026-10-10)
+Done: `workingHours` + `timeOff` tables; `availability.{mine,setHours,addTimeOff,removeTimeOff,forProvider}`; Auckland time helpers (DST-safe); `bookings.create` refuses times outside hours/breaks/closed days/blocked time/accepted bookings (providers who never set hours are only checked against blocks and accepted bookings); `/provider/availability` (7-day editor with breaks, blocked time list); booking page shows only slots that fit the chosen duration (30 min starts), disables closed days, drops past times.
+Verified: 60 convex tests (DST round trips, validation, windows/breaks/busy, pending does not reserve, create enforcement, owner-only blocks); browser run as provider + customer (hours saved/validated/persisted, weekends and Wednesday lunch break reflected, block removes overlapping slots and removal restores them).
+Shortcuts: busy minutes use a fixed 1440-minute day (off by an hour on the two DST-change days); no month/day calendar views; the provider dashboard WeeklyCalendar still shows bookings only.
+Demo data: Alex Morgan's hours were left Mon-Sun 8-5 (same as the old default).
+
+## S4 (favourites) + S5 (reviews) review (2026-10-10)
+Done: `favourites` table, `favourites.{toggle,mineIds,listMine}`, heart buttons on search and profile (return to the same filtered page), `/favourites`, header link, middleware guard; `reviews` table, `reviews.{create,forProvider,mine}` (completed bookings only, owner only, one per booking, 1-5 stars, text optional <=1000, first name only shown), `/bookings/[id]/review` with a star picker, "Leave a review"/"Reviewed" on My bookings, reviews list on the provider profile, recent reviews card + sidebar item on the provider dashboard.
+Verified: 65 convex tests; browser run as customer + provider (heart signed-out -> sign-in, heart keeps filters, favourites list/remove, request -> accept -> complete -> review, required-star validation, review on profile and provider dashboard, rating 4.9 (28) -> (29)).
+Notes: provider rating is updated incrementally so the seeded placeholder rating keeps its weight (the demo "Alex Morgan" rating drifted from 4.9/28 to roughly 4.8/30 during testing). Review reporting/hiding is S7. Booking detail page for customers, reschedule requests and account settings are still open.
