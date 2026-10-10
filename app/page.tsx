@@ -38,10 +38,11 @@ export default async function Home({ searchParams }: { searchParams: Promise<Par
   // The homepage shows the best few; the full, paged list is /search. The total is the real number of matches.
   const search = (extra: { category?: string; suburb?: string; q?: string }, limit: number) =>
     fetchQuery(api.providers.search, { ...extra, offset: 0, limit }) as Promise<{ rows: ProviderSummary[]; total: number; capped: boolean }>;
-  const [found, anyone, me] = await Promise.all([
+  const [found, anyone, me, recentReviews] = await Promise.all([
     search({ category: category || undefined, suburb: suburb || undefined, q: q || undefined }, SHOWN),
     filtered ? search({}, 1) : null,
     getMe(),
+    fetchQuery(api.reviews.recent, { limit: 6 }) as Promise<{ _id: string; customerName: string; rating: number; text: string; at: number; providerId: string; providerName: string }[]>,
   ]);
   const list = found.rows;
   const everyone = { length: (anyone ?? found).total };
@@ -74,6 +75,11 @@ export default async function Home({ searchParams }: { searchParams: Promise<Par
             </div>
             <button className="btn btn--forest">Search</button>
           </form>
+          <ul className="lp-trust" aria-label="Why people use Localo">
+            <li><Icon name="shield" size={16} />Providers are approved before they appear</li>
+            <li><Icon name="calendar" size={16} />Pick from their real availability</li>
+            <li><Icon name="check" size={16} />Pay your provider directly</li>
+          </ul>
         </div>
       </section>
 
@@ -126,29 +132,81 @@ export default async function Home({ searchParams }: { searchParams: Promise<Par
       </section>
 
       <section className="lp-section" id="how-it-works" aria-labelledby="how-h">
-        <h2 id="how-h" className="lp-h2">How it works</h2>
-        <ol className="lp-steps">
+        <div className="lp-section__head">
+          <h2 id="how-h" className="lp-h2">How it works</h2>
+          <Link href="/search" className="lp-link">Find a provider</Link>
+        </div>
+        <p className="lp-section__sub">Three steps, and nothing is booked until the provider says yes.</p>
+        <ol className="lp-how">
           {([
-            ["search", "1. Find", "Search for services in your area."],
-            ["calendar", "2. Book", "Choose a provider and request a time."],
-            ["user", "3. Get it done", "Meet in person and pay directly."],
-          ] as const).map(([icon, title, text]) => (
-            <li key={title} className="lp-step">
-              <span className="lp-step__icon"><Icon name={icon} size={22} /></span>
-              <div><strong>{title}</strong><span>{text}</span></div>
+            ["search", "Find", "Search by what you need and where you are, or browse the categories. Every provider listed has been approved."],
+            ["calendar", "Request a time", "Choose a service and a time from the provider's real availability. Fixed prices are shown up front; quotes come from the provider."],
+            ["user", "Get it done", "The provider accepts or declines. Once they accept, you meet them and pay them directly, then leave a review."],
+          ] as const).map(([icon, title, text], i) => (
+            <li key={title} className="lp-how__card">
+              <span className="lp-how__num" aria-hidden="true">0{i + 1}</span>
+              <span className="lp-how__icon"><Icon name={icon} size={22} /></span>
+              <h3>{title}</h3>
+              <p>{text}</p>
             </li>
           ))}
         </ol>
       </section>
 
-      <section className="lp-cta">
-        <div className="lp-cta__body">
-          <h2 className="lp-cta__title">Support local.<br />Get more done.</h2>
-          <p>From home projects to everyday help, find trusted people in your neighbourhood.</p>
-          <Link href="/#services" className="btn btn--cream">Browse services</Link>
-        </div>
-        <Image src="/images/hero_gardener.jpg" alt="" fill sizes="(min-width: 720px) 50vw, 0px" className="lp-cta__img" />
+      {recentReviews.length > 0 && (
+        <section className="lp-section" id="reviews" aria-labelledby="rev-h">
+          <div className="lp-section__head">
+            <h2 id="rev-h" className="lp-h2">What customers say</h2>
+          </div>
+          <p className="lp-section__sub">Recent reviews from completed jobs. Every one is written by a customer who booked.</p>
+          <ProviderCarousel label="Recent reviews">
+            {recentReviews.map((r) => (
+              <article key={r._id} className="lp-rev">
+                <span className="lp-rev__stars" role="img" aria-label={`${r.rating} out of 5`}>{"★".repeat(r.rating)}{"☆".repeat(5 - r.rating)}</span>
+                <p className="lp-rev__text">&ldquo;{r.text}&rdquo;</p>
+                <footer className="lp-rev__by">
+                  <strong>{r.customerName}</strong>
+                  <Link href={`/providers/${r.providerId}/reviews`}>on {r.providerName} →</Link>
+                </footer>
+              </article>
+            ))}
+          </ProviderCarousel>
+        </section>
+      )}
+
+      <section className="lp-section" aria-labelledby="why-h">
+        <h2 id="why-h" className="lp-h2">Built to be straightforward</h2>
+        <ul className="lp-why">
+          {([
+            ["shield", "Approved first", "People apply and an admin approves them before they appear in search."],
+            ["calendar", "Real availability", "You choose from the times a provider has actually opened up."],
+            ["check", "A request, not a promise", "Nothing is confirmed until the provider accepts, so you always know where you stand."],
+            ["card", "Pay directly", "Localo doesn't take or hold payment. You settle up with your provider."],
+          ] as const).map(([icon, title, text]) => (
+            <li key={title}><span className="lp-why__icon"><Icon name={icon} size={20} /></span><div><strong>{title}</strong><span>{text}</span></div></li>
+          ))}
+        </ul>
       </section>
+
+      <section className="lp-biz" aria-labelledby="biz-h">
+        <div className="lp-biz__body">
+          <h2 id="biz-h" className="lp-biz__title">Run a local business?</h2>
+          <p>Apply to join Localo, get approved, and receive booking requests from people nearby. You choose your services, your prices and when you&apos;re available.</p>
+          <Link href={me?.role === "provider" ? "/provider" : "/provider/register"} className="btn btn--cream">{me?.role === "provider" ? "Go to your dashboard" : "Become a provider"}</Link>
+        </div>
+        <div className="lp-biz__photos" aria-hidden="true">
+          <Image src="/images/business/gardening.jpg" alt="" width={320} height={320} sizes="(min-width: 960px) 200px, 30vw" />
+          <Image src="/images/business/car-detailing.jpg" alt="" width={320} height={320} sizes="(min-width: 960px) 200px, 30vw" />
+          <Image src="/images/business/moving-help.jpg" alt="" width={320} height={320} sizes="(min-width: 960px) 200px, 30vw" />
+        </div>
+      </section>
+
+      <nav className="lp-foot" aria-label="Site">
+        <div className="lp-foot__brand"><span className="brand__word">Localo</span><p>Find trusted local people for everyday jobs.</p></div>
+        <div><h2>Customers</h2><ul><li><Link href="/search">Find services</Link></li><li><Link href="/categories">All categories</Link></li><li><Link href="/#how-it-works">How it works</Link></li></ul></div>
+        <div><h2>Providers</h2><ul><li><Link href={me?.role === "provider" ? "/provider" : "/provider/register"}>{me?.role === "provider" ? "Your dashboard" : "Become a provider"}</Link></li></ul></div>
+        <div><h2>Account</h2><ul>{me ? <li><Link href="/account">Account settings</Link></li> : <><li><Link href="/signin">Log in</Link></li><li><Link href="/signin">Sign up</Link></li></>}</ul></div>
+      </nav>
     </div>
   );
 }

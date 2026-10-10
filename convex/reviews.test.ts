@@ -106,7 +106,7 @@ describe("numbered review pages", () => {
       }
     });
     const first = await t.query(api.reviews.forProviderPage, { providerId, offset: 0, limit: 10 });
-    expect(first).toMatchObject({ total: 22, capped: false });
+    expect(first).toMatchObject({ total: 22, capped: false, breakdown: [0, 0, 0, 0, 22] }); // all 22 visible reviews are 5 stars
     expect(first.rows).toHaveLength(10);
     expect(first.rows[0].text).toBe("review 22"); // newest first
     const seen = [...first.rows, ...(await t.query(api.reviews.forProviderPage, { providerId, offset: 10, limit: 10 })).rows, ...(await t.query(api.reviews.forProviderPage, { providerId, offset: 20, limit: 10 })).rows];
@@ -114,6 +114,30 @@ describe("numbered review pages", () => {
     expect(new Set(seen.map((r) => r._id)).size).toBe(22);
     expect(seen.some((r) => r.text === "review 3")).toBe(false);
     expect((await t.query(api.reviews.forProviderPage, { providerId, offset: 40, limit: 10 })).rows).toEqual([]);
-    expect(await t.query(api.reviews.forProviderPage, { providerId: unapproved, offset: 0, limit: 10 })).toEqual({ rows: [], total: 0, capped: false });
+    expect(await t.query(api.reviews.forProviderPage, { providerId: unapproved, offset: 0, limit: 10 })).toEqual({ rows: [], total: 0, capped: false, breakdown: [0, 0, 0, 0, 0] });
+  });
+});
+
+describe("recent reviews for the landing page", () => {
+  test("newest first, one per provider, visible and written only, approved providers only", async () => {
+    const t = newT();
+    const [a, b, c, hiddenProvider] = [await createProvider(t, undefined, { name: "A", approved: true }), await createProvider(t, undefined, { name: "B", approved: true }), await createProvider(t, undefined, { name: "C", approved: true }), await createProvider(t, undefined, { name: "Hidden", approved: false })];
+    const customerId = await createUser(t, "customer");
+    const add = (providerId: typeof a, text: string, extra: Record<string, unknown> = {}) => t.run(async (ctx) => {
+      const bookingId = await ctx.db.insert("bookings", { providerId, customerId, customerName: "Kiri", customerEmail: "k@example.nz", description: "job", startsAt: Date.now(), endsAt: Date.now() + 1, status: "completed" });
+      return ctx.db.insert("reviews", { bookingId, providerId, customerId, customerName: "Kiri", rating: 5, text, ...extra } as never);
+    });
+    await add(a, "old A");
+    await add(b, "B one");
+    await add(a, "newer A");
+    await add(c, "", {}); // a rating with no words
+    await add(c, "hidden C", { hidden: true, hiddenReason: "x" });
+    await add(hiddenProvider, "from an unapproved provider");
+    await add(c, "C visible");
+    const rows = await t.query(api.reviews.recent, { limit: 6 });
+    expect(rows.map((r) => r.text)).toEqual(["C visible", "newer A", "B one"]); // one each, newest first
+    expect(rows.map((r) => r.providerName)).toEqual(["C", "A", "B"]);
+    expect((await t.query(api.reviews.recent, { limit: 2 })).map((r) => r.text)).toEqual(["C visible", "newer A"]);
+    expect(await t.query(api.reviews.recent, { limit: 9999 })).toHaveLength(3); // clamped, and there are only three providers
   });
 });

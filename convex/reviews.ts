@@ -27,13 +27,39 @@ export const forProviderPage = query({
   args: { providerId: v.id("providers"), offset: v.number(), limit: v.number() },
   handler: async (ctx, { providerId, offset, limit }) => {
     const provider = await ctx.db.get(providerId);
-    if (!provider?.approved) return { rows: [], total: 0, capped: false };
+    if (!provider?.approved) return { rows: [], total: 0, capped: false, breakdown: [0, 0, 0, 0, 0] };
     const all = await ctx.db.query("reviews").withIndex("by_provider", (q) => q.eq("providerId", providerId)).order("desc").filter((f) => f.neq(f.field("hidden"), true)).take(REVIEW_POOL + 1);
     const from = Math.max(0, Math.floor(offset)), size = Math.min(50, Math.max(1, Math.floor(limit)));
+    // How many reviews gave 1, 2, 3, 4 and 5 stars (of the ones looked at), for the rating summary.
+    const breakdown = [0, 0, 0, 0, 0];
+    for (const x of all.slice(0, REVIEW_POOL)) if (x.rating >= 1 && x.rating <= 5) breakdown[x.rating - 1]++;
     return {
       rows: all.slice(from, from + size).map((x) => ({ _id: x._id, customerName: x.customerName, rating: x.rating, text: x.text, at: x._creationTime })),
-      total: Math.min(all.length, REVIEW_POOL), capped: all.length > REVIEW_POOL,
+      total: Math.min(all.length, REVIEW_POOL), capped: all.length > REVIEW_POOL, breakdown,
     };
+  },
+});
+
+/**
+ * The newest written reviews across the marketplace, for the landing page: real, visible, with text, from approved providers, and at
+ * most one per provider so a single busy listing can't fill the row. Looks at the newest 100 reviews only.
+ */
+export const recent = query({
+  args: { limit: v.number() },
+  handler: async (ctx, { limit }) => {
+    const want = Math.min(12, Math.max(1, Math.floor(limit)));
+    const rows = await ctx.db.query("reviews").order("desc").filter((f) => f.and(f.neq(f.field("hidden"), true), f.neq(f.field("text"), ""))).take(100);
+    const seen = new Set<string>();
+    const out = [];
+    for (const r of rows) {
+      if (seen.has(r.providerId)) continue;
+      const provider = await ctx.db.get(r.providerId);
+      if (!provider?.approved) continue;
+      seen.add(r.providerId);
+      out.push({ _id: r._id, customerName: r.customerName, rating: r.rating, text: r.text, at: r._creationTime, providerId: provider._id, providerName: provider.name });
+      if (out.length >= want) break;
+    }
+    return out;
   },
 });
 
