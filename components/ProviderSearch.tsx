@@ -60,7 +60,7 @@ export default async function ProviderSearch({ params, basePath, lockedCategory 
   // Only when nothing is shown, and only to say why: how many match without the price and rating, and without the category and keyword.
   const allTotal = result.total === 0 && (max || rating) ? (await find({ category: category || undefined, q: q || undefined }, 0, 1)).total : result.total;
   const atPlaceTotal = placeId && allTotal === 0 && (category || q) ? (await find({}, 0, 1)).total : allTotal;
-  const saved = new Set((await fetchQuery(api.favourites.mineIds, {}, await authOpts())) as string[]);
+  const saved = new Set((await fetchQuery(api.favourites.savedAmong, { providerIds: list.map((p) => p._id) as never[] }, await authOpts())) as string[]);
   const tags = new Map<string, string[]>();
   for (const t of (await fetchQuery(api.services.listPublic, {})) as { providerId: string; name: string }[]) tags.set(t.providerId, [...(tags.get(t.providerId) ?? []), t.name]);
   // The heart returns here with the same keyword and filters.

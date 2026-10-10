@@ -85,7 +85,7 @@ describe("profile photo", () => {
     expect((await t.query(api.providers.list, {}))[0].photo).toBe(got?.photo);
     expect((await owner.query(api.providers.mine, {}))?.photo).toBe(got?.photo);
     await customer.mutation(api.favourites.toggle, { providerId });
-    expect((await customer.query(api.favourites.listMine, {}))[0]?.photo).toBe(got?.photo);
+    expect((await customer.query(api.favourites.listPage, { paginationOpts: { numItems: 50, cursor: null } })).page[0]?.photo).toBe(got?.photo);
   });
 
   test("replacing deletes the old file; removing falls back to the seeded photo", async () => {

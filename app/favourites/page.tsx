@@ -9,15 +9,19 @@ import FavouriteButton from "../../components/FavouriteButton";
 import { Rating } from "../../components/Pill";
 import { loadCategories, metaIn } from "../../lib/categories";
 import type { ProviderSummary } from "../../components/ProviderCard";
+import AdminPager from "../../components/dashboard/AdminPager";
+import { loadAdminPage, type AdminPage } from "../../lib/adminPage";
 import "../search/search.css";
 import AccountShell from "../../components/AccountShell";
 
 export const dynamic = "force-dynamic";
 
-export default async function Favourites({ searchParams }: { searchParams: Promise<{ err?: string }> }) {
-  const { err } = await searchParams;
+export default async function Favourites({ searchParams }: { searchParams: Promise<{ err?: string; cursor?: string }> }) {
+  const { err, cursor } = await searchParams;
   const cats = await loadCategories();
-  const list = (await fetchQuery(api.favourites.listMine, {}, await authOpts())) as ProviderSummary[];
+  const opts = await authOpts();
+  const result = await loadAdminPage<ProviderSummary>("/favourites", cursor, async (c) => (await fetchQuery(api.favourites.listPage, { paginationOpts: { numItems: 20, cursor: c } }, opts)) as unknown as AdminPage<ProviderSummary>);
+  const list = result.page;
   return (
     <AccountShell active="favourites"><div className="acct-pane srch">
       <h1 className="page__title">My favourites</h1>
@@ -48,6 +52,7 @@ export default async function Favourites({ searchParams }: { searchParams: Promi
           ))}
         </ul>
       )}
+      <AdminPager base="/favourites" cursor={cursor} result={result} nextLabel="Show more →" />
     </div></AccountShell>
   );
 }

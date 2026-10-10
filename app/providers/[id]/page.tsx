@@ -20,7 +20,7 @@ export default async function Provider({ params }: { params: Promise<{ id: strin
   if (!p) notFound();
 
   const services = (await fetchQuery(api.services.listForProvider, { providerId: id })) as { _id: string; name: string; description: string; priceType: string; priceCents?: number; durationMinutes: number }[];
-  const saved = ((await fetchQuery(api.favourites.mineIds, {}, await authOpts())) as string[]).includes(id);
+  const saved = ((await fetchQuery(api.favourites.savedAmong, { providerIds: [id as never] }, await authOpts())) as string[]).length > 0;
   const reviews = (await fetchQuery(api.reviews.forProvider, { providerId: id })) as { _id: string; customerName: string; rating: number; text: string; at: number }[];
   const gallery = (await fetchQuery(api.providers.gallery, { providerId: id })) as { _id: string; url: string; caption?: string }[];
   const price = rate(p.rateCents, p.rateBasis);

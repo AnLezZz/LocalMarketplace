@@ -69,7 +69,7 @@ describe("provider suspension", () => {
 
     expect((await t.query(api.providers.list, {})).map((p) => p._id)).not.toContain(providerId);
     expect(await t.query(api.providers.get, { id: providerId })).toBeNull();
-    expect(await customer.query(api.favourites.listMine, {})).toEqual([]);
+    expect((await customer.query(api.favourites.listPage, { paginationOpts: { numItems: 50, cursor: null } })).page).toEqual([]);
     expect(await t.query(api.services.listForProvider, { providerId })).toEqual([]);
     expect(await t.query(api.services.listPublic, {})).toEqual([]);
     expect(await t.query(api.reviews.forProvider, { providerId })).toEqual([]);
