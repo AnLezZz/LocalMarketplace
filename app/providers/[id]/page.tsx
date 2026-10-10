@@ -34,7 +34,7 @@ export default async function Provider({ params }: { params: Promise<{ id: strin
       <Link href="/search" className="back"><Icon name="chevronLeft" size={20} />Back to results</Link>
 
       <section className="bk__card bk__hero">
-        <ProviderPhoto name={p.name} photo={p.photo} size={112} rounded={18} />
+        <ProviderPhoto name={p.name} photo={p.photo} category={p.category} size={112} rounded={18} />
         <div className="bk__heroid">
           <h1 className="bk__title">{p.name}</h1>
           <div className="bk__meta">

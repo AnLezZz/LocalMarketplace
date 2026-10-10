@@ -102,7 +102,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<Par
               return (
                 <Link key={p._id} href={`/providers/${p._id}`} className="lp-pro">
                   <div className="lp-pro__photo">
-                    <ProviderPhoto name={p.name} photo={p.photo} fill />
+                    <ProviderPhoto name={p.name} photo={p.photo} category={p.category} fill />
                     <span className="lp-pro__rating"><Rating avg={p.ratingAvg} count={p.reviewCount} /></span>
                   </div>
                   <h3 className="lp-pro__name">{p.name}</h3>

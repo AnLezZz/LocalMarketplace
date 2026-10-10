@@ -138,7 +138,7 @@ export default async function ProviderSearch({ params, basePath, lockedCategory 
             const cat = metaIn(cats.all, p.category);
             return (
               <li key={p._id} className="srch__item">
-                <ProviderPhoto name={p.name} photo={p.photo} size={96} />
+                <ProviderPhoto name={p.name} photo={p.photo} category={p.category} size={96} />
                 <div className="srch__info">
                   <h2 className="srch__name">{p.name}</h2>
                   <Rating avg={p.ratingAvg} count={p.reviewCount} />

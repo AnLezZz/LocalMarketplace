@@ -34,7 +34,7 @@ export default async function Favourites({ searchParams }: { searchParams: Promi
         <ul className="srch__list">
           {list.map((p) => (
             <li key={p._id} className="srch__item">
-              <ProviderPhoto name={p.name} photo={p.photo} size={96} />
+              <ProviderPhoto name={p.name} photo={p.photo} category={p.category} size={96} />
               <div className="srch__info">
                 <h2 className="srch__name">{p.name}</h2>
                 <div className="srch__meta">{metaIn(cats.all, p.category).label} · {p.suburb}</div>

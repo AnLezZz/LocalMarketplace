@@ -66,7 +66,7 @@ export default async function Book({ params, searchParams }: { params: Promise<{
       <Link href={`/providers/${id}`} className="back"><Icon name="chevronLeft" size={20} />Back to profile</Link>
 
       <section className="bk__card bk__hero">
-        <ProviderPhoto name={p.name} photo={p.photo} size={96} rounded={18} />
+        <ProviderPhoto name={p.name} photo={p.photo} category={p.category} size={96} rounded={18} />
         <div className="bk__heroid">
           <h1 className="bk__title">{p.name}</h1>
           <div className="bk__meta">
