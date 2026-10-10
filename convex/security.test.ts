@@ -7,7 +7,10 @@ const all = import.meta.glob(["./**/*.ts", "!./_generated/**"], { query: "?raw",
 const sources = Object.entries(all).filter(([path]) => !path.endsWith(".test.ts"));
 
 // When this fails, a public mutation was added or removed. Add it to the signed-out sweep below.
-const PUBLIC_MUTATIONS = ["admin.review", "bookings.create", "bookings.transition", "providers.submitProfile"];
+const PUBLIC_MUTATIONS = [
+  "admin.review", "bookings.create", "bookings.transition", "providers.submitProfile",
+  "services.archive", "services.create", "services.setEnabled", "services.update",
+];
 // A public action can write via ctx.runMutation. Add one here deliberately and give it its own signed-out check.
 const PUBLIC_ACTIONS: string[] = [];
 
@@ -53,6 +56,10 @@ test("every public mutation refuses a signed-out caller", async () => {
     () => t.mutation(api.providers.submitProfile, {
       name: "N", bio: "B", category: "cleaning", suburb: "S", rateCents: 4500, rateBasis: "hourly",
     }),
+    () => t.mutation(api.services.create, { name: "Mow", description: "", priceType: "fixed", priceCents: 5000, durationMinutes: 60 }),
+    () => t.mutation(api.services.update, { id: "x", name: "Mow", description: "", priceType: "fixed", priceCents: 5000, durationMinutes: 60 }),
+    () => t.mutation(api.services.setEnabled, { id: "x", enabled: false }),
+    () => t.mutation(api.services.archive, { id: "x" }),
   ];
   expect(calls).toHaveLength(PUBLIC_MUTATIONS.length);
   for (const call of calls) await expect(call()).rejects.toThrow("Sign in required");

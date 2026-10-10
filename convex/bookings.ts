@@ -7,7 +7,7 @@ import { getProviderForUser } from "./model/providers";
 export const create = mutation({
   args: {
     providerId: v.id("providers"), customerName: v.string(), description: v.string(),
-    startsAt: v.number(), endsAt: v.number(),
+    startsAt: v.number(), endsAt: v.number(), serviceId: v.optional(v.id("services")),
   },
   handler: async (ctx, a) => {
     const user = await requireUser(ctx);
@@ -20,7 +20,14 @@ export const create = mutation({
     const description = a.description.trim();
     if (!customerName || !description) throw new ConvexError("missing fields");
     if (customerName.length > 100 || description.length > 2000) throw new ConvexError("One of the fields is too long");
+    let service: { _id: typeof a.serviceId; name: string } | null = null;
+    if (a.serviceId) {
+      const s = await ctx.db.get(a.serviceId);
+      if (!s || s.providerId !== provider._id || !s.enabled || s.archived) throw new ConvexError("service not found");
+      service = { _id: s._id, name: s.name };
+    }
     const id = await ctx.db.insert("bookings", {
+      ...(service ? { serviceId: service._id, serviceName: service.name } : {}),
       providerId: provider._id, customerId: user._id, customerName, customerEmail: user.email,
       description, startsAt: a.startsAt, endsAt: a.endsAt, status: "requested",
     });
@@ -81,15 +88,37 @@ export const transition = mutation({
       return { ok: false as const, reason: `cannot go ${b.status} → ${a.to}` };
     }
     if (a.to === "accepted") {
-      // Unbounded on purpose: a bounded read could miss a conflict and double-book. Revisit with a
-      // by_provider_and_status index in Phase 1.
-      const mine = await ctx.db.query("bookings").withIndex("by_provider", (i) => i.eq("providerId", b.providerId)).collect();
-      const clash = mine.some((o) => o._id !== b._id && (o.status === "accepted" || o.status === "completed")
-        && o.startsAt < b.endsAt && b.startsAt < o.endsAt);
+      // Exact, not bounded: a bounded read could miss a conflict and double-book. The index range
+      // keeps it to this provider's accepted/completed rows that end after the new start.
+      let clash = false;
+      for (const status of ["accepted", "completed"] as const) {
+        for await (const o of ctx.db.query("bookings").withIndex("by_provider_and_status_and_endsAt", (i) =>
+          i.eq("providerId", b.providerId).eq("status", status).gt("endsAt", b.startsAt))) {
+          if (o._id !== b._id && o.startsAt < b.endsAt) { clash = true; break; }
+        }
+        if (clash) break;
+      }
       if (clash) return { ok: false as const, reason: "time conflicts with another accepted booking" };
     }
     await ctx.db.patch(b._id, { status: a.to });
     await ctx.db.insert("bookingEvents", { bookingId: b._id, actorId: user._id, fromStatus: b.status, toStatus: a.to });
     return { ok: true as const };
+  },
+});
+
+/** One booking on the signed-in user's own provider profile. Null for anyone else, so existence is not revealed. */
+export const getForProvider = query({
+  args: { id: v.string() },
+  handler: async (ctx, { id }) => {
+    const user = await getUser(ctx);
+    if (!user) return null;
+    const provider = await getProviderForUser(ctx, user._id);
+    const bookingId = ctx.db.normalizeId("bookings", id);
+    const b = provider && bookingId ? await ctx.db.get(bookingId) : null;
+    if (!b || !provider || b.providerId !== provider._id) return null;
+    // Customer email stays private; the provider sees the name they were given.
+    const { customerEmail: _email, ...rest } = b;
+    const events = await ctx.db.query("bookingEvents").withIndex("by_booking", (i) => i.eq("bookingId", b._id)).take(50);
+    return { ...rest, events: events.map((e) => ({ at: e._creationTime, from: e.fromStatus, to: e.toStatus, byCustomer: e.actorId === b.customerId })) };
   },
 });

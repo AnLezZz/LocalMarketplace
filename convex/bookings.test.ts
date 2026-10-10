@@ -124,3 +124,40 @@ describe("bookings.transition", () => {
     });
   });
 });
+
+describe("provider cancel and booking details", () => {
+  test("cancelling an accepted booking frees its slot for an overlapping request", async () => {
+    const { a, request } = await setup();
+    const startsAt = soon();
+    const first = await request(undefined, startsAt);
+    const second = await request(undefined, startsAt + HOUR);
+    expect(await a.mutation(api.bookings.transition, { bookingId: first, to: "accepted" })).toEqual({ ok: true });
+    expect(await a.mutation(api.bookings.transition, { bookingId: second, to: "accepted" })).toEqual({ ok: false, reason: "time conflicts with another accepted booking" });
+    expect(await a.mutation(api.bookings.transition, { bookingId: first, to: "cancelled" })).toEqual({ ok: true });
+    expect(await a.mutation(api.bookings.transition, { bookingId: second, to: "accepted" })).toEqual({ ok: true });
+  });
+
+  test("back-to-back bookings do not clash; only the same provider is checked", async () => {
+    const { a, b, providerB, request } = await setup();
+    const startsAt = soon();
+    const one = await request(undefined, startsAt);
+    const next = await request(undefined, startsAt + 2 * HOUR);
+    const other = await request(providerB, startsAt);
+    expect(await a.mutation(api.bookings.transition, { bookingId: one, to: "accepted" })).toEqual({ ok: true });
+    expect(await a.mutation(api.bookings.transition, { bookingId: next, to: "accepted" })).toEqual({ ok: true });
+    expect(await b.mutation(api.bookings.transition, { bookingId: other, to: "accepted" })).toEqual({ ok: true });
+  });
+
+  test("getForProvider shows the owner their booking without the customer email, and nobody else", async () => {
+    const { t, customer, a, b, request } = await setup();
+    const id = await request();
+    const mine = await a.query(api.bookings.getForProvider, { id });
+    expect(mine).toMatchObject({ _id: id, customerName: "Kiri", status: "requested" });
+    expect(mine).not.toHaveProperty("customerEmail");
+    expect(mine?.events).toHaveLength(1);
+    expect(await b.query(api.bookings.getForProvider, { id })).toBeNull();
+    expect(await customer.query(api.bookings.getForProvider, { id })).toBeNull();
+    expect(await t.query(api.bookings.getForProvider, { id })).toBeNull();
+    expect(await a.query(api.bookings.getForProvider, { id: "not-an-id" })).toBeNull();
+  });
+});

@@ -51,13 +51,31 @@ export default defineSchema({
     description: v.string(),
     startsAt: v.number(), // UTC ms
     endsAt: v.number(), // UTC ms
+    // The service requested, with its name copied so later edits or archiving do not rewrite history.
+    serviceId: v.optional(v.id("services")),
+    serviceName: v.optional(v.string()),
     status: v.union(
       v.literal("requested"), v.literal("accepted"), v.literal("declined"),
       v.literal("cancelled"), v.literal("completed"),
     ),
   })
     .index("by_provider", ["providerId"])
-    .index("by_customerId", ["customerId"]),
+    .index("by_customerId", ["customerId"])
+    // Overlap check on accept: only this provider's accepted/completed rows that end after the new start.
+    .index("by_provider_and_status_and_endsAt", ["providerId", "status", "endsAt"]),
+
+  services: defineTable({
+    providerId: v.id("providers"),
+    name: v.string(),
+    description: v.string(),
+    priceType: v.union(v.literal("fixed"), v.literal("hourly"), v.literal("quote")),
+    // Absent for quote-required services.
+    priceCents: v.optional(v.number()),
+    durationMinutes: v.number(),
+    enabled: v.boolean(),
+    // Archived services stay for booking history but are hidden everywhere else.
+    archived: v.boolean(),
+  }).index("by_provider", ["providerId"]),
 
   bookingEvents: defineTable({
     bookingId: v.id("bookings"),
