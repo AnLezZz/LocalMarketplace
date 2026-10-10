@@ -66,14 +66,14 @@ describe("categories admin", () => {
   });
 
   test("at least one category stays enabled; there is a ceiling", async () => {
-    const { admin, list } = await world();
+    const { t, admin, list } = await world();
     await admin.mutation(api.categories.initDefaults, {});
     const rows = await list();
     for (const c of rows.slice(1)) await admin.mutation(api.categories.setEnabled, { id: c._id as any, enabled: false });
     await expect(admin.mutation(api.categories.setEnabled, { id: rows[0]._id as any, enabled: false })).rejects.toThrow("At least one");
     for (const c of rows.slice(1)) await admin.mutation(api.categories.setEnabled, { id: c._id as any, enabled: true });
-    for (let i = 0; i < 14; i++) await admin.mutation(api.categories.create, { label: `Extra ${i}`, icon: "tag", hue: "neutral" });
-    await expect(admin.mutation(api.categories.create, { label: "One too many", icon: "tag", hue: "neutral" })).rejects.toThrow("up to 20");
+    await t.run(async (ctx) => { for (let i = 0; i < 300 - 6; i++) await ctx.db.insert("categories", { slug: `filler ${i}`, label: `Filler ${i}`, icon: "tag", hue: "neutral", order: 100 + i, enabled: true }); });
+    await expect(admin.mutation(api.categories.create, { label: "One too many", icon: "tag", hue: "neutral" })).rejects.toThrow("up to 300");
   });
 
   test("only admins can change categories; the audit log records the changes", async () => {

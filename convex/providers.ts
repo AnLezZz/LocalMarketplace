@@ -3,7 +3,7 @@ import { mutation, query } from "./_generated/server";
 import type { Doc, Id } from "./_generated/dataModel";
 import { getUser, requireUser } from "./model/auth";
 import { getProviderForUser, providerStatus, validateProfile } from "./model/providers";
-import { requireActiveCategory } from "./model/categories";
+import { loadCategoryRows, providerSlugs, resolveProviderCategories, slugWithDescendants } from "./model/categories";
 import { requireSupportedSuburb } from "./model/locations";
 import { hasPlaces, isClosed, linkBase, MAX_AREAS, syncProviderAreas } from "./model/coverage";
 import { checkImage, MAX_GALLERY, withPhotoUrl } from "./model/photos";
@@ -25,8 +25,10 @@ export const list = query({
       all = await ctx.db.query("providers").withIndex("by_approved", (i) => i.eq("approved", true)).collect();
     }
     const s = suburb?.toLowerCase(), k = q?.toLowerCase();
+    // A category matches the providers listed under it or anything below it (Hair finds a Women's Haircut specialist).
+    const wanted = category ? slugWithDescendants(await loadCategoryRows(ctx), category) : null;
     const found = all.filter((p) =>
-      (!category || p.category === category) &&
+      (!wanted || [...providerSlugs(p)].some((c) => wanted.has(c))) &&
       (!s || p.suburb.toLowerCase().includes(s)) &&
       (!k || p.name.toLowerCase().includes(k) || p.bio.toLowerCase().includes(k)));
     return await Promise.all(found.map((p) => withPhotoUrl(ctx, p)));
@@ -58,12 +60,14 @@ export const submitProfile = mutation({
   args: {
     name: v.string(), bio: v.string(), category: v.string(), suburb: v.string(),
     rateCents: v.number(), rateBasis: v.union(v.literal("hourly"), v.literal("fixed")),
+    more: v.optional(v.array(v.string())), // other categories, subcategories or services they offer
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx, { more, ...args }) => {
     const user = await requireUser(ctx);
     if (user.role === "admin") throw new ConvexError("Admins cannot be providers");
     const fields = validateProfile(args);
-    await requireActiveCategory(ctx, fields.category);
+    const existingForCats = await getProviderForUser(ctx, user._id);
+    const categorySlugs = await resolveProviderCategories(ctx, fields.category, more, existingForCats ?? undefined);
     await requireSupportedSuburb(ctx, fields.suburb, (s) => `We don't operate in ${s} yet. Pick a suburb from the list.`);
     const existing = await getProviderForUser(ctx, user._id);
     // A suspended provider must not be able to resubmit and come back as "pending".
@@ -72,12 +76,12 @@ export const submitProfile = mutation({
     if (existing) {
       // Strictly increasing, so two submits in the same millisecond still get distinct stamps.
       const submittedAt = Math.max(Date.now(), (existing.submittedAt ?? 0) + 1);
-      await ctx.db.patch(existing._id, { ...fields, submittedAt, reviewedAt: undefined, rejectionReason: undefined });
+      await ctx.db.patch(existing._id, { ...fields, categorySlugs, submittedAt, reviewedAt: undefined, rejectionReason: undefined });
       if (await hasPlaces(ctx)) await linkBase(ctx, existing, fields.suburb);
       return existing._id;
     }
     const id = await ctx.db.insert("providers", {
-      ...fields, userId: user._id, ratingAvg: 0, reviewCount: 0, approved: false, submittedAt: Date.now(),
+      ...fields, categorySlugs, userId: user._id, ratingAvg: 0, reviewCount: 0, approved: false, submittedAt: Date.now(),
     });
     await ctx.db.patch(user._id, { role: "provider" });
     const created = await ctx.db.get(id);
@@ -116,15 +120,17 @@ export const updateProfile = mutation({
   args: {
     name: v.string(), bio: v.string(), category: v.string(), suburb: v.string(),
     rateCents: v.number(), rateBasis: v.union(v.literal("hourly"), v.literal("fixed")),
+    more: v.optional(v.array(v.string())),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx, { more, ...args }) => {
     const provider = await ownProvider(ctx);
     if (!provider.approved) throw new ConvexError("Your application is still being reviewed. Update it from the application form.");
     const fields = validateProfile(args);
     // An unchanged category or suburb stays valid even if it was disabled since; only a change is checked.
-    if (fields.category !== provider.category) await requireActiveCategory(ctx, fields.category);
+    // Categories the provider already has stay valid even if disabled since; only additions are checked.
+    const categorySlugs = await resolveProviderCategories(ctx, fields.category, more ?? provider.categorySlugs, provider);
     if (fields.suburb.toLowerCase() !== provider.suburb.toLowerCase()) await requireSupportedSuburb(ctx, fields.suburb, (s) => `We don't operate in ${s} yet. Pick a suburb from the list.`);
-    await ctx.db.patch(provider._id, fields);
+    await ctx.db.patch(provider._id, { ...fields, categorySlugs });
     if (fields.suburb.toLowerCase() !== provider.suburb.toLowerCase() && (await hasPlaces(ctx))) await linkBase(ctx, provider, fields.suburb);
   },
 });

@@ -1,16 +1,59 @@
 import { ConvexError, v } from "convex/values";
 import { mutation, query } from "./_generated/server";
+import type { Doc, Id } from "./_generated/dataModel";
+import type { QueryCtx } from "./_generated/server";
 import { requireRole } from "./model/auth";
 import { audit } from "./model/audit";
-import { DEFAULT_CATEGORIES, MAX_CATEGORIES, slugify, validateCategoryInput } from "./model/categories";
+import { checkImage } from "./model/photos";
+import { activeRows, DEFAULT_CATEGORIES, depthOf, loadCategoryRows, MAX_CATEGORIES, MAX_DEPTH, slugify, validateCategoryInput } from "./model/categories";
 
-/** Every category in display order, for everyone. Falls back to the built-ins until an admin saves the list. */
+/** Rows in tree order (a parent, then its children), siblings by their order. */
+function inTreeOrder(rows: Doc<"categories">[]): Doc<"categories">[] {
+  const ids = new Set(rows.map((r) => r._id));
+  const kids = new Map<string | undefined, Doc<"categories">[]>();
+  for (const r of rows) {
+    const key = r.parentId && ids.has(r.parentId) ? r.parentId : undefined; // an orphan counts as a main category
+    kids.set(key, [...(kids.get(key) ?? []), r]);
+  }
+  const out: Doc<"categories">[] = [];
+  const walk = (key: string | undefined, hops: number) => {
+    for (const r of (kids.get(key) ?? []).sort((a, b) => a.order - b.order)) { out.push(r); if (hops < MAX_DEPTH) walk(r._id, hops + 1); }
+  };
+  walk(undefined, 0);
+  return out;
+}
+
+async function shape(ctx: QueryCtx, rows: Doc<"categories">[]) {
+  const ordered = inTreeOrder(rows);
+  const active = new Set(activeRows(rows).map((r) => r._id));
+  const slugOf = new Map(rows.map((r) => [r._id, r.slug]));
+  return await Promise.all(ordered.map(async (c) => ({
+    _id: c._id as string | null, slug: c.slug, label: c.label, icon: c.icon, hue: c.hue, order: c.order, enabled: c.enabled, active: active.has(c._id),
+    parentSlug: (c.parentId && slugOf.get(c.parentId)) || null, depth: depthOf(rows, c),
+    featured: c.featured ?? !c.parentId, // saved before featuring existed: main categories were always on the homepage
+    imageUrl: c.imageStorageId ? await ctx.storage.getUrl(c.imageStorageId) : null,
+  })));
+}
+
+const builtIn = () => DEFAULT_CATEGORIES.map((c, i) => ({ _id: null as string | null, ...c, order: i, enabled: true, active: true, parentSlug: null as string | null, depth: 0, featured: true, imageUrl: null as string | null }));
+
+/** Every category in tree order, for everyone. Falls back to the built-ins until an admin saves the list. */
 export const list = query({
   args: {},
   handler: async (ctx) => {
-    const rows = await ctx.db.query("categories").take(MAX_CATEGORIES + 1);
-    if (rows.length === 0) return { saved: false, categories: DEFAULT_CATEGORIES.map((c, i) => ({ _id: null, ...c, order: i, enabled: true })) };
-    return { saved: true, categories: rows.sort((a, b) => a.order - b.order).map((c) => ({ _id: c._id as string | null, slug: c.slug, label: c.label, icon: c.icon, hue: c.hue, order: c.order, enabled: c.enabled })) };
+    const rows = await loadCategoryRows(ctx);
+    if (rows.length === 0) return { saved: false, categories: builtIn() };
+    return { saved: true, categories: await shape(ctx, rows) };
+  },
+});
+
+/** What the homepage shows: featured, usable categories. Reactive, so an admin's change appears without a reload. */
+export const featured = query({
+  args: {},
+  handler: async (ctx) => {
+    const rows = await loadCategoryRows(ctx);
+    const all = rows.length === 0 ? builtIn() : await shape(ctx, rows);
+    return all.filter((c) => c.featured && c.active).sort((a, b) => a.depth - b.depth).map((c) => ({ slug: c.slug, label: c.label, icon: c.icon, hue: c.hue, imageUrl: c.imageUrl }));
   },
 });
 
@@ -20,29 +63,36 @@ export const initDefaults = mutation({
   handler: async (ctx) => {
     const admin = await requireRole(ctx, "admin");
     if ((await ctx.db.query("categories").first()) !== null) return;
-    for (const [order, c] of DEFAULT_CATEGORIES.entries()) await ctx.db.insert("categories", { ...c, order, enabled: true });
+    for (const [order, c] of DEFAULT_CATEGORIES.entries()) await ctx.db.insert("categories", { ...c, order, enabled: true, featured: true });
     await audit(ctx, admin._id, "category.init", "category", "defaults");
   },
 });
 
 async function all(ctx: Parameters<typeof requireRole>[0]) {
-  const rows = await ctx.db.query("categories").take(MAX_CATEGORIES + 1);
+  const rows = await loadCategoryRows(ctx);
   if (rows.length === 0) throw new ConvexError("Save the default categories first");
-  return rows.sort((a, b) => a.order - b.order);
+  return rows;
 }
 
+const siblings = (rows: Doc<"categories">[], parentId: Id<"categories"> | undefined) => rows.filter((r) => r.parentId === parentId).sort((a, b) => a.order - b.order);
+
+/** Creates a main category, or a subcategory/service under `parentId`. A child's key is prefixed with its parent's, so "Cleaning" can exist under Home Services and as a main category. */
 export const create = mutation({
-  args: { label: v.string(), icon: v.string(), hue: v.string() },
+  args: { label: v.string(), icon: v.string(), hue: v.string(), parentId: v.optional(v.id("categories")), featured: v.optional(v.boolean()) },
   handler: async (ctx, a) => {
     const admin = await requireRole(ctx, "admin");
     const rows = await all(ctx);
     if (rows.length >= MAX_CATEGORIES) throw new ConvexError(`You can have up to ${MAX_CATEGORIES} categories`);
     const fields = validateCategoryInput(a);
-    const slug = slugify(fields.label);
+    const parent = a.parentId ? rows.find((r) => r._id === a.parentId) : undefined;
+    if (a.parentId && !parent) throw new ConvexError("Parent category not found");
+    if (parent && depthOf(rows, parent) >= MAX_DEPTH - 1) throw new ConvexError("Categories go three levels deep: category, subcategory, service");
+    const slug = slugify(parent ? `${parent.slug} ${fields.label}` : fields.label);
     if (!slug) throw new ConvexError("Use letters or numbers in the name");
-    if (rows.some((r) => r.slug === slug)) throw new ConvexError("There is already a category with that name");
-    const id = await ctx.db.insert("categories", { slug, ...fields, order: Math.max(...rows.map((r) => r.order)) + 1, enabled: true });
-    await audit(ctx, admin._id, "category.create", "category", id, fields.label);
+    if (rows.some((r) => r.slug === slug)) throw new ConvexError("There is already a category with that name here");
+    const order = Math.max(-1, ...siblings(rows, parent?._id).map((r) => r.order)) + 1;
+    const id = await ctx.db.insert("categories", { slug, ...fields, order, enabled: true, featured: a.featured ?? false, ...(parent ? { parentId: parent._id } : {}) });
+    await audit(ctx, admin._id, "category.create", "category", id, parent ? `${parent.label} > ${fields.label}` : fields.label);
     return id;
   },
 });
@@ -59,7 +109,18 @@ export const update = mutation({
   },
 });
 
-/** Disabled categories leave the browse list and the pickers; existing listings stay visible. */
+export const setFeatured = mutation({
+  args: { id: v.id("categories"), featured: v.boolean() },
+  handler: async (ctx, a) => {
+    const admin = await requireRole(ctx, "admin");
+    const c = await ctx.db.get(a.id);
+    if (!c) throw new ConvexError("Category not found");
+    await ctx.db.patch(c._id, { featured: a.featured });
+    await audit(ctx, admin._id, a.featured ? "category.feature" : "category.unfeature", "category", c._id, c.label);
+  },
+});
+
+/** Disabled categories (and everything under them) leave browsing and the pickers; existing listings stay visible. */
 export const setEnabled = mutation({
   args: { id: v.id("categories"), enabled: v.boolean() },
   handler: async (ctx, a) => {
@@ -67,25 +128,125 @@ export const setEnabled = mutation({
     const rows = await all(ctx);
     const c = rows.find((r) => r._id === a.id);
     if (!c) throw new ConvexError("Category not found");
-    if (!a.enabled && rows.filter((r) => r.enabled && r._id !== c._id).length === 0) throw new ConvexError("At least one category has to stay enabled");
+    const after = rows.map((r) => (r._id === c._id ? { ...r, enabled: a.enabled } : r));
+    if (!a.enabled && activeRows(after).filter((r) => depthOf(after, r) === 0).length === 0) throw new ConvexError("At least one main category has to stay enabled");
     await ctx.db.patch(c._id, { enabled: a.enabled });
     await audit(ctx, admin._id, a.enabled ? "category.enable" : "category.disable", "category", c._id, c.label);
   },
 });
 
-/** Swaps a category with its neighbour in display order. */
+/** Swaps a category with its neighbour among the same parent's children. */
 export const move = mutation({
   args: { id: v.id("categories"), direction: v.union(v.literal("up"), v.literal("down")) },
   handler: async (ctx, a) => {
     const admin = await requireRole(ctx, "admin");
     const rows = await all(ctx);
-    const i = rows.findIndex((r) => r._id === a.id);
-    if (i === -1) throw new ConvexError("Category not found");
+    const me = rows.find((r) => r._id === a.id);
+    if (!me) throw new ConvexError("Category not found");
+    const sibs = siblings(rows, me.parentId);
+    const i = sibs.findIndex((r) => r._id === me._id);
     const j = a.direction === "up" ? i - 1 : i + 1;
-    if (j < 0 || j >= rows.length) return;
+    if (j < 0 || j >= sibs.length) return;
     // Orders are renumbered 0..n so they never collide.
-    const next = rows.slice(); [next[i], next[j]] = [next[j], next[i]];
+    const next = sibs.slice(); [next[i], next[j]] = [next[j], next[i]];
     for (const [order, r] of next.entries()) if (r.order !== order) await ctx.db.patch(r._id, { order });
-    await audit(ctx, admin._id, "category.move", "category", rows[i]._id, `${rows[i].label} ${a.direction}`);
+    await audit(ctx, admin._id, "category.move", "category", me._id, `${me.label} ${a.direction}`);
+  },
+});
+
+/** Deleting is allowed only when nothing depends on it: no children, and no provider lists it. Otherwise disable it. */
+export const remove = mutation({
+  args: { id: v.id("categories") },
+  handler: async (ctx, a) => {
+    const admin = await requireRole(ctx, "admin");
+    const rows = await all(ctx);
+    const c = rows.find((r) => r._id === a.id);
+    if (!c) throw new ConvexError("Category not found");
+    if (rows.some((r) => r.parentId === c._id)) throw new ConvexError("Delete or move what is inside it first");
+    if (!c.parentId && rows.filter((r) => !r.parentId).length <= 1) throw new ConvexError("At least one main category has to stay");
+    const providers = await ctx.db.query("providers").take(5001);
+    if (providers.length > 5000) throw new ConvexError("Too many providers to check safely. Disable it instead.");
+    const using = providers.filter((p) => p.category === c.slug || (p.categorySlugs ?? []).includes(c.slug)).length;
+    if (using > 0) throw new ConvexError(`${using} ${using === 1 ? "provider uses" : "providers use"} it. Disable it instead.`);
+    if (c.imageStorageId) await ctx.storage.delete(c.imageStorageId);
+    await ctx.db.delete(c._id);
+    await audit(ctx, admin._id, "category.delete", "category", c._id, c.label);
+  },
+});
+
+// ---------- images ----------
+
+export const generateUploadUrl = mutation({
+  args: {},
+  handler: async (ctx) => {
+    await requireRole(ctx, "admin");
+    return await ctx.storage.generateUploadUrl();
+  },
+});
+
+export const setImage = mutation({
+  args: { id: v.id("categories"), storageId: v.id("_storage") },
+  handler: async (ctx, a) => {
+    const admin = await requireRole(ctx, "admin");
+    const c = await ctx.db.get(a.id);
+    if (!c) { await ctx.storage.delete(a.storageId); throw new ConvexError("Category not found"); }
+    const checked = await checkImage(ctx, a.storageId);
+    if (!checked.ok) return checked;
+    const old = c.imageStorageId;
+    await ctx.db.patch(c._id, { imageStorageId: a.storageId });
+    if (old && old !== a.storageId) await ctx.storage.delete(old);
+    await audit(ctx, admin._id, "category.image", "category", c._id, c.label);
+    return { ok: true as const };
+  },
+});
+
+export const removeImage = mutation({
+  args: { id: v.id("categories") },
+  handler: async (ctx, a) => {
+    const admin = await requireRole(ctx, "admin");
+    const c = await ctx.db.get(a.id);
+    if (!c?.imageStorageId) return;
+    await ctx.storage.delete(c.imageStorageId);
+    await ctx.db.patch(c._id, { imageStorageId: undefined });
+    await audit(ctx, admin._id, "category.image.remove", "category", c._id, c.label);
+  },
+});
+
+/** Adds a sample hierarchy (beauty, home, family) as ordinary editable data. Skips anything already there, so it is safe to run twice. */
+const EXAMPLES: { label: string; icon: string; children: { label: string; children: string[] }[] }[] = [
+  { label: "Beauty & Wellness", icon: "heart", children: [
+    { label: "Hair", children: ["Women's Haircut", "Men's Haircut", "Hair Colouring"] },
+    { label: "Spa", children: ["Facial", "Massage", "Body Treatment"] },
+  ] },
+  { label: "Home Services", icon: "home", children: ["Electrical", "Plumbing", "Cleaning", "Gardening"].map((label) => ({ label, children: [] })) },
+  { label: "Child & Family", icon: "star", children: ["Babysitting", "Tutoring", "Nanny Services"].map((label) => ({ label, children: [] })) },
+];
+
+export const seedExamples = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const admin = await requireRole(ctx, "admin");
+    const rows = await all(ctx);
+    const taken = new Set(rows.map((r) => r.slug));
+    let added = 0;
+    const add = async (label: string, icon: string, parent: Doc<"categories"> | null, featured: boolean) => {
+      const slug = slugify(parent ? `${parent.slug} ${label}` : label);
+      const existing = rows.find((r) => r.slug === slug);
+      if (existing) return existing;
+      if (rows.length + added >= MAX_CATEGORIES) throw new ConvexError(`You can have up to ${MAX_CATEGORIES} categories`);
+      const order = Math.max(-1, ...(await loadCategoryRows(ctx)).filter((r) => r.parentId === parent?._id).map((r) => r.order)) + 1;
+      const id = await ctx.db.insert("categories", { slug, label, icon, hue: "neutral", order, enabled: true, featured, ...(parent ? { parentId: parent._id } : {}) });
+      added++; taken.add(slug);
+      return (await ctx.db.get(id))!;
+    };
+    for (const main of EXAMPLES) {
+      const m = await add(main.label, main.icon, null, true);
+      for (const sub of main.children) {
+        const s = await add(sub.label, main.icon, m, false);
+        for (const leaf of sub.children) await add(leaf, main.icon, s, false);
+      }
+    }
+    if (added > 0) await audit(ctx, admin._id, "category.examples", "category", "examples", `${added} added`);
+    return added;
   },
 });

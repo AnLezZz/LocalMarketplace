@@ -1,11 +1,12 @@
 import Link from "next/link";
 import Image from "next/image";
-import { fetchQuery } from "convex/nextjs";
+import { fetchQuery, preloadQuery } from "convex/nextjs";
 import { api } from "../lib/convex";
 import { loadCategories, loadLocations, metaIn } from "../lib/categories";
 import { getMe } from "../lib/auth";
 import Icon from "../components/Icon";
 import PlaceInput from "../components/PlaceInput";
+import FeaturedCategories from "../components/FeaturedCategories";
 import ProviderPhoto from "../components/ProviderPhoto";
 import { Rating } from "../components/Pill";
 import { type ProviderSummary } from "../components/ProviderCard";
@@ -29,6 +30,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<Par
   const { category, suburb, q } = await searchParams;
   const cats = await loadCategories();
   const places = await loadLocations();
+  const featuredCats = await preloadQuery(api.categories.featured, {});
   const filtered = !!(category || suburb || q);
   const [list, all, me] = await Promise.all([
     fetchQuery(api.providers.list, { category: category || undefined, suburb: suburb || undefined, q: q || undefined }) as Promise<ProviderSummary[]>,
@@ -69,18 +71,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<Par
         </div>
       </section>
 
-      <nav className="lp-cats" id="services" aria-label="Categories">
-        {cats.enabled.map((cat) => {
-          const c = cat.slug;
-          const m = metaIn(cats.all, c);
-          return (
-            <Link key={c} href={`/search?category=${encodeURIComponent(c)}`} className="lp-cat" aria-current={category === c ? "page" : undefined}>
-              <span className="lp-cat__icon"><Icon name={m.icon} size={26} /></span>
-              {m.label}
-            </Link>
-          );
-        })}
-      </nav>
+      <FeaturedCategories preloaded={featuredCats} />
 
       <section className="lp-section" id="pros" aria-labelledby="pros-h">
         <div className="lp-section__head">

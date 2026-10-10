@@ -1,0 +1,22 @@
+.cats__crumbs { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 var(--s-3); padding: 0; list-style: none; font-size: 14px; color: var(--ink-3); }
+.cats__crumbs li + li::before { content: "›"; margin-right: 6px; }
+.cats__crumbs a { color: var(--forest); text-decoration: none; }
+.cats__crumbs a:hover { text-decoration: underline; }
+.cats__title { font-family: var(--serif); font-weight: 400; font-size: clamp(32px, 6vw, 44px); margin: 0 0 var(--s-2); }
+.cats__sub { margin: 0 0 var(--s-5); color: var(--ink-3); }
+.cats__grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: var(--s-3); margin: 0 0 var(--s-6); padding: 0; list-style: none; }
+.cats__card { display: grid; justify-items: start; gap: var(--s-2); min-height: 96px; padding: var(--s-3); border: 1px solid #E6E1D6; border-radius: 14px; background: #fff; color: var(--ink); text-decoration: none; }
+.cats__card:hover, .cats__card:focus-visible { border-color: var(--forest); }
+.cats__thumb { display: grid; place-items: center; width: 44px; height: 44px; border-radius: 50%; overflow: hidden; background: #EFEDE7; color: var(--charcoal); }
+.cats__thumb img { width: 100%; height: 100%; object-fit: cover; }
+.cats__name { font-weight: 600; }
+.cats__hint { font-size: 13px; color: var(--ink-3); }
+.cats__group { margin: 0 0 var(--s-6); }
+.cats__group h2 { margin: 0 0 var(--s-3); font-size: 20px; }
+.cats__kids { display: flex; flex-wrap: wrap; gap: 8px; margin: var(--s-2) 0 0; padding: 0; list-style: none; }
+.cats__kids a { display: inline-flex; align-items: center; min-height: 36px; padding: 0 12px; border-radius: 999px; background: #F2EFE7; color: var(--ink); font-size: 14px; text-decoration: none; }
+.cats__kids a:hover { background: #E6E1D6; }
+.catpick { margin: 0; padding: 0; border: 0; min-width: 0; }
+.catpick__list { display: grid; gap: 2px; max-height: 280px; overflow-y: auto; padding: 8px; border: 1px solid #E6E1D6; border-radius: 12px; background: #fff; }
+.catpick__item { display: flex; align-items: center; gap: 10px; min-height: 40px; }
+.catpick__item input { width: 20px; height: 20px; flex: none; }

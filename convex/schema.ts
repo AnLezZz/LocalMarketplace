@@ -32,6 +32,8 @@ export default defineSchema({
     name: v.string(),
     bio: v.string(),
     category: v.string(),
+    // Every category, subcategory or service the provider offers (the primary one included). Missing = just `category`.
+    categorySlugs: v.optional(v.array(v.string())),
     suburb: v.string(),
     rateCents: v.number(),
     rateBasis: v.union(v.literal("hourly"), v.literal("fixed")),
@@ -188,9 +190,13 @@ export default defineSchema({
     label: v.string(),
     icon: v.string(),
     hue: v.string(),
-    order: v.number(),
+    order: v.number(), // position among its siblings
     enabled: v.boolean(),
-  }).index("by_slug", ["slug"]),
+    // Hierarchy: main category (no parent) > subcategory > individual service. All optional, so rows saved before this still work.
+    parentId: v.optional(v.id("categories")),
+    featured: v.optional(v.boolean()), // shown on the homepage. Missing = true for a main category (it was always shown before)
+    imageStorageId: v.optional(v.id("_storage")),
+  }).index("by_slug", ["slug"]).index("by_parent", ["parentId"]),
 
   // Where the marketplace operates. No rows means "no restriction".
   suburbs: defineTable({

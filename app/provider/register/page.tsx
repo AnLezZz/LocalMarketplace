@@ -6,6 +6,8 @@ import SuburbOptions from "../../../components/SuburbOptions";
 import { authOpts } from "../../../lib/auth";
 import { attempt } from "../../../lib/actions";
 import Banner from "../../../components/Banner";
+import CategoryPicker from "../../../components/CategoryPicker";
+import "../../categories/categories.css";
 
 export const dynamic = "force-dynamic";
 
@@ -24,6 +26,7 @@ export default async function Register({ searchParams }: { searchParams: Promise
         name: String(fd.get("name") ?? ""),
         bio: String(fd.get("bio") ?? ""),
         category: String(fd.get("category") ?? ""),
+        more: fd.getAll("more").map(String),
         suburb: String(fd.get("suburb") ?? ""),
         rateCents: Math.round(dollars * 100),
         rateBasis: fd.get("basis") === "fixed" ? "fixed" : "hourly",
@@ -42,14 +45,8 @@ export default async function Register({ searchParams }: { searchParams: Promise
           <label htmlFor="name" className="field__label">Business or trading name</label>
           <input id="name" name="name" defaultValue={profile?.name} required maxLength={80} autoComplete="organization" />
         </div>
+        <CategoryPicker rows={cats.all} primary={profile?.category} more={profile?.categorySlugs} />
         <div className="form__row">
-          <div className="field field--grow">
-            <label htmlFor="category" className="field__label">Category</label>
-            <select id="category" name="category" defaultValue={profile?.category ?? ""} required>
-              <option value="" disabled>Choose a category</option>
-              {cats.all.filter((c) => c.enabled || c.slug === profile?.category).map((c) => <option key={c.slug} value={c.slug}>{c.label}</option>)}
-            </select>
-          </div>
           <div className="field field--grow">
             <label htmlFor="suburb" className="field__label">Suburb</label>
             <input id="suburb" name="suburb" defaultValue={profile?.suburb} required maxLength={60} list="suburb-options" autoComplete="address-level2" />

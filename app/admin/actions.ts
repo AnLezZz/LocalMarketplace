@@ -28,7 +28,11 @@ export const resolveDispute = async (fd: FormData) => run(fd, (o) => fetchMutati
 
 // ---------- categories and locations ----------
 export const initCategories = async (fd: FormData) => run(fd, (o) => fetchMutation(api.categories.initDefaults, {}, o), "Categories saved. You can edit them now.");
-export const createCategory = async (fd: FormData) => run(fd, (o) => fetchMutation(api.categories.create, { label: s(fd, "label"), icon: s(fd, "icon"), hue: s(fd, "hue") }, o), "Category added.");
+export const createCategory = async (fd: FormData) => run(fd, (o) => fetchMutation(api.categories.create, { label: s(fd, "label"), icon: s(fd, "icon"), hue: s(fd, "hue"), parentId: s(fd, "parentId") || undefined, featured: fd.get("featured") === "on" }, o), "Category added.");
+export const setCategoryFeatured = async (id: string, featured: boolean, fd: FormData) => run(fd, (o) => fetchMutation(api.categories.setFeatured, { id, featured }, o), featured ? "Shown on the homepage." : "Removed from the homepage.");
+export const deleteCategory = async (id: string, fd: FormData) => run(fd, (o) => fetchMutation(api.categories.remove, { id }, o), "Category deleted.");
+export const removeCategoryImage = async (id: string, fd: FormData) => run(fd, (o) => fetchMutation(api.categories.removeImage, { id }, o), "Image removed.");
+export const addCategoryExamples = async (fd: FormData) => run(fd, (o) => fetchMutation(api.categories.seedExamples, {}, o), "Example categories added.");
 export const updateCategory = async (fd: FormData) => run(fd, (o) => fetchMutation(api.categories.update, { id: s(fd, "id"), label: s(fd, "label"), icon: s(fd, "icon"), hue: s(fd, "hue") }, o), "Category updated.");
 export const setCategoryEnabled = async (id: string, enabled: boolean, fd: FormData) => run(fd, (o) => fetchMutation(api.categories.setEnabled, { id, enabled }, o), enabled ? "Category enabled." : "Category disabled.");
 export const moveCategory = async (id: string, direction: "up" | "down", fd: FormData) => run(fd, (o) => fetchMutation(api.categories.move, { id, direction }, o), "Order updated.");

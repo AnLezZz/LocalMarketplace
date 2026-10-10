@@ -11,6 +11,8 @@ import DashboardSidebar from "../../../components/dashboard/DashboardSidebar";
 import Banner from "../../../components/Banner";
 import ProviderPhoto from "../../../components/ProviderPhoto";
 import PhotoUpload from "../../../components/PhotoUpload";
+import CategoryPicker from "../../../components/CategoryPicker";
+import "../../categories/categories.css";
 import { removeGalleryPhoto, removeProfilePhoto, saveProfile } from "./actions";
 import "../../providers/[id]/booking.css";
 
@@ -68,9 +70,8 @@ export default async function ProfilePage({ searchParams }: { searchParams: Prom
                 <input id="name" name="name" defaultValue={profile.name} required maxLength={80} /></div>
               <div className="field"><label htmlFor="bio" className="field__label">About you</label>
                 <textarea id="bio" name="bio" rows={5} defaultValue={profile.bio} required maxLength={1000} /></div>
+              <CategoryPicker rows={cats.all} primary={profile.category} more={profile.categorySlugs ?? [profile.category]} />
               <div className="form__row">
-                <div className="field field--grow"><label htmlFor="category" className="field__label">Main category</label>
-                  <select id="category" name="category" defaultValue={profile.category}>{cats.all.filter((c) => c.enabled || c.slug === profile.category).map((c) => <option key={c.slug} value={c.slug}>{c.label}</option>)}</select></div>
                 <div className="field field--grow"><label htmlFor="suburb" className="field__label">Your suburb</label>
                   <input id="suburb" name="suburb" defaultValue={profile.suburb} required maxLength={60} list="suburb-options" /><SuburbOptions suburbs={places.suburbs} /></div>
               </div>

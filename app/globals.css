@@ -1414,3 +1414,4 @@ body:has(.d-layout) { background: var(--ivory, #FAF9F6); }
 .area-add .placein > input { min-height: 48px; padding: 0 12px; border: 1px solid #E6E1D6; border-radius: 12px; font-size: 16px; background: #fff; }
 .area-add .btn { min-height: 48px; }
 .area-add .placein__list { left: 0; right: auto; min-width: min(360px, 100%); }
+.adm-check { display: inline-flex; align-items: center; gap: 8px; min-height: 40px; font-size: 14px; }

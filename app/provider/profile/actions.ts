@@ -15,7 +15,7 @@ function done(r: { ok: boolean; message?: string }, ok: string) {
 export async function saveProfile(fd: FormData) {
   const dollars = Number(fd.get("rate"));
   done(await attempt(async () => fetchMutation(api.providers.updateProfile, {
-    name: String(fd.get("name") ?? ""), bio: String(fd.get("bio") ?? ""), category: String(fd.get("category") ?? ""), suburb: String(fd.get("suburb") ?? ""),
+    name: String(fd.get("name") ?? ""), bio: String(fd.get("bio") ?? ""), category: String(fd.get("category") ?? ""), more: fd.getAll("more").map(String), suburb: String(fd.get("suburb") ?? ""),
     rateCents: Math.round(dollars * 100), rateBasis: fd.get("basis") === "fixed" ? "fixed" : "hourly",
   }, await authOpts())), "saved");
 }
