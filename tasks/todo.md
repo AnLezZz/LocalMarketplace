@@ -98,3 +98,17 @@ Notes: provider rating is updated incrementally so the seeded placeholder rating
 Done: `notifications` table; `notify()` helper called inside the booking/review mutations (request -> provider; accept/decline/complete/provider-cancel -> customer; customer-cancel -> provider; review -> provider); `notifications.{mine,unreadCount,markRead,markAllRead}`; header bell with live unread badge (desktop + mobile), `/notifications` live list with skeleton/empty states, click-through marks read; middleware guard.
 Verified: 71 convex tests (each trigger, refused transitions send nothing, owner-only read/mark, orphan seeded providers); browser run with two sessions: provider page updated live (badge none -> 1, new item) when a customer booked, click opened the booking and cleared the badge, customer notified on accept, provider notified on cancel, signed-out redirected.
 Not done: email notifications, reschedule-request notice (feature not built), notification preferences, pruning old rows.
+
+---
+
+# Before deploying (checklist)
+
+The repo is public and the demo data is dev-only. Do these before pointing anything at a production Convex deployment:
+
+- [ ] Delete `TEST_ACCOUNTS.md` (it lists demo and E2E account passwords). They stay in git history, so never create these accounts, or reuse those passwords, on prod.
+- [ ] Remove the demo/E2E data from any shared deployment: users `*@localhub.nz` and `e2e-*@example.nz`, provider "E2E Test Provider (delete me)", and the demo bookings, services and reviews created while testing.
+- [ ] Don't run `seed:run`, `seed:setupDemoAccounts` or `seed:setDemoPhotos` on prod (demo providers, placeholder 4.8/12 ratings, stock portraits).
+- [ ] Replace the placeholder ratings on seeded providers, or remove those providers.
+- [ ] Grant the first admin with `npx convex run users:grantAdmin` on prod (CLI-only by design).
+- [ ] Set the production auth env vars and site URL for Convex Auth; confirm `NEXT_PUBLIC_CONVEX_URL` points at prod.
+- [ ] Known gaps: no email notifications or verification, no rate limiting, public provider queries expose `userId` (see Phase 0 deferred list).
