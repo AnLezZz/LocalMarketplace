@@ -2,7 +2,7 @@
 import Link from "next/link";
 import { usePreloadedQuery, type Preloaded } from "convex/react";
 import Icon, { type IconName } from "./Icon";
-import type { api } from "../convex/_generated/api";
+import type { api } from "../lib/convex";
 
 type Featured = { slug: string; label: string; icon: string; hue: string; imageUrl: string | null };
 
