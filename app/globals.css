@@ -1434,6 +1434,9 @@ body:has(.d-layout) { background: var(--ivory, #FAF9F6); }
 
 /* Dashboard tab strip on phones: items keep their width and scroll sideways instead of shrinking into each other */
 @media (max-width: 1023px) {
+  .d-grid > * { min-width: 0; } /* a wide table scrolls inside its card instead of stretching the page */
+  .d-grid { grid-template-columns: minmax(0, 1fr); }
+  .d-layout > *, .d-sidebar, .d-sidebar__nav { min-width: 0; } /* let the strip scroll inside its card instead of widening the page */
   .d-sidebar__item { flex: none; min-width: auto; }
   .d-sidebar__list { scroll-snap-type: x proximity; scrollbar-width: none; margin-inline: -4px; padding-inline: 4px; }
   .d-sidebar__list::-webkit-scrollbar { display: none; }
