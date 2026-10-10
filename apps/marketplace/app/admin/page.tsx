@@ -33,9 +33,9 @@ export default async function Admin({
     fetchQuery(api.admin.listRecentBookings, {}, opts),
   ]);
 
-  async function decide(fd: FormData) {
+  // The decision is bound per button (button name/value is not delivered to server actions here).
+  async function decide(decision: "approve" | "reject", fd: FormData) {
     "use server";
-    const decision = fd.get("decision") === "approve" ? "approve" : "reject";
     const r = await attempt(async () =>
       fetchMutation(
         api.admin.review,
@@ -62,11 +62,6 @@ export default async function Admin({
       badge: pending.length > 0 ? pending.length : undefined,
     },
     { id: "bookings", label: "Bookings", icon: "calendar" as const, href: "/admin#bookings" },
-    { id: "customers", label: "Customers", icon: "user" as const, href: "/admin#customers" },
-    { id: "reviews", label: "Reviews", icon: "star" as const, href: "/admin#reviews" },
-    { id: "categories", label: "Categories", icon: "tag" as const, href: "/admin#categories" },
-    { id: "reports", label: "Reports", icon: "chart" as const, href: "/admin#reports" },
-    { id: "settings", label: "Settings", icon: "settings" as const, href: "/admin#settings" },
   ];
 
   return (
@@ -90,12 +85,6 @@ export default async function Admin({
             <h1 className="d-header__title">Platform Overview</h1>
             <p className="d-header__sub">Key metrics and activity across your marketplace.</p>
           </div>
-          <div className="d-header__actions">
-            <div className="d-filter-badge">
-              <Icon name="calendar" size={15} />
-              <span>Last 30 days</span>
-            </div>
-          </div>
         </header>
 
         {err && <Banner tone="error">{err}</Banner>}
@@ -107,21 +96,18 @@ export default async function Admin({
             value={stats.totalProviders}
             icon="users"
             color="green"
-            trend={{ text: "↑ 12%", positive: true }}
           />
           <StatCard
             label="Total Bookings"
             value={stats.totalBookings}
             icon="calendar"
             color="blue"
-            trend={{ text: "↑ 26%", positive: true }}
           />
           <StatCard
             label="Average Rating"
-            value={stats.averageRating > 0 ? stats.averageRating.toFixed(1) : "4.8"}
+            value={stats.averageRating > 0 ? stats.averageRating.toFixed(1) : "–"}
             icon="star"
             color="purple"
-            trend={{ text: "↑ 0.2", positive: true }}
           />
           <StatCard
             label="Pending Approvals"
@@ -242,7 +228,7 @@ export default async function Admin({
 
                       <p className="d-app-item__bio">{p.bio}</p>
 
-                      <form action={decide} className="d-app-item__form">
+                      <form className="d-app-item__form">
                         <input type="hidden" name="id" value={p._id} />
                         <input type="hidden" name="submittedAt" value={p.submittedAt} />
 
@@ -261,16 +247,14 @@ export default async function Admin({
                         <div className="d-app-item__actions">
                           <button
                             type="submit"
-                            name="decision"
-                            value="approve"
+                            formAction={decide.bind(null, "approve")}
                             className="btn btn--primary btn--sm"
                           >
                             Accept
                           </button>
                           <button
                             type="submit"
-                            name="decision"
-                            value="reject"
+                            formAction={decide.bind(null, "reject")}
                             className="btn btn--danger btn--sm"
                           >
                             Decline

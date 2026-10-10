@@ -1,6 +1,7 @@
 import "@localhub/design-tokens/tokens.css";
 import "./globals.css";
-import { Inter } from "next/font/google";
+import "./landing.css";
+import { Inter, Instrument_Serif } from "next/font/google";
 import { ConvexAuthNextjsServerProvider } from "@convex-dev/auth/nextjs/server";
 import ConvexClientProvider from "./ConvexClientProvider";
 import { getMe } from "../lib/auth";
@@ -8,8 +9,9 @@ import Logo from "../components/Logo";
 import { HeaderNav, TabBar, type NavLink } from "../components/Nav";
 
 const inter = Inter({ subsets: ["latin"], weight: ["400", "500", "600", "700"], variable: "--font-inter", display: "swap" });
+const serif = Instrument_Serif({ subsets: ["latin"], weight: "400", variable: "--font-serif", display: "swap" });
 
-export const metadata = { title: "LocalHub", description: "Find trusted local help in Auckland" };
+export const metadata = { title: "Localo", description: "Find trusted local help in Auckland" };
 export const viewport = { width: "device-width", initialScale: 1, viewportFit: "cover", themeColor: "#F0F5F9" };
 
 const SIGN_IN: NavLink = { href: "/signin", label: "Sign in", short: "Sign in", icon: "signIn" };
@@ -32,18 +34,18 @@ export default async function Root({ children }: { children: React.ReactNode }) 
 
   return (
     <ConvexAuthNextjsServerProvider>
-      <html lang="en-NZ" className={inter.variable}>
+      <html lang="en-NZ" className={`${inter.variable} ${serif.variable}`}>
         <body>
           <ConvexClientProvider>
             <header className="topbar">
               <div className="topbar__inner">
                 <Logo />
-                <HeaderNav links={header} signedIn={!!me} />
+                <HeaderNav signedIn={!!me} userRole={me?.role} />
               </div>
             </header>
             <main>{children}</main>
-            <footer className="footer">LocalHub does not collect, hold or guarantee payment. Pay your provider directly.</footer>
-            <TabBar links={tabs} signedIn={!!me} />
+            <footer className="footer">Localo does not collect, hold or guarantee payment. Pay your provider directly.</footer>
+            <TabBar signedIn={!!me} userRole={me?.role} />
           </ConvexClientProvider>
         </body>
       </html>

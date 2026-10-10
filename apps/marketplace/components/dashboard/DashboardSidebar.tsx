@@ -35,19 +35,7 @@ export default function DashboardSidebar({
       {/* Brand header */}
       <div className="d-sidebar__brand">
         <Link href="/" className="d-sidebar__logo">
-          <span className="d-sidebar__logo-mark">
-            <svg width="24" height="24" viewBox="0 0 28 28" fill="none">
-              <rect width="28" height="28" rx="8" fill={isBusiness ? "#16A34A" : "#2563EB"} />
-              <path
-                d="M7 14.5L12 19.5L21 8.5"
-                stroke="#FFFFFF"
-                strokeWidth="2.75"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
-          </span>
-          <span className="d-sidebar__logo-text">LocalHub</span>
+          <span className="d-sidebar__logo-text">Localo</span>
         </Link>
         <span
           className={`d-sidebar__badge ${

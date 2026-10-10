@@ -23,13 +23,13 @@ export function initials(name: string): string {
   return (first + last).toUpperCase();
 }
 
-export default function Avatar({ name, size = 44 }: { name: string; size?: number }) {
+export default function Avatar({ name, size = 44, square = false }: { name: string; size?: number; square?: boolean }) {
   const [bg, fg] = PAIRS[hash(name) % PAIRS.length];
   return (
     <span
       className="avatar"
       aria-hidden="true"
-      style={{ width: size, height: size, background: bg, color: fg, fontSize: Math.round(size * 0.36) }}
+      style={{ width: size, height: size, ...(square ? { borderRadius: 14 } : {}), background: bg, color: fg, fontSize: Math.round(size * 0.36) }}
     >
       {initials(name)}
     </span>

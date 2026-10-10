@@ -10,12 +10,28 @@ import Avatar from "../../components/Avatar";
 import Banner from "../../components/Banner";
 import { StatusPill } from "../../components/Pill";
 import { bookingWindow } from "../../components/format";
+import "./bookings.css";
+
+const TABS = [["upcoming", "Upcoming"], ["past", "Past"], ["cancelled", "Cancelled"]] as const;
+type Tab = (typeof TABS)[number][0];
+
+/** Where a booking belongs: declined/cancelled, still ahead, or already over. */
+function tabOf(b: { status: string; endsAt: number }, now: number): Tab {
+  if (b.status === "cancelled" || b.status === "declined") return "cancelled";
+  if (b.status === "completed" || b.endsAt < now) return "past";
+  return "upcoming";
+}
 
 export const dynamic = "force-dynamic";
 
-export default async function MyBookings({ searchParams }: { searchParams: Promise<{ err?: string }> }) {
-  const { err } = await searchParams;
-  const rows = await fetchQuery(api.bookings.listMine, {}, await authOpts());
+export default async function MyBookings({ searchParams }: { searchParams: Promise<{ err?: string; tab?: string }> }) {
+  const { err, tab: t } = await searchParams;
+  const tab: Tab = TABS.some(([k]) => k === t) ? (t as Tab) : "upcoming";
+  const all = await fetchQuery(api.bookings.listMine, {}, await authOpts());
+  const now = Date.now();
+  const counts = { upcoming: 0, past: 0, cancelled: 0 };
+  for (const b of all) counts[tabOf(b, now)]++;
+  const rows = all.filter((b: any) => tabOf(b, now) === tab);
 
   async function cancel(fd: FormData) {
     "use server";
@@ -29,13 +45,20 @@ export default async function MyBookings({ searchParams }: { searchParams: Promi
   return (
     <div className="page page--narrow">
       <h1 className="page__title">My bookings</h1>
+      <nav className="btabs" aria-label="Booking status">
+        {TABS.map(([k, label]) => (
+          <Link key={k} href={k === "upcoming" ? "/bookings" : `/bookings?tab=${k}`} className="btabs__tab" aria-current={tab === k ? "page" : undefined}>
+            {label}<span className="num">{counts[k]}</span>
+          </Link>
+        ))}
+      </nav>
       {err && <Banner tone="error">{err}</Banner>}
       {rows.length === 0 && (
         <div className="empty card">
           <span className="empty__icon"><Icon name="calendar" size={26} /></span>
-          <h2 className="empty__title">No bookings yet</h2>
-          <p className="empty__text">You have not requested anything yet.</p>
-          <Link href="/" className="btn btn--primary">Find a pro</Link>
+          <h2 className="empty__title">{all.length === 0 ? "No bookings yet" : `No ${tab} bookings`}</h2>
+          <p className="empty__text">{all.length === 0 ? "You have not requested anything yet." : "Nothing here right now."}</p>
+          <Link href="/search" className="btn btn--forest">Find a pro</Link>
         </div>
       )}
       <ul className="list">
@@ -46,7 +69,8 @@ export default async function MyBookings({ searchParams }: { searchParams: Promi
               <div className="booking__head">
                 <Avatar name={b.providerName} />
                 <div className="booking__who">
-                  <h2 className="booking__name">{b.providerName}</h2>
+                  <h2 className="booking__name">{b.serviceName ?? b.providerName}</h2>
+                  {b.serviceName && <span className="booking__sub">{b.providerName}</span>}
                   <StatusPill status={b.status} />
                 </div>
               </div>
@@ -55,12 +79,15 @@ export default async function MyBookings({ searchParams }: { searchParams: Promi
                 <div><dt className="sr-only">Time</dt><dd className="num"><Icon name="clock" size={18} />{w.time}</dd></div>
               </dl>
               <p className="booking__desc">{b.description}</p>
-              {(b.status === "requested" || b.status === "accepted") && (
-                <form action={cancel} className="booking__actions">
-                  <input type="hidden" name="id" value={b._id} />
-                  <button className="btn btn--danger">Cancel</button>
-                </form>
-              )}
+              <div className="booking__actions">
+                <Link href={`/providers/${b.providerId}`} className="btn btn--secondary">View provider</Link>
+                {(b.status === "requested" || b.status === "accepted") && (
+                  <form action={cancel}>
+                    <input type="hidden" name="id" value={b._id} />
+                    <button className="btn btn--danger">Cancel</button>
+                  </form>
+                )}
+              </div>
             </li>
           );
         })}

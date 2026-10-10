@@ -1,4 +1,7 @@
 import Link from "next/link";
+import { providerSidebarItems } from "../../lib/providerNav";
+import { transitionBooking } from "./actions";
+import "../bookings/bookings.css";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { fetchQuery, fetchMutation } from "convex/nextjs";
@@ -19,9 +22,9 @@ export const dynamic = "force-dynamic";
 export default async function ProviderHome({
   searchParams,
 }: {
-  searchParams: Promise<{ err?: string }>;
+  searchParams: Promise<{ err?: string; tab?: string }>;
 }) {
-  const { err } = await searchParams;
+  const { err, tab: t } = await searchParams;
   const opts = await authOpts();
   const profile = await fetchQuery(api.providers.mine, {}, opts);
   if (!profile) redirect("/provider/register");
@@ -33,43 +36,22 @@ export default async function ProviderHome({
   const upcomingBookings = rows.filter(
     (b: any) => b.status === "accepted" && b.endsAt > Date.now()
   ).length;
+  const now = Date.now();
+  const TABS = [["pending", "Pending"], ["upcoming", "Upcoming"], ["history", "History"], ["all", "All"]] as const;
+  const inTab = (b: any, k: string) =>
+    k === "all" ? true
+    : k === "pending" ? b.status === "requested"
+    : k === "upcoming" ? b.status === "accepted" && b.endsAt >= now
+    : !(b.status === "requested" || (b.status === "accepted" && b.endsAt >= now));
+  const tab = TABS.some(([k]) => k === t) ? (t as string) : pendingRequests > 0 ? "pending" : "upcoming";
+  const shown = rows.filter((b: any) => inTab(b, tab));
   const completedJobs = rows.filter((b: any) => b.status === "completed").length;
   const ratingAvg =
     profile.ratingAvg && profile.ratingAvg > 0
       ? profile.ratingAvg.toFixed(1)
-      : profile.status === "approved"
-      ? "4.9"
-      : "5.0";
+      : "–";
 
-  async function act(fd: FormData) {
-    "use server";
-    const r = await attempt(async () =>
-      fetchMutation(
-        api.bookings.transition,
-        { bookingId: String(fd.get("id")), to: String(fd.get("to")) },
-        await authOpts()
-      )
-    );
-    revalidatePath("/provider");
-    const reason = !r.ok ? r.message : r.value.ok ? "" : r.value.reason;
-    redirect(reason ? `/provider?err=${encodeURIComponent(reason)}` : "/provider");
-  }
-
-  const sidebarItems = [
-    { id: "overview", label: "Overview", icon: "grid" as const, href: "/provider" },
-    {
-      id: "bookings",
-      label: "Bookings",
-      icon: "inbox" as const,
-      href: "/provider#bookings",
-      badge: pendingRequests > 0 ? pendingRequests : undefined,
-    },
-    { id: "calendar", label: "Calendar", icon: "calendar" as const, href: "/provider#calendar" },
-    { id: "services", label: "Services", icon: "briefcase" as const, href: "/provider#services" },
-    { id: "reviews", label: "Reviews", icon: "star" as const, href: "/provider#reviews" },
-    { id: "profile", label: "Profile", icon: "user" as const, href: "/provider/register" },
-    { id: "settings", label: "Settings", icon: "settings" as const, href: "/provider#settings" },
-  ];
+  const sidebarItems = providerSidebarItems(pendingRequests);
 
   return (
     <div className="d-layout">
@@ -94,7 +76,7 @@ export default async function ProviderHome({
             <p className="d-header__sub">Here&apos;s what&apos;s happening with your business.</p>
           </div>
           <div className="d-header__actions">
-            <Link href="/provider/register" className="btn btn--primary d-header__btn">
+            <Link href="/provider/services#form" className="btn btn--primary d-header__btn">
               <Icon name="plus" size={16} />
               <span>Add new service</span>
             </Link>
@@ -112,7 +94,7 @@ export default async function ProviderHome({
             <div className="d-banner__content">
               <h2 className="d-banner__title">Application under review</h2>
               <p className="d-banner__text">
-                Your profile is being reviewed by the LocalHub admin team. Once approved, you
+                Your profile is being reviewed by the Localo admin team. Once approved, you
                 will appear in local search results and receive new customer bookings.
               </p>
             </div>
@@ -153,21 +135,19 @@ export default async function ProviderHome({
             value={upcomingBookings}
             icon="calendar"
             color="blue"
-            trend={{ text: "Active", positive: true }}
           />
           <StatCard
             label="Completed jobs"
             value={completedJobs}
             icon="check"
             color="green"
-            trend={{ text: "On track", positive: true }}
           />
           <StatCard
             label="Average rating"
             value={ratingAvg}
             icon="star"
             color="purple"
-            trend={{ text: `${profile.reviewCount ?? 12} reviews`, neutral: true }}
+            trend={{ text: `${profile.reviewCount ?? 0} reviews`, neutral: true }}
           />
         </section>
 
@@ -177,22 +157,26 @@ export default async function ProviderHome({
           <section className="card d-card" aria-labelledby="upcoming-heading">
             <div className="d-card__head">
               <div>
-                <h2 id="upcoming-heading" className="d-card__title">Upcoming bookings</h2>
+                <h2 id="upcoming-heading" className="d-card__title">Bookings</h2>
                 <span className="d-card__sub num">{rows.length} total bookings</span>
               </div>
-              <Link href="#bookings" className="d-card__link">
-                View all
-              </Link>
             </div>
+            <nav className="btabs" aria-label="Booking filter">
+              {TABS.map(([k, label]) => (
+                <Link key={k} href={`/provider?tab=${k}#bookings`} className="btabs__tab" aria-current={tab === k ? "page" : undefined}>
+                  {label}<span className="num">{rows.filter((b: any) => inTab(b, k)).length}</span>
+                </Link>
+              ))}
+            </nav>
 
-            {rows.length === 0 ? (
+            {shown.length === 0 ? (
               <div className="empty">
                 <span className="empty__icon">
                   <Icon name="inbox" size={26} />
                 </span>
-                <h3 className="empty__title">No requests yet</h3>
+                <h3 className="empty__title">{rows.length === 0 ? "No requests yet" : "Nothing here"}</h3>
                 <p className="empty__text">
-                  New booking requests from customers in your area will appear here.
+                  {rows.length === 0 ? "New booking requests from customers in your area will appear here." : "No bookings match this filter."}
                 </p>
               </div>
             ) : (
@@ -207,7 +191,7 @@ export default async function ProviderHome({
                     </tr>
                   </thead>
                   <tbody>
-                    {rows.slice(0, 10).map((b: any) => {
+                    {shown.slice(0, 50).map((b: any) => {
                       const w = bookingWindow(b.startsAt, b.endsAt);
                       return (
                         <tr key={b._id}>
@@ -218,7 +202,7 @@ export default async function ProviderHome({
                             </div>
                           </td>
                           <td>
-                            <span className="d-table__service">{b.description}</span>
+                            <Link href={`/provider/bookings/${b._id}`} className="d-table__service">{b.serviceName ?? b.description}</Link>
                           </td>
                           <td>
                             <div className="d-table__customer">
@@ -228,33 +212,36 @@ export default async function ProviderHome({
                           </td>
                           <td className="d-table__td-right">
                             {b.status === "requested" ? (
-                              <form action={act} className="d-table__actions">
+                              <form className="d-table__actions">
                                 <input type="hidden" name="id" value={b._id} />
                                 <button
                                   className="btn btn--primary btn--sm"
-                                  name="to"
-                                  value="accepted"
+                                  formAction={transitionBooking.bind(null, "accepted", `/provider?tab=${tab}`)}
                                 >
                                   Accept
                                 </button>
                                 <button
                                   className="btn btn--danger btn--sm"
-                                  name="to"
-                                  value="declined"
+                                  formAction={transitionBooking.bind(null, "declined", `/provider?tab=${tab}`)}
                                 >
                                   Decline
                                 </button>
                               </form>
                             ) : b.status === "accepted" ? (
-                              <form action={act} className="d-table__actions">
+                              <form className="d-table__actions">
                                 <input type="hidden" name="id" value={b._id} />
                                 <StatusPill status={b.status} />
                                 <button
                                   className="btn btn--secondary btn--sm"
-                                  name="to"
-                                  value="completed"
+                                  formAction={transitionBooking.bind(null, "completed", `/provider?tab=${tab}`)}
                                 >
                                   Complete
+                                </button>
+                                <button
+                                  className="btn btn--danger btn--sm"
+                                  formAction={transitionBooking.bind(null, "cancelled", `/provider?tab=${tab}`)}
+                                >
+                                  Cancel
                                 </button>
                               </form>
                             ) : (

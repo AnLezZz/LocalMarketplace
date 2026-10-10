@@ -27,3 +27,13 @@ export function partOfDay(now = new Date()): "morning" | "afternoon" | "evening"
   if (h >= 12 && h < 17) return "afternoon";
   return "evening";
 }
+
+/** "Quote on request", "$50/hr" or "$90 fixed". */
+export function priceLabel(s: { priceType: string; priceCents?: number }): string {
+  return s.priceType === "quote" ? "Quote on request" : `${dollars(s.priceCents ?? 0)}${s.priceType === "hourly" ? "/hr" : " fixed"}`;
+}
+
+/** "45 min", "2 hr" or "1 hr 30 min". */
+export function durationLabel(min: number): string {
+  return min % 60 === 0 ? `${min / 60} hr` : min < 60 ? `${min} min` : `${Math.floor(min / 60)} hr ${min % 60} min`;
+}

@@ -1,4 +1,4 @@
-/* LocalHub app styles. Tokens live in @localhub/design-tokens/tokens.css. Mobile first; 720px is the phone/desktop break. */
+/* Localo app styles. Tokens live in @localhub/design-tokens/tokens.css. Mobile first; 720px is the phone/desktop break. */
 
 /* ---------- Base and browser surfaces ---------- */
 *, *::before, *::after { box-sizing: border-box; }
@@ -461,7 +461,7 @@ input[type="number"] { font-variant-numeric: tabular-nums; }
 }
 
 /* ==========================================================================
-   Dashboard Design System (Provider "LocalHub Business" & "LocalHub Admin")
+   Dashboard Design System (Provider "Localo Business" & "Localo Admin")
    ========================================================================== */
 
 .d-layout {
@@ -1300,3 +1300,34 @@ input[type="number"] { font-variant-numeric: tabular-nums; }
   justify-content: flex-end;
 }
 
+
+/* ---------- Dashboard theme: light sidebar + forest accent (PRD mockup), full width ---------- */
+.d-layout {
+  --blue: #315C48; --blue-light: #3F7358; --blue-tint: #E6EFE9; --blue-ring: rgba(49, 92, 72, 0.55);
+  --gradient-primary: linear-gradient(135deg, #3F7358 0%, #315C48 100%);
+  --shadow-button: 0 1px 2px rgba(49, 92, 72, 0.18), 0 6px 16px rgba(49, 92, 72, 0.22);
+  max-width: none;
+}
+.d-sidebar { background: var(--surface); color: var(--ink-2); border: 1px solid var(--hairline); box-shadow: var(--shadow-1); }
+.d-sidebar__brand, .d-sidebar__footer { border-color: var(--hairline); }
+.d-sidebar__logo, .d-sidebar__user-name { color: var(--ink); }
+.d-sidebar__badge { background: var(--blue-tint); color: var(--blue); }
+.d-sidebar__badge--business, .d-sidebar__badge--admin { background: var(--blue-tint); color: var(--blue); }
+.d-sidebar__link { color: var(--ink-2); }
+.d-sidebar__link:hover { background: var(--surface-sunk); color: var(--ink); }
+.d-sidebar__link--active, .d-sidebar__link--active:hover { background: var(--blue-tint); color: var(--blue); }
+.d-sidebar__user-sub, .d-sidebar__user-sub:hover { color: var(--ink-3); }
+.d-sidebar__signout { background: var(--surface-sunk); border-color: var(--hairline); color: var(--ink-2); }
+.d-sidebar__signout:hover { background: var(--hairline); color: var(--ink); }
+.lp, .page--wide { max-width: 1360px; }
+body:has(.d-layout) { background: var(--ivory, #FAF9F6); }
+@media (min-width: 1024px) { .d-grid { grid-template-columns: 1fr; } }
+@media (min-width: 1680px) { .d-grid { grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr); } }
+
+/* Provider services list */
+.svc-list { list-style: none; margin: 0; padding: 0; display: grid; }
+.svc-item { display: flex; align-items: center; gap: var(--s-4); flex-wrap: wrap; padding: var(--s-4) 0; border-top: 1px solid var(--hairline); }
+.svc-item__main { flex: 1; min-width: 220px; display: grid; gap: 2px; }
+.svc-item__desc, .svc-item__meta { color: var(--ink-3); font-size: 14px; }
+.svc-item__actions { display: flex; gap: var(--s-2); flex-wrap: wrap; }
+.svc-item__actions form { display: contents; }

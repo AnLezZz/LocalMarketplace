@@ -1,0 +1,127 @@
+body:has(.srch) { background: var(--ivory, #FAF9F6); }
+.srch__bar {
+  display: grid;
+  gap: var(--s-3);
+  padding: var(--s-3);
+  background: #fff;
+  border: 1px solid #ECE8DF;
+  border-radius: 18px;
+}
+.srch__field {
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+  min-height: 48px;
+  padding: 0 var(--s-3);
+  border: 1px solid #E6E1D6;
+  border-radius: 12px;
+  color: var(--ink-3);
+  background: #fff;
+}
+.srch__field:focus-within { outline: 3px solid var(--forest); outline-offset: -1px; }
+.srch__field input { flex: 1; min-width: 0; border: 0; background: transparent; font-size: 16px; color: var(--ink); min-height: 44px; }
+.srch__field input:focus-visible { outline: none; }
+.srch__go {
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  border: 0;
+  border-radius: 12px;
+  background: var(--forest);
+  color: #fff;
+  cursor: pointer;
+  justify-self: end;
+}
+.srch__go:focus-visible { outline: 3px solid var(--forest); outline-offset: 2px; }
+.srch__chips { display: flex; gap: var(--s-2); flex-wrap: wrap; }
+.srch__chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 40px;
+  padding: 0 12px 0 14px;
+  border: 1px solid #E6E1D6;
+  border-radius: 999px;
+  background: #fff;
+  color: var(--ink);
+  font-size: 14px;
+  font-weight: 500;
+}
+.srch__chip select {
+  appearance: none;
+  -webkit-appearance: none;
+  border: 0;
+  background: transparent url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'><path fill='none' stroke='%23202320' stroke-width='1.5' stroke-linecap='round' d='m1 1.5 5 5 5-5'/></svg>") no-repeat right center;
+  padding-right: 16px;
+  font: inherit;
+  color: inherit;
+  min-height: 36px;
+  max-width: 42vw;
+}
+.srch__chip select:focus-visible { outline: none; }
+.srch__chip:focus-within { outline: 3px solid var(--forest); outline-offset: 2px; }
+.srch__count {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-3);
+  flex-wrap: wrap;
+  margin: var(--s-5) 0 var(--s-3);
+  font-size: 14px;
+  color: var(--ink-2);
+}
+.srch__sort { display: inline-flex; align-items: center; gap: 8px; color: var(--ink-2); }
+.srch__sort select {
+  appearance: none;
+  -webkit-appearance: none;
+  border: 1px solid #E6E1D6;
+  border-radius: 10px;
+  background: #fff url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'><path fill='none' stroke='%23202320' stroke-width='1.5' stroke-linecap='round' d='m1 1.5 5 5 5-5'/></svg>") no-repeat right 10px center;
+  padding: 8px 28px 8px 12px;
+  font: inherit;
+  font-weight: 600;
+  color: var(--ink);
+  min-height: 40px;
+}
+.srch__list { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--s-3); }
+.srch__item {
+  display: grid;
+  grid-template-columns: 96px 1fr;
+  grid-template-areas: "photo info" "cta cta";
+  gap: var(--s-3) var(--s-4);
+  align-items: start;
+  background: #fff;
+  border: 1px solid #ECE8DF;
+  border-radius: 16px;
+  padding: var(--s-4);
+}
+.srch__item .avatar { grid-area: photo; border-radius: 14px; }
+.srch__info { grid-area: info; min-width: 0; display: grid; gap: 4px; justify-items: start; }
+.srch__name { font-size: 17px; font-weight: 600; }
+.srch__meta { display: flex; align-items: center; gap: 4px; font-size: 13px; color: var(--ink-3); }
+.srch__tag { font-size: 12px; padding: 3px 10px; border-radius: 999px; background: #EFEDE7; color: var(--ink-2); }
+.srch__cta {
+  grid-area: cta;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-3);
+}
+.srch__price { font-size: 14px; color: var(--ink-2); }
+.srch__price strong { font-size: 18px; color: var(--ink); }
+.srch__cta .btn { border-radius: 10px; }
+@media (min-width: 900px) {
+  .srch__bar { grid-template-columns: 1.6fr 1fr 48px; align-items: center; padding: var(--s-4); }
+  .srch__chips { grid-column: 1 / -1; }
+  .srch__item {
+    grid-template-columns: 96px 1fr auto;
+    grid-template-areas: "photo info cta";
+    align-items: center;
+  }
+  .srch__cta { flex-direction: column; align-items: flex-end; justify-content: space-between; min-height: 96px; }
+}
+
+.srch__tags { display: flex; gap: 6px; flex-wrap: wrap; }
+.srch__clear { display: inline-block; margin-top: var(--s-3); }
+.srch__form + .srch__list, .srch__count + .srch__list { margin-top: 0; }

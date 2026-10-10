@@ -1,11 +1,14 @@
 import Link from "next/link";
+import Image from "next/image";
 import { fetchQuery } from "convex/nextjs";
 import { api, CATEGORIES } from "../lib/convex";
 import { getMe } from "../lib/auth";
 import Icon from "../components/Icon";
-import ProviderCard, { type ProviderSummary } from "../components/ProviderCard";
+import Avatar from "../components/Avatar";
+import { Rating } from "../components/Pill";
+import { type ProviderSummary } from "../components/ProviderCard";
 import { categoryMeta } from "../components/categories";
-import { dollars, partOfDay } from "../components/format";
+import { rate, partOfDay } from "../components/format";
 
 export const dynamic = "force-dynamic";
 
@@ -32,12 +35,6 @@ export default async function Home({ searchParams }: { searchParams: Promise<Par
   ]);
   const everyone = all ?? list;
 
-  const stats = CATEGORIES.map((c) => {
-    const inCat = everyone.filter((p) => p.category === c);
-    const cheapest = inCat.reduce<ProviderSummary | null>((m, p) => (!m || p.rateCents < m.rateCents ? p : m), null);
-    return { c, count: inCat.length, cheapest };
-  });
-
   const firstName = me?.name?.trim().split(/\s+/)[0];
   const greeting = `Good ${partOfDay()}${firstName ? `, ${firstName}` : ""}.`;
   const heading = filtered
@@ -45,74 +42,47 @@ export default async function Home({ searchParams }: { searchParams: Promise<Par
     : `${list.length} ${list.length === 1 ? "pro" : "pros"}`;
 
   return (
-    <div className="page page--wide">
-      <section className="hero">
-        {me ? (
-          <h1 className="display">{greeting}<span className="display__muted">What needs doing?</span></h1>
-        ) : (
-          <h1 className="display">Trusted local help, close to home.<span className="display__muted">Find a pro and request a time.</span></h1>
-        )}
+    <div className="page page--wide lp">
+      <section className="lp-hero">
+        <Image src="/images/hero_gardener.jpg" alt="" fill priority sizes="(min-width: 1080px) 1032px, 100vw" className="lp-hero__img" />
+        <div className="lp-hero__body">
+          <h1 className="lp-hero__title">{me ? greeting : "Good help."}<br />{me ? "What needs doing?" : "Right around the corner."}</h1>
+          <p className="lp-hero__sub">Find trusted local people for everyday jobs.</p>
+          <form className="lp-search" role="search" action="/search">
+            {category && <input type="hidden" name="category" value={category} />}
+            <label className="lp-search__field">
+              <span className="sr-only">Keyword</span>
+              <Icon name="search" size={18} />
+              <input name="q" placeholder="What do you need help with?" defaultValue={q} autoComplete="off" />
+            </label>
+            <label className="lp-search__field">
+              <span className="sr-only">Suburb</span>
+              <Icon name="pin" size={18} />
+              <input name="suburb" placeholder="Your suburb" defaultValue={suburb} autoComplete="address-level2" />
+            </label>
+            <button className="btn btn--forest">Search</button>
+          </form>
+        </div>
+      </section>
 
-        <form className="search card" role="search" action="/">
-          {category && <input type="hidden" name="category" value={category} />}
-          <div className="search__field search__field--main">
-            <label htmlFor="q" className="sr-only">Keyword</label>
-            <Icon name="search" size={22} className="search__icon" />
-            <input id="q" name="q" placeholder="What do you need done?" defaultValue={q} autoComplete="off" />
-          </div>
-          <div className="search__row">
-            <div className="search__field">
-              <label htmlFor="suburb" className="sr-only">Suburb</label>
-              <Icon name="pin" size={20} className="search__icon" />
-              <input id="suburb" name="suburb" placeholder="Suburb" defaultValue={suburb} autoComplete="address-level2" />
-            </div>
-            <button className="btn btn--primary">Search</button>
-          </div>
-        </form>
-
-        <nav className="chips" aria-label="Categories">
-          <Link href={href({ q, suburb })} className="chip" aria-current={!category ? "page" : undefined}>All</Link>
-          {CATEGORIES.map((c) => (
-            <Link key={c} href={href({ q, suburb, category: c })} className="chip" aria-current={category === c ? "page" : undefined}>
-              {categoryMeta(c).label}
+      <nav className="lp-cats" id="services" aria-label="Categories">
+        {CATEGORIES.map((c) => {
+          const m = categoryMeta(c);
+          return (
+            <Link key={c} href={`/search?category=${encodeURIComponent(c)}`} className="lp-cat" aria-current={category === c ? "page" : undefined}>
+              <span className="lp-cat__icon"><Icon name={m.icon} size={26} /></span>
+              {m.label}
             </Link>
-          ))}
-        </nav>
-      </section>
+          );
+        })}
+      </nav>
 
-      <section className="section" aria-labelledby="services-h">
-        <h2 id="services-h" className="section__title">Services</h2>
-        <div className="tiles">
-          {stats.map(({ c, count, cheapest }, i) => {
-            const m = categoryMeta(c);
-            const active = category === c;
-            return (
-              <Link
-                key={c}
-                href={href({ q, suburb, category: c })}
-                className={`tile tile--${m.hue} rise`}
-                style={{ "--i": i } as React.CSSProperties}
-                aria-current={active ? "page" : undefined}
-              >
-                <span className="tile__chip"><Icon name={m.icon} size={24} /></span>
-                <span className="tile__name">{m.label}</span>
-                <span className="tile__meta">
-                  {cheapest ? (
-                    <><span className="num">from {dollars(cheapest.rateCents)}{cheapest.rateBasis === "hourly" ? "/hr" : " fixed"}</span> · <span className="num">{count} {count === 1 ? "pro" : "pros"}</span></>
-                  ) : "No pros yet"}
-                </span>
-                {active && <span className="tile__check"><Icon name="check" size={16} /></span>}
-              </Link>
-            );
-          })}
+      <section className="lp-section" id="pros" aria-labelledby="pros-h">
+        <div className="lp-section__head">
+          <h2 id="pros-h" className="lp-h2">{filtered ? heading : "People worth knowing"}</h2>
+          {filtered ? <Link href="/" className="lp-link">Clear filters</Link> : <Link href="/search" className="lp-link">View all</Link>}
         </div>
-      </section>
-
-      <section className="section" aria-labelledby="pros-h">
-        <div className="section__head">
-          <h2 id="pros-h" className="section__title num">{heading}</h2>
-          {filtered && <Link href="/" className="link-btn">Clear filters</Link>}
-        </div>
+        <p className="lp-section__sub">Trusted locals. Real work.</p>
         {list.length === 0 ? (
           <div className="empty card">
             <span className="empty__icon"><Icon name="search" size={26} /></span>
@@ -130,10 +100,49 @@ export default async function Home({ searchParams }: { searchParams: Promise<Par
             )}
           </div>
         ) : (
-          <div className="plist">
-            {list.map((p, i) => <ProviderCard key={p._id} p={p} index={i + 6} />)}
+          <div className="lp-pros">
+            {list.map((p) => {
+              const price = rate(p.rateCents, p.rateBasis);
+              return (
+                <Link key={p._id} href={`/providers/${p._id}`} className="lp-pro">
+                  <div className="lp-pro__photo">
+                    <Avatar name={p.name} size={72} />
+                    <span className="lp-pro__rating"><Rating avg={p.ratingAvg} count={p.reviewCount} /></span>
+                  </div>
+                  <h3 className="lp-pro__name">{p.name}</h3>
+                  <div className="lp-pro__meta">{categoryMeta(p.category).label}</div>
+                  <div className="lp-pro__meta"><Icon name="pin" size={13} /> {p.suburb}</div>
+                  <div className="lp-pro__price">From <strong className="num">{price.amount}</strong> {price.unit.trim()}</div>
+                </Link>
+              );
+            })}
           </div>
         )}
+      </section>
+
+      <section className="lp-section" id="how-it-works" aria-labelledby="how-h">
+        <h2 id="how-h" className="lp-h2">How it works</h2>
+        <ol className="lp-steps">
+          {([
+            ["search", "1. Find", "Search for services in your area."],
+            ["calendar", "2. Book", "Choose a provider and request a time."],
+            ["user", "3. Get it done", "Meet in person and pay directly."],
+          ] as const).map(([icon, title, text]) => (
+            <li key={title} className="lp-step">
+              <span className="lp-step__icon"><Icon name={icon} size={22} /></span>
+              <div><strong>{title}</strong><span>{text}</span></div>
+            </li>
+          ))}
+        </ol>
+      </section>
+
+      <section className="lp-cta">
+        <div className="lp-cta__body">
+          <h2 className="lp-cta__title">Support local.<br />Get more done.</h2>
+          <p>From home projects to everyday help, find trusted people in your neighbourhood.</p>
+          <Link href="/#services" className="btn btn--cream">Browse services</Link>
+        </div>
+        <Image src="/images/hero_gardener.jpg" alt="" fill sizes="(min-width: 720px) 50vw, 0px" className="lp-cta__img" />
       </section>
     </div>
   );

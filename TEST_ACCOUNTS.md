@@ -1,6 +1,6 @@
-# LocalHub Test Accounts
+# Localo Test Accounts
 
-> **Note on Port:** The LocalHub Next.js application runs on **`http://localhost:3100`** (because port `3000` is reserved by OrbStack on this machine).
+> **Note on Port:** The Localo Next.js application runs on **`http://localhost:3100`** (because port `3000` is reserved by OrbStack on this machine).
 
 All test accounts below are pre-seeded in the Convex development database and ready to sign in at:
 👉 **[http://localhost:3100/signin](http://localhost:3100/signin)**
@@ -11,8 +11,8 @@ All test accounts below are pre-seeded in the Convex development database and re
 
 | Role | Email | Password | Direct Dashboard URL | Features to Test |
 | :--- | :--- | :--- | :--- | :--- |
-| **Admin** | `admin@localhub.nz` | `password123` | [http://localhost:3100/admin](http://localhost:3100/admin) | **LocalHub Admin Dashboard**: Platform overview stats, 4 KPI cards (Providers, Bookings, Rating, Pending), recent bookings stream, and provider applications review queue (Approve/Reject). |
-| **Provider** | `provider@localhub.nz` | `password123` | [http://localhost:3100/provider](http://localhost:3100/provider) | **LocalHub Business Dashboard**: Alex Morgan (Gardening & Lawn Care), 4 KPI cards, incoming requests table (Accept/Decline), and interactive **Weekly Calendar** schedule. |
+| **Admin** | `admin@localhub.nz` | `password123` | [http://localhost:3100/admin](http://localhost:3100/admin) | **Localo Admin Dashboard**: Platform overview stats, 4 KPI cards (Providers, Bookings, Rating, Pending), recent bookings stream, and provider applications review queue (Approve/Reject). |
+| **Provider** | `provider@localhub.nz` | `password123` | [http://localhost:3100/provider](http://localhost:3100/provider) | **Localo Business Dashboard**: Alex Morgan (Gardening & Lawn Care), 4 KPI cards, incoming requests table (Accept/Decline), and interactive **Weekly Calendar** schedule. |
 | **Customer** | `customer@localhub.nz` | `password123` | [http://localhost:3100/bookings](http://localhost:3100/bookings) | **Customer Portal**: Browse local pros, request bookings, and manage customer bookings under My Bookings. |
 
 ---
