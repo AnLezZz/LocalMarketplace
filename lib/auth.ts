@@ -8,7 +8,7 @@ export async function authOpts() {
   return { token: await convexAuthNextjsToken() };
 }
 
-export async function getMe(): Promise<{ id: string; name: string | null; email: string | null; role: "customer" | "provider" | "admin"; suspended?: boolean } | null> {
+export async function getMe(): Promise<{ id: string; name: string | null; email: string | null; photo?: string | null; role: "customer" | "provider" | "admin"; suspended?: boolean } | null> {
   try {
     return await fetchQuery(api.users.me, {}, await authOpts());
   } catch (e) {

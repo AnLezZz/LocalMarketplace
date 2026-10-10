@@ -3,6 +3,7 @@ import { useEffect, useRef } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import Icon, { type IconName } from "./Icon";
+import Avatar from "./Avatar";
 import SignOutButton from "../app/SignOutButton";
 
 export type NavLink = { href: string; label: string; short: string; icon: IconName };
@@ -11,7 +12,7 @@ function isActive(path: string, href: string) {
   return href === "/" ? path === "/" : path === href || path.startsWith(href + "/");
 }
 
-export function HeaderNav({ signedIn, userRole }: { signedIn: boolean; userRole?: string }) {
+export function HeaderNav({ signedIn, userRole, name = "You", photo = null }: { signedIn: boolean; userRole?: string; name?: string; photo?: string | null }) {
   const path = usePathname();
   const profile = useRef<HTMLDetailsElement>(null);
   const dashboard = (userRole === "admin" && isActive(path, "/admin")) ||
@@ -54,7 +55,9 @@ export function HeaderNav({ signedIn, userRole }: { signedIn: boolean; userRole?
           <Link href="/signin" className="btn btn--forest btn--pill">Sign up</Link>
         </> : <>
           <details className="profile-nav" ref={profile}>
-            <summary className="profile-nav__trigger"><Icon name="user" size={18} /><span>Profile</span><span className="profile-nav__caret" aria-hidden="true">⌄</span></summary>
+            <summary className="profile-nav__trigger" aria-label="Account menu">{/* eslint-disable-next-line @next/next/no-img-element */}
+              {photo ? <img src={photo} alt="" className="profile-nav__photo" width={40} height={40} /> : <Avatar name={name} size={40} />}
+            </summary>
             <div className="profile-nav__panel" onClick={(event) => {
               if ((event.target as HTMLElement).closest("a, button") && profile.current) profile.current.open = false;
             }}>

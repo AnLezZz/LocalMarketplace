@@ -8,7 +8,8 @@ export const me = query({
   handler: async (ctx) => {
     const user = await getUser(ctx);
     if (!user) return null;
-    return { id: user._id, name: user.name ?? null, email: user.email ?? null, role: user.role, suspended: user.suspendedAt !== undefined };
+    const photo = user.imageStorageId ? await ctx.storage.getUrl(user.imageStorageId) : (user.image ?? null);
+    return { id: user._id, name: user.name ?? null, email: user.email ?? null, photo, role: user.role, suspended: user.suspendedAt !== undefined };
   },
 });
 

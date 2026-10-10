@@ -26,7 +26,7 @@ export default async function Root({ children }: { children: React.ReactNode }) 
               <div className="topbar__inner">
                 <Logo />
                 <div className="topbar__end">
-                  <HeaderNav signedIn={!!me} userRole={me?.role} />
+                  <HeaderNav signedIn={!!me} userRole={me?.role} name={me?.name ?? me?.email ?? "You"} photo={me?.photo ?? null} />
                 </div>
               </div>
             </header>
