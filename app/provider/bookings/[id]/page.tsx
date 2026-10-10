@@ -44,7 +44,7 @@ export default async function BookingDetails({ params, searchParams }: { params:
 
   return (
     <div className="page page--narrow">
-      <Link href="/provider#bookings" className="back"><Icon name="chevronLeft" size={20} />All bookings</Link>
+      <Link href="/provider/bookings" className="back"><Icon name="chevronLeft" size={20} />All bookings</Link>
       <h1 className="page__title">Booking details</h1>
       {err && <Banner tone="error">{err}</Banner>}
 

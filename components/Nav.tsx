@@ -80,14 +80,16 @@ export function TabBar({ signedIn, userRole }: { signedIn: boolean; userRole?: s
 
   // On a provider's own dashboard pages the bottom bar is theirs, not the customer's (Home, Search, Bookings).
   const providerArea = userRole === "provider" && path.startsWith("/provider") && path !== "/provider/register";
-  const providerTabs: (NavLink & { exact?: boolean })[] = [
-    { href: "/provider", label: "Overview", short: "Overview", icon: "grid", exact: true },
-    { href: "/provider/availability", label: "Availability", short: "Availability", icon: "clock" },
+  // `also`: pages without a tab of their own light up the closest one (working hours sit under Calendar, reviews under Overview).
+  const providerTabs: (NavLink & { exact?: boolean; also?: string[] })[] = [
+    { href: "/provider", label: "Overview", short: "Overview", icon: "grid", exact: true, also: ["/provider/reviews"] },
+    { href: "/provider/bookings", label: "Bookings", short: "Bookings", icon: "inbox" },
+    { href: "/provider/calendar", label: "Calendar", short: "Calendar", icon: "calendar", also: ["/provider/availability"] },
     { href: "/provider/services", label: "Services", short: "Services", icon: "briefcase" },
     { href: "/provider/profile", label: "Profile", short: "Profile", icon: "user" },
   ];
 
-  const tabs: (NavLink & { exact?: boolean })[] = providerArea ? providerTabs : [
+  const tabs: (NavLink & { exact?: boolean; also?: string[] })[] = providerArea ? providerTabs : [
     { href: "/", label: "Home", short: "Home", icon: "home" },
     { href: "/search", label: "Search", short: "Search", icon: "search" },
     {
@@ -107,7 +109,7 @@ export function TabBar({ signedIn, userRole }: { signedIn: boolean; userRole?: s
   return (
     <nav className="tabbar" aria-label="Main">
       {tabs.map((t) => {
-        const active = t.exact ? path === t.href : isActive(path, t.href);
+        const active = (t.exact ? path === t.href : isActive(path, t.href)) || !!t.also?.some((h) => isActive(path, h));
         return (
           <Link
             key={t.short}
