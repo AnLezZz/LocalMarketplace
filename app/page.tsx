@@ -102,9 +102,16 @@ export default async function Home({ searchParams }: { searchParams: Promise<Par
       <FeaturedCategories preloaded={featuredCats} />
 
       {noProviders ? (
-        <section className="lp-section lp-launch" id="pros" aria-labelledby="launch-h">
-          <h2 id="launch-h" className="lp-h2">Providers are joining now</h2>
-          <p className="lp-section__sub">Localo is new. Local people are applying, and each one is approved before they appear here.</p>
+        <section className="lp-launch" id="pros" aria-labelledby="launch-h">
+          <span className="lp-launch__glow" aria-hidden="true" />
+          <span className="lp-launch__badge"><span className="lp-launch__pulse" aria-hidden="true" />Now welcoming providers</span>
+          <h2 id="launch-h" className="lp-launch__title">Providers are joining now</h2>
+          <p className="lp-launch__sub">Localo is new. Local people are applying, and each one is approved before they appear here.</p>
+          <ul className="lp-launch__float" aria-hidden="true">
+            {(["cleaning", "gardening", "handyman", "petCare", "car", "moving"] as const).map((n, i) => (
+              <li key={n} style={{ animationDelay: `${i * 0.45}s` }}><Icon name={n} size={22} /></li>
+            ))}
+          </ul>
           <div className="lp-launch__cards">
             <div className="lp-launch__card">
               <span className="lp-launch__icon"><Icon name="search" size={22} /></span>
@@ -119,7 +126,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<Par
               <Link href={me?.role === "provider" ? "/provider" : "/provider/register"} className="btn btn--forest">{me?.role === "provider" ? "Go to your dashboard" : "Become a provider"}</Link>
             </div>
           </div>
-          {process.env.NODE_ENV !== "production" && <p className="field__hint">Development: run <code>pnpm convex:seed</code> for sample providers.</p>}
+          {process.env.NODE_ENV !== "production" && <p className="lp-launch__dev">Development: run <code>pnpm convex:seed</code> for sample providers.</p>}
         </section>
       ) : (
       <section className="lp-section" id="pros" aria-labelledby="pros-h">
@@ -169,7 +176,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<Par
         </section>
       )}
 
-      <section className="lp-section" id="how-it-works" aria-labelledby="how-h">
+      <section className={noProviders ? "lp-section lp-tint" : "lp-section"} id="how-it-works" aria-labelledby="how-h">
         <div className="lp-section__head">
           <h2 id="how-h" className="lp-h2">How it works</h2>
           <Link href="/search" className="lp-link">Find a provider</Link>
@@ -226,9 +233,10 @@ export default async function Home({ searchParams }: { searchParams: Promise<Par
         </ul>
       </section>
 
+      {!noProviders && (
       <section className="lp-biz" aria-labelledby="biz-h">
         <div className="lp-biz__body">
-          <h2 id="biz-h" className="lp-biz__title">{noProviders ? "Be one of the first providers" : "Run a local business?"}</h2>
+          <h2 id="biz-h" className="lp-biz__title">Run a local business?</h2>
           <p>Apply to join Localo, get approved, and receive booking requests from people nearby. You choose your services, your prices and when you&apos;re available.</p>
           <Link href={me?.role === "provider" ? "/provider" : "/provider/register"} className="btn btn--cream">{me?.role === "provider" ? "Go to your dashboard" : "Become a provider"}</Link>
         </div>
@@ -238,6 +246,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<Par
           <Image src="/images/business/moving-help.jpg" alt="" width={320} height={320} sizes="(min-width: 960px) 200px, 30vw" />
         </div>
       </section>
+      )}
 
       <nav className="lp-foot" aria-label="Site">
         <div className="lp-foot__brand"><span className="brand__word">Localo</span><p>Find trusted local people for everyday jobs.</p></div>
