@@ -245,8 +245,6 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--forest); }
 .lp-launch__card p { margin: 0; color: #4A554E; font-size: 15px; line-height: 1.55; max-width: 46ch; }
 .lp-launch__icon { display: grid; place-items: center; width: 48px; height: 48px; border-radius: 50%; background: #E7EFEA; color: var(--forest); }
 .lp-launch__card--accent .lp-launch__icon { background: #fff; }
-.lp-launch__dev { margin: var(--s-4) 0 0; font-size: 12px; color: var(--ink-3); }
-.lp-launch__dev code { background: rgba(31,58,45,.08); color: var(--ink); padding: 1px 6px; border-radius: 6px; }
 @media (min-width: 720px) { .lp-launch { padding: var(--s-10) var(--s-8); } .lp-launch__cards { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 
 /* How it works, tinted so the page isn't one flat colour */

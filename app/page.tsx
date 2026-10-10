@@ -183,7 +183,6 @@ export default async function Home({ searchParams }: { searchParams: Promise<Par
               <Link href={me?.role === "provider" ? "/provider" : "/provider/register"} className="btn btn--forest">{me?.role === "provider" ? "Go to your dashboard" : "Become a provider"}</Link>
             </div>
           </div>
-          {process.env.NODE_ENV !== "production" && <p className="lp-launch__dev">Development: run <code>pnpm convex:seed</code> for sample providers.</p>}
         </section>
       ) : (
       <section className="lp-section" id="pros" aria-labelledby="pros-h">
