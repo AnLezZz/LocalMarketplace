@@ -1335,12 +1335,23 @@ body:has(.d-layout) { background: var(--ivory, #FAF9F6); }
 
 /* Provider availability editor */
 .avl { display: grid; gap: var(--s-2); margin-bottom: var(--s-4); }
-.avl__row { display: grid; gap: var(--s-2); padding: var(--s-3) 0; border-top: 1px solid var(--hairline); }
-.avl__day { display: flex; align-items: center; gap: var(--s-2); font-weight: 600; }
+.avl__row { display: grid; gap: 2px; padding: var(--s-2) 0; border-top: 1px solid var(--hairline); }
+.avl__day { display: flex; align-items: center; gap: var(--s-2); min-height: 40px; font-weight: 600; }
 .avl__day input { width: 20px; height: 20px; }
-.avl__times { display: flex; align-items: center; gap: var(--s-2); flex-wrap: wrap; color: var(--ink-3); font-size: 14px; }
-.avl__times select { width: auto; min-height: 44px; }
-@media (min-width: 900px) { .avl__row { grid-template-columns: 160px auto 1fr; align-items: center; } }
+.avl__times { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: var(--s-2); color: var(--ink-3); font-size: 14px; }
+.avl__times select { width: 100%; min-height: 44px; }
+.avl__times span { text-align: center; }
+.avl__break summary { display: flex; align-items: center; min-height: 40px; color: var(--forest); font-size: 14px; font-weight: 500; cursor: pointer; }
+.avl__break[open] summary { min-height: 32px; }
+/* A closed day collapses to its name; the hidden times still submit with the form. */
+.avl__row:not(:has(.avl__day input:checked)) > .avl__times, .avl__row:not(:has(.avl__day input:checked)) > .avl__break { display: none; }
+.avl__row:not(:has(.avl__day input:checked)) .avl__day::after { content: "Closed"; margin-left: auto; font-weight: 400; font-size: 14px; color: var(--ink-3); }
+.avl-card .d-card__head { flex-wrap: wrap; gap: 2px var(--s-3); }
+@media (min-width: 900px) {
+  .avl__row { grid-template-columns: 160px minmax(0, 340px) 1fr; align-items: center; }
+  .avl__break { padding-left: var(--s-4); }
+  .avl__row:not(:has(.avl__day input:checked)) .avl__day::after { margin-left: var(--s-3); }
+}
 
 /* Favourite heart */
 .fav { display: grid; place-items: center; width: 44px; height: 44px; border-radius: 50%; border: 1px solid #E6E1D6; background: #fff; color: var(--ink-2); cursor: pointer; }

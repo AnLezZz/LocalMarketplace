@@ -49,7 +49,7 @@ export default async function Availability({ searchParams }: { searchParams: Pro
         {ok && <Banner tone="success">{ok === "saved" ? "Working hours saved." : ok === "blocked" ? "Time blocked." : "Block removed."}</Banner>}
         {!mine.configured && <Banner tone="info">You haven&apos;t set working hours yet, so customers can currently request any time from 8 am to 5 pm. Save your hours below to change that.</Banner>}
 
-        <section className="card d-card" aria-labelledby="wh-h">
+        <section className="card d-card avl-card" aria-labelledby="wh-h">
           <div className="d-card__head"><h2 id="wh-h" className="d-card__title">Weekly working hours</h2><span className="d-card__sub">Auckland time</span></div>
           <form action={saveHours} className="form">
             <div className="avl">
@@ -61,9 +61,12 @@ export default async function Availability({ searchParams }: { searchParams: Pro
                     <div className="avl__times">
                       <TimeSelect name={`start_${d}`} value={r?.startMinute ?? 540} /><span>to</span><TimeSelect name={`end_${d}`} value={r?.endMinute ?? 1020} />
                     </div>
-                    <div className="avl__times avl__break"><span>Break</span>
-                      <TimeSelect name={`bs_${d}`} value={r?.breakStartMinute} none /><span>to</span><TimeSelect name={`be_${d}`} value={r?.breakEndMinute} none />
-                    </div>
+                    <details className="avl__break" open={r?.breakStartMinute !== undefined}>
+                      <summary>{r?.breakStartMinute !== undefined && r?.breakEndMinute !== undefined ? `Break ${minuteLabel(r.breakStartMinute)} – ${minuteLabel(r.breakEndMinute)}` : "Add a break"}</summary>
+                      <div className="avl__times">
+                        <TimeSelect name={`bs_${d}`} value={r?.breakStartMinute} none /><span>to</span><TimeSelect name={`be_${d}`} value={r?.breakEndMinute} none />
+                      </div>
+                    </details>
                   </div>
                 );
               })}
@@ -72,7 +75,7 @@ export default async function Availability({ searchParams }: { searchParams: Pro
           </form>
         </section>
 
-        <section className="card d-card" aria-labelledby="to-h">
+        <section className="card d-card avl-card" aria-labelledby="to-h">
           <div className="d-card__head"><h2 id="to-h" className="d-card__title">Blocked time</h2><span className="d-card__sub">Holidays, days off, appointments</span></div>
           <form action={addBlock} className="form">
             <div className="form__row">
