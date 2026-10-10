@@ -1,1 +1,1 @@
-{ "compilerOptions": { "target": "ESNext", "lib": ["ES2021", "dom"], "module": "ESNext", "moduleResolution": "Bundler", "strict": true, "skipLibCheck": true, "allowSyntheticDefaultImports": true, "isolatedModules": true, "noEmit": true }, "include": ["./**/*"] }
+{ "compilerOptions": { "target": "ESNext", "lib": ["ES2021", "dom"], "module": "ESNext", "moduleResolution": "Bundler", "strict": true, "skipLibCheck": true, "allowSyntheticDefaultImports": true, "isolatedModules": true, "noEmit": true, "allowImportingTsExtensions": true }, "include": ["./**/*"] }

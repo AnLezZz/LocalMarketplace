@@ -49,6 +49,11 @@ export default defineSchema({
     photo: v.optional(v.string()),
     // Suburbs the provider travels to, besides their own. Empty or absent means they take bookings anywhere.
     serviceSuburbs: v.optional(v.array(v.string())),
+    // Recognised-place links (see `places`). baseAreaId is the home suburb ONLY, not the region around it. serviceAreaIds are
+    // what the provider chose to serve (suburbs, councils or regions), independent of the base. locationMigratedAt: legacy text was reviewed.
+    baseAreaId: v.optional(v.id("places")),
+    serviceAreaIds: v.optional(v.array(v.id("places"))),
+    locationMigratedAt: v.optional(v.number()),
     // Set by an admin. A suspended provider has approved=false, so public searches and bookings exclude them.
     suspendedAt: v.optional(v.number()),
     suspendedReason: v.optional(v.string()),
@@ -193,6 +198,67 @@ export default defineSchema({
     key: v.string(), // normalised name, for matching
     enabled: v.boolean(),
   }).index("by_key", ["key"]),
+
+  // Recognised NZ geography (LINZ suburbs/localities, Stats NZ regions and territorial authorities). Reference data only:
+  // which places the marketplace serves is a separate setting. Written by geoImport, never by users.
+  places: defineTable({
+    source: v.union(v.literal("linz"), v.literal("statsnz")),
+    layer: v.union(v.literal("suburbs_localities"), v.literal("regional_council"), v.literal("territorial_authority"), v.literal("ta_subdivision")),
+    sourceId: v.string(), // the publisher's own ID, kept so a re-import updates in place
+    kind: v.union(v.literal("region"), v.literal("territorial_authority"), v.literal("subdivision"), v.literal("suburb"), v.literal("locality"), v.literal("other")),
+    selectable: v.boolean(),
+    name: v.string(), // original spelling, macrons kept
+    nameAscii: v.string(),
+    key: v.string(),
+    altNames: v.array(v.string()),
+    altKeys: v.array(v.string()),
+    majorName: v.optional(v.string()),
+    majorNameType: v.optional(v.string()),
+    lat: v.optional(v.number()),
+    lng: v.optional(v.number()),
+    population: v.optional(v.number()),
+    regionIds: v.array(v.id("places")),
+    taIds: v.array(v.id("places")),
+    subdivisionIds: v.optional(v.array(v.id("places"))),
+    flags: v.array(v.string()), // review flags from the importer, e.g. duplicate_name, ta_unmatched:<name>
+    active: v.boolean(), // false once a newer import no longer lists it (kept, never deleted)
+    runId: v.string(),
+  })
+    .index("by_source", ["layer", "sourceId"])
+    .index("by_key", ["key"])
+    .index("by_layer", ["layer"]),
+
+  // Places an admin has closed to the marketplace. Everything recognised is open by default; closing a region or council closes what is inside it.
+  closedAreas: defineTable({ placeId: v.id("places"), closedBy: v.id("users"), closedAt: v.number() }).index("by_place", ["placeId"]),
+
+  // Hierarchy edges for browsing (region > council area > suburb). Many-to-many: a suburb can sit in two councils, a council in two regions.
+  placeParents: defineTable({ childId: v.id("places"), parentId: v.id("places") }).index("by_parent", ["parentId"]).index("by_child", ["childId"]),
+
+  // Search index: one row per place a provider can be found under. "serves" = they serve that exact place (their base or a chosen area);
+  // "within" = they serve something inside it (so a search for the region finds them). Rebuilt by syncProviderAreas.
+  providerAreas: defineTable({ providerId: v.id("providers"), placeId: v.id("places"), mode: v.union(v.literal("serves"), v.literal("within")) })
+    .index("by_place", ["placeId", "mode"])
+    .index("by_provider", ["providerId"]),
+
+  // Provider location text the migration could not link to exactly one place. Nothing is guessed; an admin picks.
+  locationReviews: defineTable({
+    providerId: v.id("providers"),
+    field: v.union(v.literal("base"), v.literal("service")),
+    raw: v.string(),
+    reason: v.union(v.literal("unmatched"), v.literal("ambiguous")),
+    candidateIds: v.array(v.id("places")),
+    status: v.union(v.literal("open"), v.literal("resolved"), v.literal("dismissed")),
+    resolvedPlaceId: v.optional(v.id("places")),
+  }).index("by_status", ["status"]).index("by_provider", ["providerId"]),
+
+  geoImports: defineTable({
+    runId: v.string(),
+    startedAt: v.number(),
+    finishedAt: v.optional(v.number()),
+    sources: v.array(v.object({ source: v.string(), layer: v.string(), title: v.string(), edition: v.string(), modified: v.string(), licence: v.string(), attribution: v.string(), url: v.string(), fetchedAt: v.string(), count: v.number() })),
+    seen: v.record(v.string(), v.number()), // rows written per layer
+    retired: v.optional(v.number()),
+  }).index("by_run", ["runId"]),
 
   marketplaceSettings: defineTable({ launchCity: v.string() }),
 
