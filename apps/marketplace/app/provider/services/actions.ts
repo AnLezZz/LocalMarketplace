@@ -35,3 +35,8 @@ export async function setServiceEnabled(id: string, enabled: boolean) {
 export async function archiveService(id: string) {
   done(await attempt(async () => fetchMutation(api.services.archive, { id }, await authOpts())));
 }
+
+export async function saveServiceAreas(fd: FormData) {
+  const suburbs = String(fd.get("suburbs") ?? "").split(/[,\n]/).map((x) => x.trim()).filter(Boolean);
+  done(await attempt(async () => fetchMutation(api.providers.setServiceAreas, { suburbs }, await authOpts())), `${BACK}?ok=areas`);
+}

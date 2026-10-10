@@ -60,3 +60,17 @@ export const submitProfile = mutation({
     return id;
   },
 });
+
+/** The suburbs the owner travels to, besides their own. An empty list means anywhere. */
+export const setServiceAreas = mutation({
+  args: { suburbs: v.array(v.string()) },
+  handler: async (ctx, { suburbs }) => {
+    const user = await requireUser(ctx);
+    const provider = await getProviderForUser(ctx, user._id);
+    if (!provider) throw new ConvexError("Create your provider profile first");
+    const clean = [...new Set(suburbs.map((s) => s.trim().replace(/\s+/g, " ")).filter(Boolean))];
+    if (clean.length > 30) throw new ConvexError("List at most 30 suburbs");
+    if (clean.some((s) => s.length > 60)) throw new ConvexError("A suburb name is too long");
+    await ctx.db.patch(provider._id, { serviceSuburbs: clean });
+  },
+});

@@ -99,6 +99,18 @@ Done: `notifications` table; `notify()` helper called inside the booking/review 
 Verified: 71 convex tests (each trigger, refused transitions send nothing, owner-only read/mark, orphan seeded providers); browser run with two sessions: provider page updated live (badge none -> 1, new item) when a customer booked, click opened the booking and cleared the badge, customer notified on accept, provider notified on cancel, signed-out redirected.
 Not done: email notifications, reschedule-request notice (feature not built), notification preferences, pruning old rows.
 
+## S4b review (2026-10-10)
+Done as listed above. Verified: 78 convex tests (validation, normalisation, service area incl. case/own suburb, private fields by status and consent, hidden again after cancel, lists never carry email/phone/address/notes, getForCustomer isolation, setServiceAreas ownership/limits); browser run as customer + provider + signed-out/other-role (outside-area error with live hint, share toggle needs a phone, provider sees suburb only until accepting, then address/notes/contact, customer detail page, cancel from detail, 404 across roles).
+Notes: legacy bookings have no address (shown as "not recorded"); a provider-side contact back to the customer is not built (customer-to-provider sharing only); suburb is stored as typed.
+
+# Backlog after S4b (user's priority order, 2026-10-10)
+
+2. Booking emails and reminders: in-app notifications only reach people who are signed in; providers can miss requests. Needs an email provider decision (e.g. Resend) and an API key.
+3. Password reset and email verification: neither is configured in `convex/auth.ts`.
+4. Quotes and saved pricing: "quote" services promise a quote but there is no submit/accept workflow; bookings don't snapshot a price.
+5. Admin moderation and support: review reporting, provider suspension, dispute handling (plus customers, bookings list, audit log from S7).
+6. Provider profile editing and photo uploads: approved profiles are locked; photos are seed-managed (needs Convex file storage).
+
 ---
 
 # Before deploying (checklist)
@@ -112,3 +124,18 @@ The repo is public and the demo data is dev-only. Do these before pointing anyth
 - [ ] Grant the first admin with `npx convex run users:grantAdmin` on prod (CLI-only by design).
 - [ ] Set the production auth env vars and site URL for Convex Auth; confirm `NEXT_PUBLIC_CONVEX_URL` points at prod.
 - [ ] Known gaps: no email notifications or verification, no rate limiting, public provider queries expose `userId` (see Phase 0 deferred list).
+
+---
+
+# S4b: Job details, service area, booking detail, contact sharing (from the review notes)
+
+Gap: a request carries no service address or access notes, the summary shows the provider's suburb as the job location, and a provider can't reach the customer once they accept.
+Decisions: explicit contact sharing (customer opts in per booking; phone + email revealed only after acceptance) instead of a message thread; full address and access notes visible to the provider only while a booking is accepted/completed (requested shows suburb only); service area is an optional per-provider suburb list (empty = serves anywhere, so existing listings keep working).
+
+- [x] Schema: bookings address/suburb/accessNotes/customerPhone/shareContact; providers serviceSuburbs
+- [x] bookings.create validates the address and the provider's service area; listIncoming stops returning raw documents (it leaked customerEmail)
+- [x] getForCustomer + richer getForProvider (private fields gated by status and consent)
+- [x] providers.setServiceAreas + UI on /provider/services
+- [x] Booking form collects address, suburb, access notes, optional phone + share toggle; summary shows the real location
+- [x] /bookings/[id] customer detail page; provider detail shows address/contact when allowed
+- [x] Tests for every rule above; browser verification

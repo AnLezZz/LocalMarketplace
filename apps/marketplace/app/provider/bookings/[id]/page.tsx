@@ -11,6 +11,7 @@ import { StatusPill } from "../../../../components/Pill";
 import { bookingWindow } from "../../../../components/format";
 
 import "../../../providers/[id]/booking.css";
+import "../../../bookings/bookings.css";
 
 export const dynamic = "force-dynamic";
 
@@ -45,6 +46,14 @@ export default async function BookingDetails({ params, searchParams }: { params:
           <div><dt className="sr-only">Time</dt><dd className="num"><Icon name="clock" size={18} />{w.time}</dd></div>
         </dl>
         {b.serviceName && <p className="booking__sub"><strong>Service:</strong> {b.serviceName}</p>}
+        <dl className="detail">
+          <div><dt>Suburb</dt><dd>{b.suburb ?? "Not recorded"}</dd></div>
+          {b.address && <div><dt>Address</dt><dd>{b.address}, {b.suburb}</dd></div>}
+          {b.accessNotes && <div><dt>Access instructions</dt><dd>{b.accessNotes}</dd></div>}
+          {b.contact && <div><dt>Contact</dt><dd>{b.contact.phone && <>Phone: <a href={`tel:${b.contact.phone}`}>{b.contact.phone}</a><br /></>}Email: <a href={`mailto:${b.contact.email}`}>{b.contact.email}</a></dd></div>}
+        </dl>
+        {b.privateHidden && <p className="note"><Icon name="info" size={18} />The full address and any access instructions are shown once you accept this request.</p>}
+        {(b.status === "accepted" || b.status === "completed") && !b.contact && b.address && <p className="note"><Icon name="info" size={18} />The customer chose not to share contact details. Use the address and instructions above.</p>}
         <h3 className="card__title">Job description</h3>
         <p className="booking__desc">{b.description}</p>
 

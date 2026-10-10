@@ -14,7 +14,7 @@ async function setup() {
   const providerB = await createProvider(t, ownerB);
   const customer = asUser(t, customerId);
   const request = (providerId = providerA, startsAt = soon()) =>
-    customer.mutation(api.bookings.create, { providerId, customerName: "Kiri", description: "Clean the flat", startsAt, endsAt: startsAt + 2 * HOUR });
+    customer.mutation(api.bookings.create, { address: "12 Test Street", suburb: "Ponsonby", providerId, customerName: "Kiri", description: "Clean the flat", startsAt, endsAt: startsAt + 2 * HOUR });
   return { t, customerId, customer, ownerA, ownerB, providerA, providerB, a: asUser(t, ownerA), b: asUser(t, ownerB), request };
 }
 
@@ -29,7 +29,7 @@ describe("bookings.create", () => {
   test("refuses signed-out callers", async () => {
     const { t, providerA } = await setup();
     await expect(
-      t.mutation(api.bookings.create, { providerId: providerA, customerName: "x", description: "y", startsAt: soon(), endsAt: soon() + HOUR }),
+      t.mutation(api.bookings.create, { address: "12 Test Street", suburb: "Ponsonby", providerId: providerA, customerName: "x", description: "y", startsAt: soon(), endsAt: soon() + HOUR }),
     ).rejects.toThrow("Sign in required");
   });
 
@@ -38,7 +38,7 @@ describe("bookings.create", () => {
     const pending = await createProvider(t, undefined, { approved: false });
     const startsAt = soon();
     await expect(
-      customer.mutation(api.bookings.create, { providerId: pending, customerName: "x", description: "y", startsAt, endsAt: startsAt + HOUR }),
+      customer.mutation(api.bookings.create, { address: "12 Test Street", suburb: "Ponsonby", providerId: pending, customerName: "x", description: "y", startsAt, endsAt: startsAt + HOUR }),
     ).rejects.toThrow("provider not found");
   });
 
@@ -46,16 +46,16 @@ describe("bookings.create", () => {
     const { a, providerA } = await setup();
     const startsAt = soon();
     await expect(
-      a.mutation(api.bookings.create, { providerId: providerA, customerName: "x", description: "y", startsAt, endsAt: startsAt + HOUR }),
+      a.mutation(api.bookings.create, { address: "12 Test Street", suburb: "Ponsonby", providerId: providerA, customerName: "x", description: "y", startsAt, endsAt: startsAt + HOUR }),
     ).rejects.toThrow("can't book yourself");
   });
 
   test("validates the time window and text", async () => {
     const { customer, providerA } = await setup();
     const base = { providerId: providerA, customerName: "Kiri", description: "d" };
-    await expect(customer.mutation(api.bookings.create, { ...base, startsAt: soon(), endsAt: soon() })).rejects.toThrow("invalid time window");
-    await expect(customer.mutation(api.bookings.create, { ...base, startsAt: Date.now() - HOUR, endsAt: soon() })).rejects.toThrow("invalid time window");
-    await expect(customer.mutation(api.bookings.create, { ...base, description: "  ", startsAt: soon(), endsAt: soon() + HOUR })).rejects.toThrow("missing fields");
+    await expect(customer.mutation(api.bookings.create, { address: "12 Test Street", suburb: "Ponsonby", ...base, startsAt: soon(), endsAt: soon() })).rejects.toThrow("invalid time window");
+    await expect(customer.mutation(api.bookings.create, { address: "12 Test Street", suburb: "Ponsonby", ...base, startsAt: Date.now() - HOUR, endsAt: soon() })).rejects.toThrow("invalid time window");
+    await expect(customer.mutation(api.bookings.create, { address: "12 Test Street", suburb: "Ponsonby", ...base, description: "  ", startsAt: soon(), endsAt: soon() + HOUR })).rejects.toThrow("missing fields");
   });
 });
 

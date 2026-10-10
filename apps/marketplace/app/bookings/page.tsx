@@ -83,7 +83,7 @@ export default async function MyBookings({ searchParams }: { searchParams: Promi
               </dl>
               <p className="booking__desc">{b.description}</p>
               <div className="booking__actions">
-                <Link href={`/providers/${b.providerId}`} className="btn btn--secondary">View provider</Link>
+                <Link href={`/bookings/${b._id}`} className="btn btn--secondary">View details</Link>
                 {b.status === "completed" && (reviewed.has(b._id)
                   ? <span className="booking__rated">Reviewed <b aria-label={`${reviewed.get(b._id)} out of 5`}>{"★".repeat(reviewed.get(b._id)!)}</b></span>
                   : <Link href={`/bookings/${b._id}/review`} className="btn btn--forest">Leave a review</Link>)}

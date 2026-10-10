@@ -20,7 +20,7 @@ type Props = {
   /** Auckland wall time now, "YYYY-MM-DDTHH:mm". Slots before it are disabled. */
   now: string;
   defaultName: string;
-  provider: { name: string; category: string; suburb: string; rateCents: number; rateBasis: string };
+  provider: { name: string; category: string; suburb: string; rateCents: number; rateBasis: string; serviceSuburbs?: string[] };
 };
 
 /** Day strip + time slots + details. Emits the same `start`/`hours`/`name`/`description` fields the server action reads. */
@@ -57,7 +57,14 @@ export default function BookingForm({ action, now, defaultName, provider, servic
   const [desc, setDesc] = useState("");
   const [name, setName] = useState(defaultName);
   const [step, setStep] = useState(0);
-  const detailsOk = name.trim() !== "" && desc.trim() !== "";
+  const [address, setAddress] = useState("");
+  const [suburb, setSuburb] = useState("");
+  const [notes, setNotes] = useState("");
+  const [phone, setPhone] = useState("");
+  const [share, setShare] = useState(false);
+  const detailsOk = name.trim() !== "" && desc.trim() !== "" && address.trim().length >= 5 && suburb.trim() !== "" && (!share || phone.trim() !== "");
+  const area = provider.serviceSuburbs?.length ? [provider.suburb, ...provider.serviceSuburbs] : [];
+  const outside = area.length > 0 && suburb.trim() !== "" && !area.some((x) => x.trim().toLowerCase() === suburb.trim().replace(/\s+/g, " ").toLowerCase());
 
   const picked = days.find((d) => d.key === day) ?? days[0];
   const visible = days.slice(page * 7, page * 7 + 7);
@@ -76,6 +83,11 @@ export default function BookingForm({ action, now, defaultName, provider, servic
       <input type="hidden" name="serviceId" value={serviceId} />
       <input type="hidden" name="name" value={name} />
       <input type="hidden" name="description" value={desc} />
+      <input type="hidden" name="address" value={address} />
+      <input type="hidden" name="suburb" value={suburb} />
+      <input type="hidden" name="accessNotes" value={notes} />
+      <input type="hidden" name="phone" value={phone} />
+      <input type="hidden" name="shareContact" value={share ? "on" : ""} />
       <ol className="bk__steps" aria-label="Booking steps">
         {["Date & Time", "Details", "Confirm"].map((t, i) => (
           <li key={t} aria-current={i === step ? "step" : undefined} data-done={i < step}>
@@ -143,6 +155,31 @@ export default function BookingForm({ action, now, defaultName, provider, servic
             <textarea id="description" rows={4} maxLength={2000} required value={desc} onChange={(e) => setDesc(e.target.value)} placeholder="What needs doing, and anything the provider should know" />
             <span className="bk__count num">{desc.length}/2000</span>
           </div>
+          <h3 className="bk__h3">Where is the job?</h3>
+          <div className="field">
+            <label htmlFor="address" className="field__label">Street address</label>
+            <input id="address" value={address} onChange={(e) => setAddress(e.target.value)} autoComplete="street-address" required maxLength={200} placeholder="12 Ponsonby Road" />
+          </div>
+          <div className="field">
+            <label htmlFor="suburb" className="field__label">Suburb</label>
+            <input id="suburb" value={suburb} onChange={(e) => setSuburb(e.target.value)} autoComplete="address-level2" required maxLength={60} placeholder="Ponsonby" aria-describedby="area-hint" />
+            <p id="area-hint" className={outside ? "field__hint bk__warn" : "field__hint"}>
+              {outside ? `${provider.name} doesn't service ${suburb.trim()}. They cover ${area.join(", ")}.` : area.length ? `${provider.name} covers ${area.join(", ")}.` : "Your full address is only shown to the provider after they accept."}
+            </p>
+          </div>
+          <div className="field">
+            <label htmlFor="notes" className="field__label">Access instructions (optional)</label>
+            <textarea id="notes" rows={2} maxLength={500} value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Gate code, parking, pets, who to ask for" />
+          </div>
+          <fieldset className="bk__share">
+            <legend className="sr-only">Contact details</legend>
+            <label className="bk__check"><input type="checkbox" checked={share} onChange={(e) => setShare(e.target.checked)} />
+              <span><strong>Share my phone and email with {provider.name}</strong>Only after they accept, so you can arrange the visit. Off by default.</span></label>
+            <div className="field">
+              <label htmlFor="phone" className="field__label">Phone{share ? "" : " (optional)"}</label>
+              <input id="phone" type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} autoComplete="tel" inputMode="tel" required={share} placeholder="021 123 4567" />
+            </div>
+          </fieldset>
           <div className="bk__actions">
             <button type="button" className="btn btn--secondary bk__back" onClick={() => setStep(0)}><Icon name="chevronLeft" size={18} />Back</button>
             <button type="button" className="btn btn--forest bk__go" disabled={!detailsOk} onClick={() => setStep(2)}>Continue <Icon name="chevronRight" size={18} /></button>
@@ -156,6 +193,9 @@ export default function BookingForm({ action, now, defaultName, provider, servic
             <div><dt>When</dt><dd>{picked.long}, {startMin !== null && end !== null ? `${minuteLabel(startMin)} – ${minuteLabel(end)}` : ""}</dd></div>
             <div><dt>Name</dt><dd>{name}</dd></div>
             <div><dt>Job</dt><dd>{desc}</dd></div>
+            <div><dt>Address</dt><dd>{address}, {suburb}</dd></div>
+            {notes && <div><dt>Access</dt><dd>{notes}</dd></div>}
+            <div><dt>Contact</dt><dd>{share ? `Shared with ${provider.name} after they accept (${phone})` : "Not shared. You can still manage the booking in Localo."}</dd></div>
           </dl>
           <div className="bk__actions">
             <button type="button" className="btn btn--secondary bk__back" onClick={() => setStep(1)}><Icon name="chevronLeft" size={18} />Back</button>
@@ -171,7 +211,7 @@ export default function BookingForm({ action, now, defaultName, provider, servic
           <dl className="bk__sum">
             <div><Icon name="calendar" size={22} /><dt>Date</dt><dd>{picked.long}</dd></div>
             <div><Icon name="clock" size={22} /><dt>Time</dt><dd>{startMin !== null && end !== null ? `${minuteLabel(startMin)} – ${minuteLabel(end)} (${fmtHours(hours)})` : "Pick a start time"}</dd></div>
-            <div><Icon name="pin" size={22} /><dt>Location</dt><dd>{provider.suburb}, Auckland</dd></div>
+            <div><Icon name="pin" size={22} /><dt>Location</dt><dd>{suburb.trim() ? `${suburb.trim()}, Auckland` : "Enter your suburb in Details"}</dd></div>
             <div><Icon name="tag" size={22} /><dt>Estimated price</dt><dd>{priceType === "quote" ? <strong>Quote on request</strong> : <strong className="num">{dollars(price)}</strong>}<small>{hourly ? `${dollars(unitCents)}/hr × ${fmtHours(hours)}. ` : ""}{priceType === "quote" ? "The provider will quote after your request." : "Final price may vary based on details."}</small></dd></div>
           </dl>
           <p className="bk__note"><Icon name="shield" size={22} /><span><strong>Pay the provider directly</strong>Localo does not collect or hold payment.</span></p>

@@ -39,6 +39,8 @@ export default defineSchema({
     submittedAt: v.optional(v.number()),
     // Path under /public (e.g. /images/alex_morgan.jpg). Set by seed only; there is no upload yet.
     photo: v.optional(v.string()),
+    // Suburbs the provider travels to, besides their own. Empty or absent means they take bookings anywhere.
+    serviceSuburbs: v.optional(v.array(v.string())),
   })
     .index("by_approved", ["approved"])
     .index("by_userId", ["userId"])
@@ -53,6 +55,13 @@ export default defineSchema({
     description: v.string(),
     startsAt: v.number(), // UTC ms
     endsAt: v.number(), // UTC ms
+    // Where the job is. Absent on bookings made before addresses were collected.
+    address: v.optional(v.string()),
+    suburb: v.optional(v.string()),
+    accessNotes: v.optional(v.string()),
+    // Contact details the customer chose to share. The provider only sees them while the booking is accepted or completed.
+    shareContact: v.optional(v.boolean()),
+    customerPhone: v.optional(v.string()),
     // The service requested, with its name copied so later edits or archiving do not rewrite history.
     serviceId: v.optional(v.id("services")),
     serviceName: v.optional(v.string()),

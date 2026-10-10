@@ -16,7 +16,7 @@ async function setup() {
   let n = 0;
   const book = async (status: "requested" | "accepted" | "completed" = "completed") => {
     const startsAt = Date.now() + (24 + 3 * n++) * HOUR;
-    const id = await customer.mutation(api.bookings.create, { providerId, customerName: "Kiri", description: "d", startsAt, endsAt: startsAt + HOUR });
+    const id = await customer.mutation(api.bookings.create, { address: "12 Test Street", suburb: "Ponsonby", providerId, customerName: "Kiri", description: "d", startsAt, endsAt: startsAt + HOUR });
     if (status !== "requested") await owner.mutation(api.bookings.transition, { bookingId: id, to: "accepted" });
     if (status === "completed") await owner.mutation(api.bookings.transition, { bookingId: id, to: "completed" });
     return id;

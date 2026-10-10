@@ -4,12 +4,15 @@ import { getUser, requireUser } from "./model/auth";
 import { canTransition, type Actor } from "./model/bookingRules";
 import { getProviderForUser } from "./model/providers";
 import { notify } from "./model/notify";
+import { providerMaySeePrivate, servesSuburb, validateJob } from "./model/jobDetails";
 import { addDays, availabilityFor, fits, utcToLocal } from "./model/availability";
 
 export const create = mutation({
   args: {
     providerId: v.id("providers"), customerName: v.string(), description: v.string(),
     startsAt: v.number(), endsAt: v.number(), serviceId: v.optional(v.id("services")),
+    address: v.string(), suburb: v.string(), accessNotes: v.optional(v.string()),
+    shareContact: v.optional(v.boolean()), phone: v.optional(v.string()),
   },
   handler: async (ctx, a) => {
     const user = await requireUser(ctx);
@@ -22,6 +25,8 @@ export const create = mutation({
     const description = a.description.trim();
     if (!customerName || !description) throw new ConvexError("missing fields");
     if (customerName.length > 100 || description.length > 2000) throw new ConvexError("One of the fields is too long");
+    const job = validateJob({ address: a.address, suburb: a.suburb, accessNotes: a.accessNotes, shareContact: a.shareContact ?? false, phone: a.phone });
+    if (!servesSuburb(provider, job.suburb)) throw new ConvexError(`${provider.name} doesn't service ${job.suburb}`);
     // Refuse times the provider has closed or blocked. Providers who never set hours are only checked
     // against blocked time and accepted bookings, so existing listings keep working.
     const from = utcToLocal(a.startsAt), to = utcToLocal(a.endsAt);
@@ -39,7 +44,7 @@ export const create = mutation({
     const id = await ctx.db.insert("bookings", {
       ...(service ? { serviceId: service._id, serviceName: service.name } : {}),
       providerId: provider._id, customerId: user._id, customerName, customerEmail: user.email,
-      description, startsAt: a.startsAt, endsAt: a.endsAt, status: "requested",
+      description, startsAt: a.startsAt, endsAt: a.endsAt, status: "requested", ...job,
     });
     await ctx.db.insert("bookingEvents", { bookingId: id, actorId: user._id, toStatus: "requested" });
     await notify(ctx, provider.userId, { kind: "booking_requested", title: "New booking request", body: `${customerName} asked for ${service?.name ?? "a booking"}.`, href: `/provider/bookings/${id}` });
@@ -55,11 +60,16 @@ export const listIncoming = query({
     if (!user) return [];
     const provider = await getProviderForUser(ctx, user._id);
     if (!provider) return [];
-    return await ctx.db
+    const rows = await ctx.db
       .query("bookings")
       .withIndex("by_provider", (i) => i.eq("providerId", provider._id))
       .order("desc")
       .take(200);
+    // A list never carries contact details or the street address; the detail view applies the rules.
+    return rows.map((b) => ({
+      _id: b._id, _creationTime: b._creationTime, providerId: b.providerId, customerName: b.customerName, description: b.description,
+      startsAt: b.startsAt, endsAt: b.endsAt, status: b.status, serviceName: b.serviceName, suburb: b.suburb,
+    }));
   },
 });
 
@@ -139,9 +149,34 @@ export const getForProvider = query({
     const bookingId = ctx.db.normalizeId("bookings", id);
     const b = provider && bookingId ? await ctx.db.get(bookingId) : null;
     if (!b || !provider || b.providerId !== provider._id) return null;
-    // Customer email stays private; the provider sees the name they were given.
-    const { customerEmail: _email, ...rest } = b;
     const events = await ctx.db.query("bookingEvents").withIndex("by_booking", (i) => i.eq("bookingId", b._id)).take(50);
-    return { ...rest, events: events.map((e) => ({ at: e._creationTime, from: e.fromStatus, to: e.toStatus, byCustomer: e.actorId === b.customerId })) };
+    const open = providerMaySeePrivate(b.status);
+    return {
+      _id: b._id, customerName: b.customerName, description: b.description, startsAt: b.startsAt, endsAt: b.endsAt,
+      status: b.status, serviceName: b.serviceName, suburb: b.suburb,
+      // Full address and access notes only once accepted; contact only if the customer opted in.
+      address: open ? b.address : undefined, accessNotes: open ? b.accessNotes : undefined,
+      contact: open && b.shareContact ? { email: b.customerEmail, phone: b.customerPhone } : undefined,
+      privateHidden: !open && !!b.address,
+      events: events.map((e) => ({ at: e._creationTime, from: e.fromStatus, to: e.toStatus, byCustomer: e.actorId === b.customerId })),
+    };
+  },
+});
+
+/** One of the signed-in customer's own bookings, with everything they entered. Null for anyone else. */
+export const getForCustomer = query({
+  args: { id: v.string() },
+  handler: async (ctx, { id }) => {
+    const user = await getUser(ctx);
+    const bookingId = ctx.db.normalizeId("bookings", id);
+    const b = user && bookingId ? await ctx.db.get(bookingId) : null;
+    if (!b || !user || b.customerId !== user._id) return null;
+    const provider = await ctx.db.get(b.providerId);
+    const events = await ctx.db.query("bookingEvents").withIndex("by_booking", (i) => i.eq("bookingId", b._id)).take(50);
+    const { customerEmail: _e, ...rest } = b;
+    return {
+      ...rest, providerName: provider?.name ?? "Unknown provider", providerSuburb: provider?.suburb,
+      events: events.map((e) => ({ at: e._creationTime, to: e.toStatus, byProvider: e.actorId !== b.customerId })),
+    };
   },
 });

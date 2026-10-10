@@ -80,7 +80,7 @@ describe("booking a service", () => {
     const other = await b.mutation(api.services.create, mow);
     const startsAt = Date.now() + 24 * HOUR;
     const book = (providerId: typeof providerA, serviceId?: typeof sid) =>
-      customer.mutation(api.bookings.create, { providerId, customerName: "Kiri", description: "d", startsAt, endsAt: startsAt + HOUR, serviceId });
+      customer.mutation(api.bookings.create, { address: "12 Test Street", suburb: "Ponsonby", providerId, customerName: "Kiri", description: "d", startsAt, endsAt: startsAt + HOUR, serviceId });
 
     const id = await book(providerA, sid);
     expect(await t.run((ctx) => ctx.db.get(id))).toMatchObject({ serviceId: sid, serviceName: "Lawn mowing" });

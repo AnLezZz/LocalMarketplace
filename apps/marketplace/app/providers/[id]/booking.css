@@ -97,3 +97,8 @@ body:has(.bk) { background: var(--ivory, #FAF9F6); }
 .rv__head time { color: var(--ink-3); margin-left: auto; font-size: 13px; }
 .rv__stars { color: #E0A100; letter-spacing: 1px; }
 .rv p { margin: 4px 0 0; color: var(--ink-2); overflow-wrap: anywhere; }
+.bk__warn { color: #A63A2A; }
+.bk__share { border: 1px solid #ECE8DF; border-radius: 12px; padding: var(--s-4); margin: var(--s-3) 0 0; display: grid; gap: var(--s-3); }
+.bk__check { display: flex; gap: var(--s-3); align-items: flex-start; font-size: 14px; color: var(--ink-3); cursor: pointer; }
+.bk__check input { width: 20px; height: 20px; margin-top: 2px; flex: none; }
+.bk__check strong { display: block; color: var(--ink); }

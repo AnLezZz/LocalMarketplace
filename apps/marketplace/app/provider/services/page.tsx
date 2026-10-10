@@ -8,7 +8,7 @@ import DashboardSidebar from "../../../components/dashboard/DashboardSidebar";
 import Icon from "../../../components/Icon";
 import Banner from "../../../components/Banner";
 import { durationLabel, priceLabel } from "../../../components/format";
-import { archiveService, saveService, setServiceEnabled } from "./actions";
+import { archiveService, saveService, saveServiceAreas, setServiceEnabled } from "./actions";
 import "../../providers/[id]/booking.css";
 
 export const dynamic = "force-dynamic";
@@ -17,8 +17,8 @@ type Service = { _id: string; name: string; description: string; priceType: "fix
 
 const DURATIONS = [30, 45, 60, 90, 120, 180, 240, 300, 360, 480];
 
-export default async function Services({ searchParams }: { searchParams: Promise<{ err?: string; edit?: string }> }) {
-  const { err, edit } = await searchParams;
+export default async function Services({ searchParams }: { searchParams: Promise<{ err?: string; edit?: string; ok?: string }> }) {
+  const { err, edit, ok } = await searchParams;
   const opts = await authOpts();
   const profile = await fetchQuery(api.providers.mine, {}, opts);
   if (!profile) redirect("/provider/register");
@@ -39,6 +39,7 @@ export default async function Services({ searchParams }: { searchParams: Promise
           </div>
         </header>
         {err && <Banner tone="error">{err}</Banner>}
+        {ok === "areas" && <Banner tone="success">Service area saved.</Banner>}
 
         <section className="card d-card" aria-labelledby="svc-h">
           <div className="d-card__head"><h2 id="svc-h" className="d-card__title">Your services</h2><span className="d-card__sub num">{services.length}</span></div>
@@ -67,6 +68,18 @@ export default async function Services({ searchParams }: { searchParams: Promise
               ))}
             </ul>
           )}
+        </section>
+
+        <section className="card d-card" aria-labelledby="area-h">
+          <div className="d-card__head"><h2 id="area-h" className="d-card__title">Service area</h2><span className="d-card__sub">Based in {profile.suburb}</span></div>
+          <form action={saveServiceAreas} className="form">
+            <div className="field">
+              <label htmlFor="suburbs" className="field__label">Other suburbs you travel to (one per line or comma separated)</label>
+              <textarea id="suburbs" name="suburbs" rows={3} defaultValue={(profile.serviceSuburbs ?? []).join(", ")} placeholder="e.g. Grey Lynn, Herne Bay, Mount Eden" />
+              <p className="field__hint">Customers outside {profile.suburb} and these suburbs can&apos;t request a booking. Leave this empty to take bookings anywhere.</p>
+            </div>
+            <button className="btn btn--secondary">Save service area</button>
+          </form>
         </section>
 
         <section className="card d-card" id="form" aria-labelledby="form-h">

@@ -36,7 +36,11 @@ export default async function Book({ params, searchParams }: { params: Promise<{
     const description = String(fd.get("description") ?? "").trim();
     if (!name || !description) redirect(`/providers/${id}/book?error=Fill+in+all+fields`);
     const r = await attempt(async () =>
-      fetchMutation(api.bookings.create, { providerId: id, customerName: name, description, startsAt: startsAt.getTime(), endsAt: endsAt.getTime(), serviceId }, await authOpts()));
+      fetchMutation(api.bookings.create, {
+        providerId: id, customerName: name, description, startsAt: startsAt.getTime(), endsAt: endsAt.getTime(), serviceId,
+        address: String(fd.get("address") ?? ""), suburb: String(fd.get("suburb") ?? ""), accessNotes: String(fd.get("accessNotes") ?? "") || undefined,
+        shareContact: fd.get("shareContact") === "on", phone: String(fd.get("phone") ?? "") || undefined,
+      }, await authOpts()));
     redirect(r.ok ? `/providers/${id}/book?sent=1` : `/providers/${id}/book?error=${encodeURIComponent(r.message)}`);
   }
 
@@ -81,7 +85,7 @@ export default async function Book({ params, searchParams }: { params: Promise<{
           </ol>
         </section>
       ) : me ? (
-        <BookingForm action={submit} availability={av.days} services={services} initialServiceId={service} now={aucklandNow()} defaultName={first} provider={{ name: p.name, category: cat.label, suburb: p.suburb, rateCents: p.rateCents, rateBasis: p.rateBasis }} />
+        <BookingForm action={submit} availability={av.days} services={services} initialServiceId={service} now={aucklandNow()} defaultName={first} provider={{ name: p.name, category: cat.label, suburb: p.suburb, rateCents: p.rateCents, rateBasis: p.rateBasis, serviceSuburbs: p.serviceSuburbs }} />
       ) : (
         <section className="bk__card signin-prompt">
           <span className="signin-prompt__icon"><Icon name="user" size={24} /></span>

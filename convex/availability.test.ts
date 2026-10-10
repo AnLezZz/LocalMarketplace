@@ -57,7 +57,7 @@ describe("customer availability and booking", () => {
     await a.mutation(api.availability.setHours, { hours: hours({ 0: { enabled: false }, 3: { breakStartMinute: 720, breakEndMinute: 780 } }) });
     const wed = nextWeekday(3), sun = nextWeekday(0);
     const startsAt = localToUtc(wed, 10 * 60);
-    const bookingId = await customer.mutation(api.bookings.create, { providerId: providerA, customerName: "K", description: "d", startsAt, endsAt: startsAt + HOUR });
+    const bookingId = await customer.mutation(api.bookings.create, { address: "12 Test Street", suburb: "Ponsonby", providerId: providerA, customerName: "K", description: "d", startsAt, endsAt: startsAt + HOUR });
     const day = async (date: string) => (await t.query(api.availability.forProvider, { providerId: providerA, days: 31 })).days.find((d) => d.date === date)!;
 
     expect((await day(wed)).windows).toEqual([[540, 720], [780, 1020]]);
@@ -76,7 +76,7 @@ describe("customer availability and booking", () => {
     await a.mutation(api.availability.setHours, { hours: hours({ 0: { enabled: false }, 3: { breakStartMinute: 720, breakEndMinute: 780 } }) });
     const wed = nextWeekday(3), sun = nextWeekday(0);
     const book = (date: string, from: number, to: number) =>
-      customer.mutation(api.bookings.create, { providerId: providerA, customerName: "K", description: "d", startsAt: localToUtc(date, from), endsAt: localToUtc(date, to) });
+      customer.mutation(api.bookings.create, { address: "12 Test Street", suburb: "Ponsonby", providerId: providerA, customerName: "K", description: "d", startsAt: localToUtc(date, from), endsAt: localToUtc(date, to) });
     await expect(book(wed, 10 * 60, 11 * 60)).resolves.toBeTruthy();
     await expect(book(wed, 8 * 60, 9 * 60 + 30)).rejects.toThrow("isn't available"); // before opening
     await expect(book(wed, 16 * 60, 18 * 60)).rejects.toThrow("isn't available"); // after closing
@@ -91,7 +91,7 @@ describe("customer availability and booking", () => {
     const { a, customer, providerA } = await setup();
     const d = nextWeekday(2);
     await a.mutation(api.availability.addTimeOff, { startsAt: localToUtc(d, 6 * 60), endsAt: localToUtc(d, 7 * 60) });
-    const book = (from: number, to: number) => customer.mutation(api.bookings.create, { providerId: providerA, customerName: "K", description: "d", startsAt: localToUtc(d, from), endsAt: localToUtc(d, to) });
+    const book = (from: number, to: number) => customer.mutation(api.bookings.create, { address: "12 Test Street", suburb: "Ponsonby", providerId: providerA, customerName: "K", description: "d", startsAt: localToUtc(d, from), endsAt: localToUtc(d, to) });
     await expect(book(6 * 60 + 30, 7 * 60 + 30)).rejects.toThrow("isn't available");
     await expect(book(20 * 60, 21 * 60)).resolves.toBeTruthy();
   });

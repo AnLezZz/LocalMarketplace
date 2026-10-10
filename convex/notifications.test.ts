@@ -13,7 +13,7 @@ async function setup() {
   let n = 0;
   const request = () => {
     const startsAt = Date.now() + (24 + 3 * n++) * HOUR;
-    return customer.mutation(api.bookings.create, { providerId, customerName: "Kiri", description: "Mow", startsAt, endsAt: startsAt + HOUR });
+    return customer.mutation(api.bookings.create, { address: "12 Test Street", suburb: "Ponsonby", providerId, customerName: "Kiri", description: "Mow", startsAt, endsAt: startsAt + HOUR });
   };
   return { t, owner, customer, stranger, providerId, request };
 }
@@ -87,6 +87,6 @@ describe("notifications", () => {
     const { t, customer } = await setup();
     const orphan = await createProvider(t);
     const startsAt = Date.now() + 90 * HOUR;
-    await expect(customer.mutation(api.bookings.create, { providerId: orphan, customerName: "K", description: "d", startsAt, endsAt: startsAt + HOUR })).resolves.toBeTruthy();
+    await expect(customer.mutation(api.bookings.create, { address: "12 Test Street", suburb: "Ponsonby", providerId: orphan, customerName: "K", description: "d", startsAt, endsAt: startsAt + HOUR })).resolves.toBeTruthy();
   });
 });
