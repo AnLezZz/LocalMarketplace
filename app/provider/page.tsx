@@ -194,7 +194,7 @@ export default async function ProviderHome({
               </div>
             ) : (
               <div className="d-table-wrapper">
-                <table className="d-table">
+                <table className="d-table d-table--stack">
                   <thead>
                     <tr>
                       <th>Date & Time</th>

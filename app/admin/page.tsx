@@ -138,7 +138,7 @@ export default async function Admin({
               </div>
             ) : (
               <div className="d-table-wrapper">
-                <table className="d-table">
+                <table className="d-table d-table--stack d-table--recent">
                   <thead>
                     <tr>
                       <th>Date</th>
@@ -153,16 +153,16 @@ export default async function Admin({
                       const w = bookingWindow(b.startsAt, b.endsAt);
                       return (
                         <tr key={b._id}>
-                          <td>
+                          <td data-label="Date">
                             <span className="d-table__date num">{w.day.split(",")[0]}</span>
                           </td>
-                          <td>
+                          <td data-label="Customer">
                             <span className="d-table__client-name">{b.customerName}</span>
                           </td>
-                          <td>
+                          <td data-label="Provider">
                             <span className="d-table__provider-name">{b.providerName}</span>
                           </td>
-                          <td>
+                          <td data-label="Service">
                             <span className="d-table__service">{b.description || b.service}</span>
                           </td>
                           <td className="d-table__td-right">

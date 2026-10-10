@@ -11,8 +11,9 @@ body:has(.bk) { background: var(--ivory, #FAF9F6); }
 .bk__price .num { font-size: 26px; font-weight: 700; }
 .bk__price small { color: var(--ink-3); }
 .bk__about { color: var(--ink-2); max-width: 70ch; margin: var(--s-4) 0; }
-.bk__grid { display: grid; gap: var(--s-4); margin-top: var(--s-4); }
-.bk__main, .bk__side { display: grid; gap: var(--s-4); align-content: start; }
+.bk__grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--s-4); margin-top: var(--s-4); }
+.bk__grid > * { min-width: 0; } /* the step list scrolls inside the page instead of widening it */
+.bk__main, .bk__side { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--s-4); align-content: start; }
 .bk__h { font-size: 20px; font-weight: 600; letter-spacing: -0.01em; }
 .bk__h--sm { font-size: 16px; }
 .bk__sub { color: var(--ink-3); font-size: 14px; margin: 2px 0 var(--s-4); }
