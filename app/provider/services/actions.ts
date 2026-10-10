@@ -12,6 +12,17 @@ const done = (r: { ok: boolean; message?: string }, ok = BACK, failed = BACK) =>
   redirect(r.ok ? ok : `${failed}${failed.includes("?") ? "&" : "?"}err=${encodeURIComponent(r.message ?? "")}`);
 };
 
+/** The location part of the service form: only the fields that belong to the chosen mode are sent. */
+function location(fd: FormData) {
+  const mode = String(fd.get("locationMode") ?? "");
+  if (!["customer", "provider", "online", "either"].includes(mode)) return {};
+  const m = mode as "customer" | "provider" | "online" | "either";
+  const text = (k: string) => String(fd.get(k) ?? "");
+  if (m === "provider" || m === "either") return { locationMode: m, venue: { name: text("venueName"), address: text("venueAddress"), suburb: text("venueSuburb"), notes: text("venueNotes") || undefined } };
+  if (m === "online") return { locationMode: m, onlineNote: text("onlineNote") || undefined, meetingLink: text("meetingLink") || undefined };
+  return { locationMode: m };
+}
+
 /** Creates a service, or updates it when the form carries an id. */
 export async function saveService(fd: FormData) {
   const id = String(fd.get("id") ?? "");
@@ -21,6 +32,8 @@ export async function saveService(fd: FormData) {
     name: String(fd.get("name") ?? ""), description: String(fd.get("description") ?? ""), priceType,
     priceCents: priceType === "quote" || !Number.isFinite(dollars) ? undefined : Math.round(dollars * 100),
     durationMinutes: Number(fd.get("duration")),
+    categorySlug: String(fd.get("categorySlug") ?? "") || undefined,
+    ...location(fd),
   };
   const r = await attempt(async () => id
     ? fetchMutation(api.services.update, { id, ...args }, await authOpts())

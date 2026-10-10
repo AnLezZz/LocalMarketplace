@@ -13,6 +13,7 @@ import Avatar from "../../../../components/Avatar";
 import Banner from "../../../../components/Banner";
 import { StatusPill } from "../../../../components/Pill";
 import { bookingPriceLine, bookingWindow, dollars } from "../../../../components/format";
+import BookingWhere from "../../../../components/BookingWhere";
 import RescheduleBox from "../../../../components/RescheduleBox";
 
 import "../../../providers/[id]/booking.css";
@@ -64,9 +65,7 @@ export default async function BookingDetails({ params, searchParams }: { params:
         <dl className="detail">
           {priceLine && <div><dt>Price</dt><dd>{priceLine}{b.agreedCents !== undefined && <><br /><strong>Agreed: {dollars(b.agreedCents)}</strong></>}</dd></div>}
           {b.quoteNote && <div><dt>Quote note</dt><dd>{b.quoteNote}</dd></div>}
-          <div><dt>Suburb</dt><dd>{b.suburb ?? "Not recorded"}</dd></div>
-          {b.address && <div><dt>Address</dt><dd>{b.address}, {b.suburb}</dd></div>}
-          {b.accessNotes && <div><dt>Access instructions</dt><dd>{b.accessNotes}</dd></div>}
+          <BookingWhere b={b} role="provider" open={b.status === "accepted" || b.status === "completed"} />
           {b.contact && <div><dt>Contact</dt><dd>{b.contact.phone && <>Phone: <a href={`tel:${b.contact.phone}`}>{b.contact.phone}</a><br /></>}Email: <a href={`mailto:${b.contact.email}`}>{b.contact.email}</a></dd></div>}
         </dl>
         {b.privateHidden && <p className="note"><Icon name="info" size={18} />The full address and any access instructions are shown once you accept this request.</p>}

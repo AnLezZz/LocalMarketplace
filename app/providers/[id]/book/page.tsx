@@ -4,7 +4,7 @@ import { fetchQuery, fetchMutation } from "convex/nextjs";
 import { api } from "../../../../lib/convex";
 import { authOpts, getMe } from "../../../../lib/auth";
 import { attempt } from "../../../../lib/actions";
-import BookingForm from "../BookingForm";
+import BookingForm, { type BookResult } from "../BookingForm";
 import "../booking.css";
 import { aucklandNow, aucklandToDate } from "../../../../lib/time";
 import Icon from "../../../../components/Icon";
@@ -16,37 +16,44 @@ import { rate } from "../../../../components/format";
 
 export const dynamic = "force-dynamic";
 
-export default async function Book({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ sent?: string; error?: string; service?: string }> }) {
+export default async function Book({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ error?: string; service?: string }> }) {
   const { id } = await params;
-  const { sent, error, service } = await searchParams;
+  const { error, service } = await searchParams;
   const p = await fetchQuery(api.providers.get, { id });
   if (!p) notFound();
   const me = await getMe();
   const acct = me ? ((await fetchQuery(api.account.mine, {}, await authOpts())) as { contactPhone: string; addresses: any[] } | null) : null;
   const av = (await fetchQuery(api.availability.forProvider, { providerId: id, days: 14 })) as { days: { date: string; windows: [number, number][]; busy: [number, number][] }[] };
-  const services = ((await fetchQuery(api.services.listForProvider, { providerId: id })) as any[]).map((s) => ({ id: s._id as string, name: s.name, description: s.description, priceType: s.priceType, priceCents: s.priceCents, durationMinutes: s.durationMinutes }));
+  const cats = await loadCategories();
+  const services = ((await fetchQuery(api.services.listForProvider, { providerId: id })) as any[]).map((s) => ({
+    id: s._id as string, name: s.name, description: s.description, priceType: s.priceType, priceCents: s.priceCents, durationMinutes: s.durationMinutes,
+    categoryLabel: s.categorySlug ? cats.all.find((c) => c.slug === s.categorySlug)?.label : undefined, locationMode: s.locationMode, venue: s.venue, onlineNote: s.onlineNote,
+  }));
 
-  async function submit(fd: FormData) {
+  /** Returns an error for the form to show (it keeps everything the customer entered); a success goes to the confirmation page. */
+  async function submit(_prev: BookResult, fd: FormData): Promise<BookResult> {
     "use server";
     const startsAt = aucklandToDate(String(fd.get("start")));
     const hours = Math.max(0.5, Math.min(12, Number(fd.get("hours")) || 1));
     const serviceId = String(fd.get("serviceId") ?? "") || undefined;
     const endsAt = new Date(startsAt.getTime() + hours * 3600_000);
-    if (isNaN(startsAt.getTime()) || startsAt < new Date()) redirect(`/providers/${id}/book?error=Pick+a+future+time`);
+    if (isNaN(startsAt.getTime()) || startsAt < new Date()) return { error: "That time has passed. Please pick another time." };
     const name = String(fd.get("name") ?? "").trim();
     const description = String(fd.get("description") ?? "").trim();
-    if (!name || !description) redirect(`/providers/${id}/book?error=Fill+in+all+fields`);
+    if (!name || !description) return { error: "Fill in your name and describe the job." };
+    const choice = String(fd.get("locationChoice") ?? "");
     const r = await attempt(async () =>
       fetchMutation(api.bookings.create, {
         providerId: id, customerName: name, description, startsAt: startsAt.getTime(), endsAt: endsAt.getTime(), serviceId,
-        address: String(fd.get("address") ?? ""), suburb: String(fd.get("suburb") ?? ""), accessNotes: String(fd.get("accessNotes") ?? "") || undefined,
+        ...(choice === "customer" || choice === "provider" || choice === "online" ? { locationChoice: choice } : {}),
+        address: String(fd.get("address") ?? "") || undefined, suburb: String(fd.get("suburb") ?? "") || undefined, accessNotes: String(fd.get("accessNotes") ?? "") || undefined,
         shareContact: fd.get("shareContact") === "on", phone: String(fd.get("phone") ?? "") || undefined,
       }, await authOpts()));
-    redirect(r.ok ? `/providers/${id}/book?sent=1` : `/providers/${id}/book?error=${encodeURIComponent(r.message)}`);
+    if (!r.ok) return { error: r.message };
+    redirect(`/bookings/${r.value}/confirmation`);
   }
 
   const price = rate(p.rateCents, p.rateBasis);
-  const cats = await loadCategories();
   const places = await loadLocations();
   const cat = metaIn(cats.all, p.category);
 
@@ -72,23 +79,8 @@ export default async function Book({ params, searchParams }: { params: Promise<{
 
       {error && <Banner tone="error">{error}</Banner>}
 
-      {sent ? (
-        <section className="bk__card bk__done">
-          <span className="bk__done-icon"><Icon name="check" size={32} /></span>
-          <h2 className="bk__h">Booking request sent!</h2>
-          <p className="bk__sub">{p.name} has your request and will accept or decline. A request does not guarantee the slot.</p>
-          <div className="bk__actions">
-            <Link href="/bookings" className="btn btn--forest bk__go">View my bookings</Link>
-            <Link href="/" className="btn btn--secondary">Back to home</Link>
-          </div>
-          <ol className="bk__next">
-            <li><b>1</b><span><strong>{p.name} reviews your request</strong>They accept or decline it.</span></li>
-            <li><b>2</b><span><strong>Check My bookings</strong>Its status updates there.</span></li>
-            <li><b>3</b><span><strong>Meet and pay directly</strong>Localo does not collect payment.</span></li>
-          </ol>
-        </section>
-      ) : me ? (
-        <BookingForm action={submit} city={places.city} suburbOptions={places.suburbs} savedAddresses={acct?.addresses ?? []} savedPhone={acct?.contactPhone ?? ""} availability={av.days} services={services} initialServiceId={service} now={aucklandNow()} defaultName={first} provider={{ name: p.name, category: cat.label, suburb: p.suburb, rateCents: p.rateCents, rateBasis: p.rateBasis, serviceSuburbs: p.serviceSuburbs }} />
+      {me ? (
+        <BookingForm action={submit} backHref={`/providers/${id}`} city={places.city} suburbOptions={places.suburbs} savedAddresses={acct?.addresses ?? []} savedPhone={acct?.contactPhone ?? ""} availability={av.days} services={services} initialServiceId={service} now={aucklandNow()} defaultName={first} provider={{ name: p.name, category: cat.label, suburb: p.suburb, rateCents: p.rateCents, rateBasis: p.rateBasis, serviceSuburbs: p.serviceSuburbs }} />
       ) : (
         <section className="bk__card signin-prompt">
           <span className="signin-prompt__icon"><Icon name="user" size={24} /></span>

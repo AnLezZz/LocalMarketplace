@@ -103,3 +103,18 @@ body:has(.bk) { background: var(--ivory, #FAF9F6); }
 .bk__check { display: flex; gap: var(--s-3); align-items: flex-start; font-size: 14px; color: var(--ink-3); cursor: pointer; }
 .bk__check input { width: 20px; height: 20px; margin-top: 2px; flex: none; }
 .bk__check strong { display: block; color: var(--ink); }
+
+/* Guided flow: selection summary, service options, location blocks, errors */
+.bk__mini { display: grid; gap: 2px; padding: var(--s-3) var(--s-4); border: 1px solid #ECE8DF; border-radius: 14px; background: #fff; font-size: 14px; }
+.bk__mini strong { font-size: 16px; }
+.bk__mini span { color: var(--ink-3); }
+.bk__svcwhere { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--ink-3); }
+.bk__venue { display: flex; gap: var(--s-3); align-items: flex-start; padding: var(--s-4); border-radius: 14px; background: #F2EFE7; color: var(--ink); }
+.bk__venue > div { display: grid; gap: 2px; min-width: 0; }
+.bk__venue small { color: var(--ink-3); margin-top: 4px; }
+.bk__choice { display: grid; gap: 8px; margin: 0; padding: 0; border: 0; min-width: 0; }
+.field__error { margin: 6px 0 0; font-size: 14px; color: #B42318; }
+.bk__fail { display: grid; gap: 6px; padding: var(--s-4); border: 1px solid #F0C9C5; border-radius: 14px; background: #FDF1EF; color: #7A1F17; }
+.bk__failact { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
+.bk__recap { margin: var(--s-4) 0; text-align: left; }
+button[aria-busy="true"].bk__go { opacity: .7; cursor: progress; }

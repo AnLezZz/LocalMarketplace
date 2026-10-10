@@ -10,6 +10,7 @@ import { withdrawPendingReschedules } from "./model/reschedules";
 import { latestDispute } from "./model/disputes";
 import { latestReschedule } from "./model/reschedules";
 import { providerMaySeePrivate, validateJob } from "./model/jobDetails";
+import { bookingMode, bookingModeValidator, validateContact } from "./model/serviceLocation";
 import { snapshotPrice, validateQuote, type PriceType } from "./model/pricing";
 import { isTimeAvailable } from "./model/availability";
 import { requireSupportedSuburb } from "./model/locations";
@@ -19,7 +20,10 @@ export const create = mutation({
   args: {
     providerId: v.id("providers"), customerName: v.string(), description: v.string(),
     startsAt: v.number(), endsAt: v.number(), serviceId: v.optional(v.id("services")),
-    address: v.string(), suburb: v.string(), accessNotes: v.optional(v.string()),
+    // Where it happens. Needed only for a service offered at either the customer's or the provider's place; any other value is refused.
+    locationChoice: v.optional(bookingModeValidator),
+    // The customer's address: required for a job at the customer's place, ignored (and not stored) otherwise.
+    address: v.optional(v.string()), suburb: v.optional(v.string()), accessNotes: v.optional(v.string()),
     shareContact: v.optional(v.boolean()), phone: v.optional(v.string()),
   },
   handler: async (ctx, a) => {
@@ -33,23 +37,38 @@ export const create = mutation({
     const description = a.description.trim();
     if (!customerName || !description) throw new ConvexError("missing fields");
     if (customerName.length > 100 || description.length > 2000) throw new ConvexError("One of the fields is too long");
-    const job = validateJob({ address: a.address, suburb: a.suburb, accessNotes: a.accessNotes, shareContact: a.shareContact ?? false, phone: a.phone });
-    await requireSupportedSuburb(ctx, job.suburb, (s) => `We don't operate in ${s} yet`);
-    if (!(await providerServes(ctx, provider, job.suburb))) throw new ConvexError(`${provider.name} doesn't service ${job.suburb}`);
+
+    // The service first: it decides where the booking can happen.
+    let service: Doc<"services"> | null = null;
+    if (a.serviceId) {
+      service = await ctx.db.get(a.serviceId);
+      if (!service || service.providerId !== provider._id || !service.enabled || service.archived) throw new ConvexError("service not found");
+    }
+    const mode = bookingMode(service?.locationMode, a.locationChoice);
+    let where: Partial<Doc<"bookings">>;
+    if (mode === "customer") {
+      const job = validateJob({ address: a.address ?? "", suburb: a.suburb ?? "", accessNotes: a.accessNotes, shareContact: a.shareContact ?? false, phone: a.phone });
+      await requireSupportedSuburb(ctx, job.suburb, (s) => `We don't operate in ${s} yet`);
+      if (!(await providerServes(ctx, provider, job.suburb))) throw new ConvexError(`${provider.name} doesn't service ${job.suburb}`);
+      where = { locationMode: "customer", ...job };
+    } else {
+      // No customer address is asked for, so none is checked against the service area or stored.
+      const contact = validateContact({ shareContact: a.shareContact ?? false, phone: a.phone });
+      if (mode === "provider") {
+        if (!service?.venue) throw new ConvexError("This service doesn't have a venue yet. Ask the provider.");
+        where = { locationMode: "provider", venue: service.venue, ...contact };
+      } else {
+        where = { locationMode: "online", ...(service?.onlineNote ? { onlineNote: service.onlineNote } : {}), ...(service?.meetingLink ? { meetingLink: service.meetingLink } : {}), ...contact };
+      }
+    }
     // Refuse times the provider has closed or blocked. Providers who never set hours are only checked
     // against blocked time and accepted bookings, so existing listings keep working.
     if (!(await isTimeAvailable(ctx, provider._id, a.startsAt, a.endsAt))) throw new ConvexError("That time isn't available");
-    let service: { _id: typeof a.serviceId; name: string; priceType: PriceType; priceCents?: number } | null = null;
-    if (a.serviceId) {
-      const s = await ctx.db.get(a.serviceId);
-      if (!s || s.providerId !== provider._id || !s.enabled || s.archived) throw new ConvexError("service not found");
-      service = { _id: s._id, name: s.name, priceType: s.priceType, priceCents: s.priceCents };
-    }
     const id = await ctx.db.insert("bookings", {
-      ...(service ? { serviceId: service._id, serviceName: service.name } : {}),
+      ...(service ? { serviceId: service._id, serviceName: service.name, ...(service.categorySlug ? { serviceCategorySlug: service.categorySlug } : {}) } : {}),
       ...(service ? snapshotPrice(service.priceType, service.priceCents, a.startsAt, a.endsAt) : snapshotPrice(provider.rateBasis, provider.rateCents, a.startsAt, a.endsAt)),
       providerId: provider._id, customerId: user._id, customerName, customerEmail: user.email,
-      description, startsAt: a.startsAt, endsAt: a.endsAt, status: "requested", ...job,
+      description, startsAt: a.startsAt, endsAt: a.endsAt, status: "requested", ...where,
     });
     await ctx.db.insert("bookingEvents", { bookingId: id, actorId: user._id, toStatus: "requested" });
     await notify(ctx, provider.userId, { kind: "booking_requested", title: "New booking request", body: `${customerName} asked for ${service?.name ?? "a booking"}.`, href: `/provider/bookings/${id}` });
@@ -60,7 +79,7 @@ export const create = mutation({
 // A list never carries contact details or the street address; the detail view applies the rules.
 const listRow = (b: Doc<"bookings">) => ({
   _id: b._id, _creationTime: b._creationTime, providerId: b.providerId, customerName: b.customerName, description: b.description,
-  startsAt: b.startsAt, endsAt: b.endsAt, status: b.status, serviceName: b.serviceName, suburb: b.suburb,
+  startsAt: b.startsAt, endsAt: b.endsAt, status: b.status, serviceName: b.serviceName, suburb: b.suburb, locationMode: b.locationMode,
   priceType: b.priceType, estimateCents: b.estimateCents, quoteStatus: b.quoteStatus, quoteCents: b.quoteCents,
 });
 
@@ -68,6 +87,10 @@ async function ownProviderOrNull(ctx: QueryCtx) {
   const user = await getUser(ctx);
   return user ? await getProviderForUser(ctx, user._id) : null;
 }
+
+/** A meeting link is the provider's private detail: the customer gets it once the booking is accepted (or done), never before. */
+const linkVisible = (status: Doc<"bookings">["status"]) => status === "accepted" || status === "completed";
+const withoutPrivateLink = (b: Doc<"bookings">) => { if (linkVisible(b.status)) return b; const { meetingLink: _l, ...rest } = b; return rest; };
 
 const SUMMARY_CAP = 1000; // counts stop here and say so ("1,000+") instead of reading a provider's whole history on every change
 const emptyPage = { page: [], isDone: true, continueCursor: "" } as const;
@@ -85,11 +108,11 @@ export const listIncoming = query({
 
 /** Counts for the dashboard, each from its own index so none depends on what a list happens to show. `capped`: some count hit the cap. */
 export const providerSummary = query({
-  args: {},
-  handler: async (ctx) => {
+  args: { asOf: v.number() }, // "now", passed in: a query must not read the clock
+  handler: async (ctx, { asOf }) => {
     const provider = await ownProviderOrNull(ctx);
     if (!provider) return null;
-    const now = Date.now();
+    const now = asOf;
     const byStatus = (status: Doc<"bookings">["status"]) => ctx.db.query("bookings").withIndex("by_provider_and_status_and_endsAt", (i) => i.eq("providerId", provider._id).eq("status", status));
     const n = async (q: { take: (n: number) => Promise<unknown[]> }) => (await q.take(SUMMARY_CAP + 1)).length;
     const pending = await n(byStatus("requested"));
@@ -114,12 +137,12 @@ export const providerSummary = query({
 export const providerPage = query({
   // asOf: "now" for the whole walk. A cursor is only valid for the same query, and upcoming/history filter on the time, so the first
   // page's time is carried in every link to the next one.
-  args: { tab: v.union(v.literal("pending"), v.literal("upcoming"), v.literal("history"), v.literal("all")), paginationOpts: paginationOptsValidator, asOf: v.optional(v.number()) },
+  args: { tab: v.union(v.literal("pending"), v.literal("upcoming"), v.literal("history"), v.literal("all")), paginationOpts: paginationOptsValidator, asOf: v.number() },
   handler: async (ctx, { tab, paginationOpts, asOf }) => {
     const provider = await ownProviderOrNull(ctx);
     if (!provider) return emptyPage;
     const opts = { ...paginationOpts, numItems: Math.min(Math.max(paginationOpts.numItems, 1), 50) };
-    const now = Math.min(asOf ?? Date.now(), Date.now());
+    const now = asOf;
     const idx = ctx.db.query("bookings");
     const result =
       tab === "pending" ? await idx.withIndex("by_provider_and_status_and_endsAt", (i) => i.eq("providerId", provider._id).eq("status", "requested")).order("asc").paginate(opts)
@@ -154,7 +177,7 @@ export const listMine = query({
       .order("desc")
       .take(100);
     return await Promise.all(
-      rows.map(async (b) => ({ ...b, providerName: (await ctx.db.get(b.providerId))?.name ?? "Unknown provider" })),
+      rows.map(async (b) => ({ ...withoutPrivateLink(b), providerName: (await ctx.db.get(b.providerId))?.name ?? "Unknown provider" })),
     );
   },
 });
@@ -228,12 +251,13 @@ export const getForProvider = query({
     return {
       _id: b._id, customerName: b.customerName, description: b.description, startsAt: b.startsAt, endsAt: b.endsAt,
       status: b.status, serviceName: b.serviceName, suburb: b.suburb,
+      locationMode: b.locationMode, venue: b.venue, onlineNote: b.onlineNote, meetingLink: b.meetingLink, // the provider's own details: always theirs to see
       priceType: b.priceType, unitCents: b.unitCents, estimateCents: b.estimateCents,
       quoteCents: b.quoteCents, quoteNote: b.quoteNote, quoteStatus: b.quoteStatus, agreedCents: b.agreedCents,
       // Full address and access notes only once accepted; contact only if the customer opted in.
       address: open ? b.address : undefined, accessNotes: open ? b.accessNotes : undefined,
       contact: open && b.shareContact ? { email: b.customerEmail, phone: b.customerPhone } : undefined,
-      privateHidden: !open && !!b.address,
+      privateHidden: !open && b.locationMode !== "provider" && b.locationMode !== "online" && !!b.address,
       dispute: await latestDispute(ctx, b._id), reschedule: await latestReschedule(ctx, b._id),
       events: events.map((e) => ({ at: e._creationTime, from: e.fromStatus, to: e.toStatus, byCustomer: e.actorId === b.customerId })),
     };
@@ -250,7 +274,7 @@ export const getForCustomer = query({
     if (!b || !user || b.customerId !== user._id) return null;
     const provider = await ctx.db.get(b.providerId);
     const events = await ctx.db.query("bookingEvents").withIndex("by_booking", (i) => i.eq("bookingId", b._id)).take(50);
-    const { customerEmail: _e, ...rest } = b;
+    const { customerEmail: _e, ...rest } = withoutPrivateLink(b);
     return {
       ...rest, providerName: provider?.name ?? "Unknown provider", providerSuburb: provider?.suburb, dispute: await latestDispute(ctx, b._id), reschedule: await latestReschedule(ctx, b._id),
       events: events.map((e) => ({ at: e._creationTime, to: e.toStatus, byProvider: e.actorId !== b.customerId })),

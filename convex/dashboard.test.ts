@@ -64,13 +64,13 @@ describe("more than 50 bookings, and old ones that are still open", () => {
     await busy(t, add, providerId);
     await add(providerId, "declined", Date.now() - DAY); await add(providerId, "cancelled", Date.now() - DAY);
     await add(providerId, "accepted", Date.now() - 5 * DAY); // accepted, already over: history
-    expect(await owner.query(api.bookings.providerSummary, {})).toMatchObject({ pending: 1, upcoming: 1, completed: 250, history: 253, all: 255, capped: false });
+    expect(await owner.query(api.bookings.providerSummary, { asOf: Date.now() })).toMatchObject({ pending: 1, upcoming: 1, completed: 250, history: 253, all: 255, capped: false });
     expect((await page(owner, "all", null, 500)).page).toHaveLength(50);
   });
   test("counts stop at the cap and say so", async () => {
     const { t, owner, providerId, add } = await world();
     await t.run(async (ctx) => { for (let i = 0; i < 1005; i++) await ctx.db.insert("bookings", { providerId, customerName: "x", customerEmail: "x@example.nz", description: "j", startsAt: i, endsAt: i + 1, status: "completed" }); });
-    const s = await owner.query(api.bookings.providerSummary, {});
+    const s = await owner.query(api.bookings.providerSummary, { asOf: Date.now() });
     expect(s).toMatchObject({ completed: 1000, cap: 1000, capped: true });
     void add;
   });
@@ -80,8 +80,8 @@ describe("more than 50 bookings, and old ones that are still open", () => {
     await add(otherProvider, "requested", Date.now() + DAY);
     expect(await walk(owner, "pending")).toHaveLength(1);
     expect((await page(customer, "pending")).page).toEqual([]);
-    expect(await t.query(api.bookings.providerPage, { tab: "pending", paginationOpts: { numItems: 5, cursor: null } })).toMatchObject({ page: [] });
-    expect(await customer.query(api.bookings.providerSummary, {})).toBeNull();
+    expect(await t.query(api.bookings.providerPage, { tab: "pending", paginationOpts: { numItems: 5, cursor: null }, asOf: Date.now() })).toMatchObject({ page: [] });
+    expect(await customer.query(api.bookings.providerSummary, { asOf: Date.now() })).toBeNull();
   });
 });
 
@@ -151,7 +151,5 @@ describe("a walk through pages keeps one 'now'", () => {
     // judged as of four days ago (before it happened) the same booking is upcoming: the walk's one asOf is what keeps pages consistent
     expect(await ids("upcoming", now - 4 * DAY)).toContain(job);
     expect(await ids("history", now - 4 * DAY)).not.toContain(job);
-    // an asOf in the future is clamped to the real clock
-    expect(await ids("history", now + 30 * DAY)).toContain(job);
   });
 });

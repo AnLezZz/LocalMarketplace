@@ -1,3 +1,4 @@
+import { bookingModeValidator, locationModeValidator, venueValidator } from "./model/serviceLocation";
 import { defineSchema, defineTable } from "convex/server";
 import { authTables } from "@convex-dev/auth/server";
 import { v } from "convex/values";
@@ -97,6 +98,13 @@ export default defineSchema({
     // The service requested, with its name copied so later edits or archiving do not rewrite history.
     serviceId: v.optional(v.id("services")),
     serviceName: v.optional(v.string()),
+    serviceCategorySlug: v.optional(v.string()),
+    // Where it happens, copied from the service when the request was made (later service edits never rewrite it).
+    // "customer": address/suburb above. "provider": venue. "online": onlineNote and, once accepted, meetingLink. Missing = "customer".
+    locationMode: v.optional(bookingModeValidator),
+    venue: v.optional(venueValidator),
+    onlineNote: v.optional(v.string()),
+    meetingLink: v.optional(v.string()),
     status: v.union(
       v.literal("requested"), v.literal("accepted"), v.literal("declined"),
       v.literal("cancelled"), v.literal("completed"),
@@ -121,6 +129,13 @@ export default defineSchema({
     enabled: v.boolean(),
     // Archived services stay for booking history but are hidden everywhere else.
     archived: v.boolean(),
+    // Where it sits in the category tree, so the provider is found under it. Missing on older services.
+    categorySlug: v.optional(v.string()),
+    // Where it happens. Missing = the customer's own address (the behaviour before this existed).
+    locationMode: v.optional(locationModeValidator),
+    venue: v.optional(venueValidator), // for "provider" and "either": where customers come
+    onlineNote: v.optional(v.string()), // for "online": shown publicly, e.g. "Video call"
+    meetingLink: v.optional(v.string()), // for "online": PRIVATE. Never returned by a public query; copied to a booking and shown once it is accepted.
   }).index("by_provider", ["providerId"]),
 
   // One row per weekday a provider has configured. No rows at all means "never configured": 8am-5pm every day.

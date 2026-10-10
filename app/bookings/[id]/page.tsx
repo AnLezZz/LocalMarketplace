@@ -11,6 +11,7 @@ import Banner from "../../../components/Banner";
 import { StatusPill } from "../../../components/Pill";
 import { bookingPriceLine, bookingWindow, dollars } from "../../../components/format";
 import RescheduleBox from "../../../components/RescheduleBox";
+import BookingWhere from "../../../components/BookingWhere";
 import "../bookings.css";
 import "../../providers/[id]/booking.css";
 
@@ -71,8 +72,7 @@ export default async function BookingDetail({ params, searchParams }: { params: 
           <div><dt>Time</dt><dd className="num">{w.time}</dd></div>
           {priceLine && <div><dt>Price</dt><dd>{priceLine}{b.priceType !== "quote" && <><br /><small>Final price may vary. Pay the provider directly.</small></>}{b.agreedCents !== undefined && <><br /><strong>Agreed: {dollars(b.agreedCents)}</strong></>}</dd></div>}
           {b.priceType === "quote" && b.quoteNote && <div><dt>Quote note</dt><dd>{b.quoteNote}</dd></div>}
-          <div><dt>Address</dt><dd>{b.address ? `${b.address}, ${b.suburb}` : <em>Not recorded (made before addresses were collected)</em>}</dd></div>
-          {b.accessNotes && <div><dt>Access instructions</dt><dd>{b.accessNotes}</dd></div>}
+          <BookingWhere b={b} role="customer" />
           <div><dt>Your job description</dt><dd>{b.description}</dd></div>
           <div><dt>Contact sharing</dt><dd>{b.shareContact ? `Your phone (${b.customerPhone}) and email are shared with ${b.providerName} once accepted.` : `Not shared. ${b.providerName} can see your name and the job details.`}</dd></div>
         </dl>
@@ -86,7 +86,8 @@ export default async function BookingDetail({ params, searchParams }: { params: 
             </div>
           </div>
         )}
-        {b.status === "requested" && <p className="note"><Icon name="info" size={18} />{b.providerName} will see only your suburb until they accept. Your full address and instructions are shown once they do.</p>}
+        {b.status === "requested" && (b.locationMode ?? "customer") === "customer" && <p className="note"><Icon name="info" size={18} />{b.providerName} will see only your suburb until they accept. Your full address and instructions are shown once they do.</p>}
+        {b.status === "requested" && <p className="note"><Icon name="info" size={18} />This is a request, not a confirmed booking. {b.providerName} still needs to accept it.</p>}
         <RescheduleBox role="customer" bookingId={id} status={b.status} startsAt={b.startsAt} reschedule={b.reschedule} otherName={b.providerName} />
 
         {b.dispute && (

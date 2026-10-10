@@ -22,7 +22,7 @@ type Row = any;
 export default async function ProviderHome({ searchParams }: { searchParams: Promise<{ err?: string }> }) {
   const { err } = await searchParams;
   const { opts, profile, summary } = await loadProviderShell();
-  const first = (tab: "pending" | "upcoming", n: number) => fetchQuery(api.bookings.providerPage, { tab, paginationOpts: { numItems: n, cursor: null } }, opts) as Promise<PageResult<Row>>;
+  const first = (tab: "pending" | "upcoming", n: number) => fetchQuery(api.bookings.providerPage, { tab, paginationOpts: { numItems: n, cursor: null }, asOf: Date.now() }, opts) as Promise<PageResult<Row>>;
   const [pending, upcoming] = await Promise.all([first("pending", 5), first("upcoming", 3)]);
   const rating = profile.ratingAvg && profile.ratingAvg > 0 ? profile.ratingAvg.toFixed(1) : "–";
 

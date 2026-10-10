@@ -10,7 +10,7 @@ export async function loadProviderShell() {
   const opts = await authOpts();
   const profile = await fetchQuery(api.providers.mine, {}, opts);
   if (!profile) redirect("/provider/register");
-  const summary = ((await fetchQuery(api.bookings.providerSummary, {}, opts)) as Summary | null) ?? { pending: 0, upcoming: 0, completed: 0, history: 0, all: 0, cap: 1000, capped: false };
+  const summary = ((await fetchQuery(api.bookings.providerSummary, { asOf: Date.now() }, opts)) as Summary | null) ?? { pending: 0, upcoming: 0, completed: 0, history: 0, all: 0, cap: 1000, capped: false };
   return { opts, profile, summary };
 }
 

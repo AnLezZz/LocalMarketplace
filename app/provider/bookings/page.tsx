@@ -20,7 +20,7 @@ export default async function ProviderBookings({ searchParams }: { searchParams:
   const { opts, profile, summary } = await loadProviderShell();
   const tab: Tab = TABS.some(([k]) => k === t) ? (t as Tab) : summary.pending > 0 ? "pending" : "upcoming";
   // "Now" for the whole walk through pages, fixed on the first page and carried in the links (cursors only work for the same query).
-  const asOf = Number(asOfParam) > 0 ? Number(asOfParam) : Date.now();
+  const asOf = Number(asOfParam) > 0 ? Math.min(Number(asOfParam), Date.now()) : Date.now();
   const result = (await fetchQuery(api.bookings.providerPage, { tab, paginationOpts: { numItems: PAGE, cursor: cursor || null }, asOf }, opts)) as PageResult<{ _id: string }>;
   const here = `/provider/bookings?tab=${tab}${cursor ? `&cursor=${encodeURIComponent(cursor)}&asOf=${asOf}` : ""}`;
 

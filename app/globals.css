@@ -1607,3 +1607,13 @@ body:has(.d-layout) { background: var(--ivory, #FAF9F6); }
 .pager .btn { min-height: 44px; }
 a.cal-event { display: block; text-decoration: none; color: inherit; }
 .cal-empty { margin: var(--s-3) 0 0; text-align: center; }
+
+/* Service location settings */
+.svc-loc { margin: 0; padding: 0; border: 0; min-width: 0; display: grid; gap: var(--s-3); }
+.svc-loc__modes { display: grid; gap: 8px; }
+.svc-loc__mode { display: flex; gap: 12px; align-items: flex-start; min-height: 44px; padding: 12px 14px; border: 1px solid var(--line); border-radius: 14px; background: #fff; cursor: pointer; }
+.svc-loc__mode:has(input:checked) { border-color: var(--forest); box-shadow: 0 0 0 1px var(--forest); }
+.svc-loc__mode input { width: 20px; height: 20px; margin-top: 2px; flex: none; }
+.svc-loc__mode span { display: grid; gap: 2px; }
+.svc-loc__mode small { color: var(--ink-3); font-size: 13px; }
+.svc-loc__venue { display: grid; gap: var(--s-3); padding: var(--s-4); border-radius: 14px; background: var(--wash); }

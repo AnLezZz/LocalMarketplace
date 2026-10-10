@@ -8,13 +8,16 @@ import DashboardSidebar from "../../../components/dashboard/DashboardSidebar";
 import Icon from "../../../components/Icon";
 import Banner from "../../../components/Banner";
 import PlaceInput from "../../../components/PlaceInput";
+import ServiceLocationFields from "../../../components/ServiceLocationFields";
+import { indented, loadCategories } from "../../../lib/categories";
+import { modeLabel, type ServiceMode, type Venue } from "../../../lib/serviceLocation";
 import { durationLabel, priceLabel } from "../../../components/format";
 import { addServiceAreaFromForm, archiveService, removeServiceArea, saveService, saveServiceAreas, setServiceEnabled } from "./actions";
 import "../../providers/[id]/booking.css";
 
 export const dynamic = "force-dynamic";
 
-type Service = { _id: string; name: string; description: string; priceType: "fixed" | "hourly" | "quote"; priceCents?: number; durationMinutes: number; enabled: boolean };
+type Service = { _id: string; name: string; description: string; priceType: "fixed" | "hourly" | "quote"; priceCents?: number; durationMinutes: number; enabled: boolean; categorySlug?: string; locationMode?: ServiceMode; venue?: Venue; onlineNote?: string; meetingLink?: string };
 
 const DONE: Record<string, string> = { saved: "Service saved.", enabled: "Service enabled.", disabled: "Service disabled. Customers can no longer book it.", archived: "Service archived.", areas: "Service area saved.", "area-added": "Place added to your service area.", "area-removed": "Place removed from your service area." };
 const DURATIONS = [30, 45, 60, 90, 120, 180, 240, 300, 360, 480];
@@ -26,6 +29,7 @@ export default async function Services({ searchParams }: { searchParams: Promise
   if (!profile) redirect("/provider/register");
   const services = (await fetchQuery(api.services.listMine, {}, opts)) as Service[];
   const editing = services.find((s) => s._id === edit);
+  const cats = await loadCategories();
   const showForm = !!editing || add === "1";
   type Place = { _id: string; name: string; kind: string; context: string; open: boolean };
   const mine = (await fetchQuery(api.locations.myAreas, {}, opts)) as { enabled: boolean; base: Place | null; areas: Place[] } | null;
@@ -65,7 +69,7 @@ export default async function Services({ searchParams }: { searchParams: Promise
                   <div className="svc-item__main">
                     <strong>{s.name}</strong>
                     {s.description && <span className="svc-item__desc">{s.description}</span>}
-                    <span className="svc-item__meta"><span className="num">{priceLabel(s)}</span> · {durationLabel(s.durationMinutes)}</span>
+                    <span className="svc-item__meta"><span className="num">{priceLabel(s)}</span> · {durationLabel(s.durationMinutes)} · {modeLabel(s.locationMode, s.venue)}{s.categorySlug && ` · ${cats.all.find((c) => c.slug === s.categorySlug)?.label ?? s.categorySlug}`}</span>
                   </div>
                   <span className={`pill ${s.enabled ? "pill--completed" : "pill--neutral"}`}>{s.enabled ? "Active" : "Disabled"}</span>
                   <div className="svc-item__actions">
@@ -101,6 +105,13 @@ export default async function Services({ searchParams }: { searchParams: Promise
                     {DURATIONS.map((m) => <option key={m} value={m}>{durationLabel(m)}</option>)}
                   </select></div>
               </div>
+              <div className="field"><label htmlFor="categorySlug" className="field__label">Category</label>
+                <select id="categorySlug" name="categorySlug" defaultValue={editing?.categorySlug ?? ""}>
+                  <option value="">Not set</option>
+                  {cats.enabled.map((c) => <option key={c.slug} value={c.slug}>{indented(c)}</option>)}
+                </select>
+                <p className="field__hint">Customers browsing this category will find you. Setting one lists you under it.</p></div>
+              <ServiceLocationFields mode={editing?.locationMode} venue={editing?.venue} onlineNote={editing?.onlineNote} meetingLink={editing?.meetingLink} />
               <button className="btn btn--primary">{editing ? "Save changes" : "Add service"}</button>
             </form>
           </section>
