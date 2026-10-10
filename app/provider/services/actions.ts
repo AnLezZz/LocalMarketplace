@@ -7,9 +7,9 @@ import { authOpts } from "../../../lib/auth";
 import { attempt } from "../../../lib/actions";
 
 const BACK = "/provider/services";
-const done = (r: { ok: boolean; message?: string }, back = BACK) => {
+const done = (r: { ok: boolean; message?: string }, ok = BACK, failed = BACK) => {
   revalidatePath(BACK);
-  redirect(r.ok ? back : `${back}${back.includes("?") ? "&" : "?"}err=${encodeURIComponent(r.message ?? "")}`);
+  redirect(r.ok ? ok : `${failed}${failed.includes("?") ? "&" : "?"}err=${encodeURIComponent(r.message ?? "")}`);
 };
 
 /** Creates a service, or updates it when the form carries an id. */
@@ -25,15 +25,15 @@ export async function saveService(fd: FormData) {
   const r = await attempt(async () => id
     ? fetchMutation(api.services.update, { id, ...args }, await authOpts())
     : fetchMutation(api.services.create, args, await authOpts()));
-  done(r, r.ok ? BACK : `${BACK}${id ? `?edit=${id}` : ""}`);
+  done(r, `${BACK}?ok=saved`, `${BACK}?${id ? `edit=${id}` : "add=1"}`);
 }
 
 export async function setServiceEnabled(id: string, enabled: boolean) {
-  done(await attempt(async () => fetchMutation(api.services.setEnabled, { id, enabled }, await authOpts())));
+  done(await attempt(async () => fetchMutation(api.services.setEnabled, { id, enabled }, await authOpts())), `${BACK}?ok=${enabled ? "enabled" : "disabled"}`);
 }
 
 export async function archiveService(id: string) {
-  done(await attempt(async () => fetchMutation(api.services.archive, { id }, await authOpts())));
+  done(await attempt(async () => fetchMutation(api.services.archive, { id }, await authOpts())), `${BACK}?ok=archived`);
 }
 
 export async function saveServiceAreas(fd: FormData) {
@@ -44,7 +44,7 @@ export async function saveServiceAreas(fd: FormData) {
 // An error must land on a plain URL (a query after "#" is lost), so only a success jumps back to the section.
 export async function addServiceArea(placeId: string) {
   const r = await attempt(async () => fetchMutation(api.providers.addServiceArea, { placeId }, await authOpts()));
-  done(r, r.ok ? `${BACK}#area-h` : BACK);
+  done(r, `${BACK}?ok=area-added#area-h`);
 }
 
 /** The picker form: the chosen place's ID arrives as `placeId`; typing without picking sends none. */
@@ -56,5 +56,5 @@ export async function addServiceAreaFromForm(fd: FormData) {
 
 export async function removeServiceArea(placeId: string) {
   const r = await attempt(async () => fetchMutation(api.providers.removeServiceArea, { placeId }, await authOpts()));
-  done(r, r.ok ? `${BACK}#area-h` : BACK);
+  done(r, `${BACK}?ok=area-removed#area-h`);
 }

@@ -13,19 +13,24 @@ const LEVEL: Record<string, string> = { region: "District", territorial_authorit
 
 /**
  * Location picker as an ARIA combobox over every recognised NZ place.
- * Empty box: a Location panel with Region, District and Suburb selects that narrow step by step, each starting with "All of ...", each starting with "All of ...".
+ * Empty box: a Location panel with Region, District and Suburb selects that narrow step by step, each starting with "All of ...". On a phone it is a bottom sheet.
  * Typing: matching places with their council and region, so two Newtowns are told apart.
  * Submits the typed text as `name` and the picked place's ID as `idName`. Without JavaScript it is a plain text field the server resolves.
+ * `submitOnPick`: choosing a place (an option, or Apply in the panel) submits the surrounding form, so adding a place is one step.
  */
-export default function PlaceInput({ name, idName, defaultValue = "", defaultId = "", placeholder, label }: { name: string; idName: string; defaultValue?: string; defaultId?: string; placeholder: string; label: string }) {
+export default function PlaceInput({ name, idName, defaultValue = "", defaultId = "", placeholder, label, id: inputId, submitOnPick = false }: { name: string; idName: string; defaultValue?: string; defaultId?: string; placeholder: string; label: string; id?: string; submitOnPick?: boolean }) {
   const [text, setText] = useState(defaultValue);
   const [id, setId] = useState(defaultId);
   const [debounced, setDebounced] = useState("");
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(-1);
   const [trail, setTrail] = useState<Option[]>([]); // what is chosen so far in the panel, widest first
+  const [up, setUp] = useState(false); // open the panel upward when there is no room below
+  const [note, setNote] = useState("");
+  const [submitNext, setSubmitNext] = useState(false);
   const listId = useId();
   const root = useRef<HTMLDivElement>(null);
+  const field = useRef<HTMLInputElement>(null);
 
   useEffect(() => { const t = setTimeout(() => setDebounced(text.trim()), 150); return () => clearTimeout(t); }, [text]);
   useEffect(() => {
@@ -33,6 +38,13 @@ export default function PlaceInput({ name, idName, defaultValue = "", defaultId 
     document.addEventListener("mousedown", away);
     return () => document.removeEventListener("mousedown", away);
   }, []);
+
+  // The hidden ID is committed in this render before the form is submitted.
+  useEffect(() => {
+    if (!submitNext || !id) return;
+    setSubmitNext(false);
+    root.current?.closest("form")?.requestSubmit();
+  }, [submitNext, id]);
 
   const typing = text.trim().length >= 2;
   const browsing = open && !id && !typing;
@@ -44,49 +56,73 @@ export default function PlaceInput({ name, idName, defaultValue = "", defaultId 
   const options: Option[] = typing ? found ?? [] : [];
   const loading = typing && found === undefined;
   const show = browsing || (open && !id && typing && debounced.length >= 2);
+  useEffect(() => {
+    if (!show || !root.current) return;
+    const r = root.current.getBoundingClientRect();
+    setUp(window.innerWidth > 640 && window.innerHeight - r.bottom < 420 && r.top > 420);
+  }, [show]);
 
-  function pick(o: Option) { setText(shown(o.name)); setId(o._id); setOpen(false); setActive(-1); setTrail([]); }
-  function clear() { setText(""); setId(""); setOpen(false); setActive(-1); setTrail([]); }
+  function pick(o: Option) { setText(shown(o.name)); setId(o._id); setOpen(false); setActive(-1); setTrail([]); setNote(""); if (submitOnPick) setSubmitNext(true); }
+  function clear() { setText(""); setId(""); setOpen(false); setActive(-1); setTrail([]); setNote(""); }
+  function close() { setOpen(false); field.current?.focus(); }
   const choose = (level: number, list: Option[], value: string) => setTrail((t) => { const o = list.find((x) => x._id === value); return o ? [...t.slice(0, level), o] : t.slice(0, level); });
-  function apply() { const best = trail[trail.length - 1]; if (best) pick(best); else clear(); }
+  function apply() {
+    const best = trail[trail.length - 1];
+    if (best) pick(best);
+    else if (submitOnPick) setNote("Choose a region first.");
+    else clear();
+  }
   function onKey(e: React.KeyboardEvent) {
     const o = options[active];
     if (e.key === "ArrowDown") { e.preventDefault(); setOpen(true); setActive((a) => Math.min(a + 1, options.length - 1)); }
     else if (e.key === "ArrowUp") { e.preventDefault(); setActive((a) => Math.max(a - 1, 0)); }
     else if (e.key === "Enter" && show && o) { e.preventDefault(); pick(o); }
-    else if (e.key === "Escape") setOpen(false);
+    else if (e.key === "Escape") { e.stopPropagation(); close(); }
   }
 
   return (
-    <div className="placein" ref={root}>
+    <div className="placein" ref={root}
+      onKeyDown={(e) => { if (e.key === "Escape" && browsing) { e.stopPropagation(); close(); } }}
+      onBlur={(e) => { if (e.relatedTarget && !root.current?.contains(e.relatedTarget as Node)) setOpen(false); }}>
       <input
-        name={name} value={text} placeholder={placeholder} aria-label={label} autoComplete="off" spellCheck={false}
-        role="combobox" aria-expanded={show} aria-controls={browsing ? undefined : listId} aria-autocomplete="list" aria-activedescendant={active >= 0 ? `${listId}-${active}` : undefined}
+        ref={field} id={inputId} name={name} value={text} placeholder={placeholder} aria-label={label} autoComplete="off" spellCheck={false}
+        role="combobox" aria-expanded={show} aria-haspopup={browsing ? "dialog" : "listbox"} aria-controls={show ? listId : undefined} aria-autocomplete="list" aria-activedescendant={active >= 0 ? `${listId}-${active}` : undefined}
         onChange={(e) => { setText(e.target.value); setId(""); setOpen(true); setActive(-1); }}
-        onFocus={() => setOpen(true)} onKeyDown={onKey}
+        onFocus={() => setOpen(true)} onClick={() => setOpen(true)} onKeyDown={onKey}
       />
       <input type="hidden" name={idName} value={id} />
       <div className="sr-only" role="status" aria-live="polite">{show && !browsing && !loading ? `${options.length} places` : ""}</div>
       {browsing && (
-        <div className="placein__list placein__panel" role="dialog" aria-label={label}>
-          <h2 className="placein__title">Location</h2>
-          <label className="placein__sel"><span>Region</span>
-            <select value={trail[0]?._id ?? ""} onChange={(e) => choose(0, regions, e.target.value)}>
-              <option value="">All of New Zealand</option>
-              {regions.map((o) => <option key={o._id} value={o._id}>{o.name}{!o.open ? " (not launched yet)" : ""}</option>)}
-            </select></label>
-          {levels.map((list, i) => trail[i] && canDrill(trail[i]) && (
-            <label key={trail[i]._id} className="placein__sel"><span>{LEVEL[trail[i].kind]}</span>
-              <select value={trail[i + 1]?._id ?? ""} onChange={(e) => choose(i + 1, list, e.target.value)}>
-                <option value="">All of {shown(trail[i].name)}</option>
-                {list.map((o) => <option key={o._id} value={o._id}>{shown(o.name)}{!o.open ? " (not launched yet)" : ""}</option>)}
-              </select></label>
-          ))}
-          <button type="button" className="btn btn--forest placein__apply" onClick={apply}>Apply</button>
-        </div>
+        <>
+          <div className="placein__scrim" onMouseDown={() => setOpen(false)} aria-hidden="true" />
+          <div className={`placein__list placein__panel${up ? " placein__list--up" : ""}`} id={listId} role="dialog" aria-label={label}>
+            <div className="placein__head2">
+              <h2 className="placein__title">Location</h2>
+              <button type="button" className="placein__close" onClick={close} aria-label="Close location picker">×</button>
+            </div>
+            <div className="placein__body">
+              <label className="placein__sel"><span>Region</span>
+                <select value={trail[0]?._id ?? ""} onChange={(e) => { setNote(""); choose(0, regions, e.target.value); }}>
+                  <option value="">All of New Zealand</option>
+                  {regions.map((o) => <option key={o._id} value={o._id}>{o.name}{!o.open ? " (not launched yet)" : ""}</option>)}
+                </select></label>
+              {levels.map((list, i) => trail[i] && canDrill(trail[i]) && (
+                <label key={trail[i]._id} className="placein__sel"><span>{LEVEL[trail[i].kind]}</span>
+                  <select value={trail[i + 1]?._id ?? ""} onChange={(e) => choose(i + 1, list, e.target.value)}>
+                    <option value="">All of {shown(trail[i].name)}</option>
+                    {list.map((o) => <option key={o._id} value={o._id}>{shown(o.name)}{!o.open ? " (not launched yet)" : ""}</option>)}
+                  </select></label>
+              ))}
+            </div>
+            <div className="placein__foot">
+              {note && <p className="placein__alert" role="alert">{note}</p>}
+              <button type="button" className="btn btn--forest placein__apply" onClick={apply}>{submitOnPick ? "Add this place" : "Apply"}</button>
+            </div>
+          </div>
+        </>
       )}
       {!browsing && show && (
-        <ul className="placein__list" id={listId} role="listbox" aria-label={label}>
+        <ul className={`placein__list${up ? " placein__list--up" : ""}`} id={listId} role="listbox" aria-label={label}>
           {loading && <li className="placein__note">Loading...</li>}
           {!loading && options.length === 0 && <li className="placein__note">No New Zealand place matches &ldquo;{debounced}&rdquo;</li>}
           {options.map((o, i) => (
