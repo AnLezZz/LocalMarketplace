@@ -108,6 +108,25 @@ export const listIncoming = query({
   },
 });
 
+/**
+ * A short fingerprint of everything on the provider's dashboard that depends on bookings. It is reactive, so the page can
+ * re-fetch itself the moment it changes (a new request, an acceptance, a cancellation, a moved time). It carries no booking details.
+ */
+export const providerPulse = query({
+  args: {},
+  handler: async (ctx) => {
+    const provider = await ownProviderOrNull(ctx);
+    if (!provider) return null;
+    const rows = (status: Doc<"bookings">["status"]) => ctx.db.query("bookings").withIndex("by_provider_and_status_and_endsAt", (i) => i.eq("providerId", provider._id).eq("status", status));
+    // Open work is read in full (so a moved time or a new quote shows); finished work only needs a count.
+    const open = [...(await rows("requested").take(200)), ...(await rows("accepted").take(200))];
+    const closed = await Promise.all((["completed", "declined", "cancelled"] as const).map(async (s) => (await rows(s).take(200)).length));
+    let h = 2166136261;
+    for (const b of open) for (const ch of `${b._id}${b.status}${b.startsAt}${b.endsAt}${b.quoteStatus ?? ""}`) h = Math.imul(h ^ ch.charCodeAt(0), 16777619);
+    return `${open.length}.${closed.join(".")}.${h >>> 0}`;
+  },
+});
+
 /** Counts for the dashboard, each from its own index so none depends on what a list happens to show. `capped`: some count hit the cap. */
 export const providerSummary = query({
   args: { asOf: v.number() }, // "now", passed in: a query must not read the clock

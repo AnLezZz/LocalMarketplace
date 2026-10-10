@@ -153,3 +153,27 @@ describe("a walk through pages keeps one 'now'", () => {
     expect(await ids("history", now - 4 * DAY)).not.toContain(job);
   });
 });
+
+describe("the live pulse a provider's dashboard listens to", () => {
+  test("changes when this provider's bookings change, and only then", async () => {
+    const { t, owner, customer, providerId, otherProvider, add } = await world();
+    const pulse = () => owner.query(api.bookings.providerPulse, {});
+    const empty = await pulse();
+    const id = await add(providerId, "requested", Date.now() + 3 * DAY);
+    const requested = await pulse();
+    expect(requested).not.toBe(empty);
+    await add(otherProvider, "requested", Date.now() + 3 * DAY); // someone else's request
+    expect(await pulse()).toBe(requested);
+    await t.run((ctx) => ctx.db.patch(id, { startsAt: Date.now() + 4 * DAY, endsAt: Date.now() + 4 * DAY + 3_600_000 })); // a moved time
+    const moved = await pulse();
+    expect(moved).not.toBe(requested);
+    await owner.mutation(api.bookings.transition, { bookingId: id, to: "accepted" });
+    const accepted = await pulse();
+    expect(accepted).not.toBe(moved);
+    await owner.mutation(api.bookings.transition, { bookingId: id, to: "completed" });
+    expect(await pulse()).not.toBe(accepted);
+    expect(await pulse()).not.toContain("Sarah"); // a fingerprint, no booking details
+    expect(await customer.query(api.bookings.providerPulse, {})).toBeNull(); // not a provider
+    expect(await t.query(api.bookings.providerPulse, {})).toBeNull(); // signed out
+  });
+});

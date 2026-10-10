@@ -2,6 +2,7 @@ import Link from "next/link";
 import Icon, { type IconName } from "../Icon";
 import Avatar from "../Avatar";
 import SignOutButton from "../../app/SignOutButton";
+import LiveRefresh from "../provider/LiveRefresh";
 
 export interface NavItem {
   id: string;
@@ -32,6 +33,7 @@ export default function DashboardSidebar({
 
   return (
     <aside className={`d-sidebar d-sidebar--${isBusiness ? "business" : "admin"}`}>
+      {isBusiness && <LiveRefresh />}
       {/* Brand header */}
       <div className="d-sidebar__brand">
         <Link href="/" className="d-sidebar__logo">
