@@ -16,6 +16,15 @@ Convex Auth needs `JWT_PRIVATE_KEY`, `JWKS` and `SITE_URL` on each deployment (d
 
 First admin: sign up, then `npx convex run users:grantAdmin '{"email":"you@example.nz"}'`. On the production deployment add `--prod` (`npx convex run --prod users:grantAdmin ...`), and only after you have signed in successfully with that email on production. Emails are not verified, so granting admin to an address someone else may have registered first would promote the wrong person. There is deliberately no public way to become an admin.
 
+## Email (Resend)
+Booking and review notifications are also emailed, and a reminder goes to both sides once an accepted booking is within 24 hours (an hourly cron, `convex/crons.ts`). Emails are sent from Convex with Resend. Without a key the app still works: emails are skipped and logged.
+
+```
+npx convex env set RESEND_API_KEY re_xxxxxxxx
+npx convex env set EMAIL_FROM "Localo <bookings@your-verified-domain>"   # optional in dev
+```
+`SITE_URL` (already set for auth) is used for the links in the emails. Until you verify a domain in Resend, the default sender (`onboarding@resend.dev`) only delivers to the email address of your own Resend account, so test by signing up with that address. Add `--prod` for the production deployment. A failed send is logged and never blocks or retries the booking action.
+
 ## Roles
 - `customer` (default at sign-up) can request and cancel bookings.
 - `provider` is assigned when someone applies at `/provider/register`. Providers appear in search only after an admin approves them at `/admin`.

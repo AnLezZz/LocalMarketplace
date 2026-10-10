@@ -105,13 +105,18 @@ Notes: legacy bookings have no address (shown as "not recorded"); a provider-sid
 
 # Backlog after S4b (user's priority order, 2026-10-10)
 
-2. Booking emails and reminders: in-app notifications only reach people who are signed in; providers can miss requests. Needs an email provider decision (e.g. Resend) and an API key.
+2. [x] Booking emails and reminders (Resend): see the review below. Needs `RESEND_API_KEY` on each deployment; a real send is unverified until a key is set.
 3. Password reset and email verification: neither is configured in `convex/auth.ts`.
 4. Quotes and saved pricing: "quote" services promise a quote but there is no submit/accept workflow; bookings don't snapshot a price.
 5. Admin moderation and support: review reporting, provider suspension, dispute handling (plus customers, bookings list, audit log from S7).
 6. Provider profile editing and photo uploads: approved profiles are locked; photos are seed-managed (needs Convex file storage).
 
 ---
+
+## Emails and reminders review (2026-10-10)
+Done: `convex/email.ts` (`renderEmail` + `send` internal action calling Resend, never throws, skips without a key); `notify()` now also queues an email to the recipient when they have an address, so every in-app notification is also emailed; `reminders.sendDue` + hourly cron send one reminder per side for accepted bookings starting within 24h (`reminderSentAt` guards repeats, `by_status_and_startsAt` index); README "Email (Resend)" section.
+Verified: 86 convex tests (HTML escaping and absolute links, request shape with a mocked fetch, default sender, 4xx and network failures swallowed, emails queued by events and not for missing addresses or refused transitions, reminders once/only accepted/only within 24h); the deployed action runs on dev and skips cleanly with no key.
+NOT verified: a real delivery through Resend (no API key available here). Not built: unsubscribe/preferences (comes with account settings), per-user quiet hours, email for the signed-out flows (password reset is priority 3).
 
 # Before deploying (checklist)
 
@@ -123,7 +128,8 @@ The repo is public and the demo data is dev-only. Do these before pointing anyth
 - [ ] Replace the placeholder ratings on seeded providers, or remove those providers.
 - [ ] Grant the first admin with `npx convex run users:grantAdmin` on prod (CLI-only by design).
 - [ ] Set the production auth env vars and site URL for Convex Auth; confirm `NEXT_PUBLIC_CONVEX_URL` points at prod.
-- [ ] Known gaps: no email notifications or verification, no rate limiting, public provider queries expose `userId` (see Phase 0 deferred list).
+- [ ] Set `RESEND_API_KEY`, a verified-domain `EMAIL_FROM` and `SITE_URL` on the production deployment, then send a real test booking.
+- [ ] Known gaps: no email verification, no rate limiting, public provider queries expose `userId` (see Phase 0 deferred list).
 
 ---
 

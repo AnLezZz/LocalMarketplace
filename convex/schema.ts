@@ -62,6 +62,8 @@ export default defineSchema({
     // Contact details the customer chose to share. The provider only sees them while the booking is accepted or completed.
     shareContact: v.optional(v.boolean()),
     customerPhone: v.optional(v.string()),
+    // Set when the 24 hour reminder has gone out, so it is only sent once.
+    reminderSentAt: v.optional(v.number()),
     // The service requested, with its name copied so later edits or archiving do not rewrite history.
     serviceId: v.optional(v.id("services")),
     serviceName: v.optional(v.string()),
@@ -73,7 +75,9 @@ export default defineSchema({
     .index("by_provider", ["providerId"])
     .index("by_customerId", ["customerId"])
     // Overlap check on accept: only this provider's accepted/completed rows that end after the new start.
-    .index("by_provider_and_status_and_endsAt", ["providerId", "status", "endsAt"]),
+    .index("by_provider_and_status_and_endsAt", ["providerId", "status", "endsAt"])
+    // Reminder sweep: accepted bookings by start time.
+    .index("by_status_and_startsAt", ["status", "startsAt"]),
 
   services: defineTable({
     providerId: v.id("providers"),
