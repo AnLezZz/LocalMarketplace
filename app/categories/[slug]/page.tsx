@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { childrenOf, loadCategories, trail } from "../../../lib/categories";
 import Icon from "../../../components/Icon";
 import ProviderSearch, { type SearchParams } from "../../../components/ProviderSearch";
+import { categoryImage } from "../../../components/categoryImages";
 import "../categories.css";
 
 export const dynamic = "force-dynamic";
@@ -33,7 +34,7 @@ export default async function CategoryPage({ params, searchParams }: { params: P
               return (
                 <li key={k.slug}>
                   <Link href={`/categories/${encodeURIComponent(k.slug)}`} className="cats__card">
-                    <span className={`cats__thumb tile--${k.hue}`}>{k.imageUrl ? <img src={k.imageUrl} alt="" /> : <Icon name={k.icon} size={22} />}</span>
+                    <span className={`cats__thumb tile--${k.hue}`}>{categoryImage(k.slug, k.imageUrl) ? <img src={categoryImage(k.slug, k.imageUrl)!} alt="" /> : <Icon name={k.icon} size={22} />}</span>
                     <span className="cats__name">{k.label}</span>
                     <span className="cats__hint">{n > 0 ? `${n} types` : "All providers"}</span>
                   </Link>

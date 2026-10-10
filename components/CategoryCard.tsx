@@ -2,6 +2,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import Icon, { type IconName } from "./Icon";
+import { categoryImage } from "./categoryImages";
 
 export type CardKid = { slug: string; label: string };
 
@@ -17,7 +18,7 @@ export default function CategoryCard({ slug, label, hue, icon, imageUrl, sub, ki
     <article className="ccard" data-open={open}>
       <div className="ccard__head">
         <Link href={href} className="ccard__title">
-          <span className={`ccard__disc tile--${hue}`}>{imageUrl ? <img src={imageUrl} alt="" /> : <Icon name={icon} size={24} />}</span>
+          <span className={`ccard__disc tile--${hue}`}>{categoryImage(slug, imageUrl) ? <img src={categoryImage(slug, imageUrl)!} alt="" /> : <Icon name={icon} size={24} />}</span>
           <span className="ccard__text"><span className="ccard__name">{label}</span><span className="ccard__sub">{sub}</span></span>
         </Link>
         {kids.length > 0 && (

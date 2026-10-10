@@ -3,6 +3,7 @@ import Link from "next/link";
 import { usePreloadedQuery, type Preloaded } from "convex/react";
 import Icon, { type IconName } from "./Icon";
 import type { api } from "../lib/convex";
+import { categoryImage } from "./categoryImages";
 
 type Featured = { slug: string; label: string; icon: string; hue: string; imageUrl: string | null };
 
@@ -16,7 +17,7 @@ export default function FeaturedCategories({ preloaded }: { preloaded: Preloaded
     <nav className="lp-cats" id="services" aria-label="Categories">
       {cats.map((c) => (
         <Link key={c.slug} href={`/categories/${encodeURIComponent(c.slug)}`} className="lp-cat">
-          <span className="lp-cat__icon">{c.imageUrl ? <img src={c.imageUrl} alt="" className="lp-cat__img" /> : <Icon name={c.icon as IconName} size={26} />}</span>
+          <span className="lp-cat__icon">{categoryImage(c.slug, c.imageUrl) ? <img src={categoryImage(c.slug, c.imageUrl)!} alt="" className="lp-cat__img" /> : <Icon name={c.icon as IconName} size={26} />}</span>
           {c.label}
         </Link>
       ))}
