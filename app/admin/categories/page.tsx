@@ -47,26 +47,26 @@ export default async function AdminCategories({ searchParams }: { searchParams: 
                   </strong>
                   <span>{level} · key <code>{c.slug}</code></span>
                   {cats.saved && c._id && (
-                    <details className="rv__report"><summary>Edit</summary>
-                      <form action={updateCategory} className="adm-act"><input type="hidden" name="id" value={c._id} /><input type="hidden" name="back" value={back} />
-                        <input name="label" defaultValue={c.label} required maxLength={40} aria-label={`Name for ${c.label}`} /><Pickers icon={c.icon} hue={c.hue} />
-                        <button className="btn btn--secondary btn--sm">Save</button></form>
-                      <div className="adm-act">
-                        <CategoryImageUpload id={c._id} label={c.imageUrl ? "Replace image" : "Upload image"} />
-                        {c.imageUrl && <form action={removeCategoryImage.bind(null, c._id)}><input type="hidden" name="back" value={back} /><button className="btn btn--secondary btn--sm">Remove image</button></form>}
+                    <details className="adm-more"><summary className="btn btn--secondary btn--sm">Manage…</summary>
+                      <div className="adm-manage">
+                        <form action={updateCategory} className="adm-act"><input type="hidden" name="id" value={c._id} /><input type="hidden" name="back" value={back} />
+                          <input name="label" defaultValue={c.label} required maxLength={40} aria-label={`Name for ${c.label}`} /><Pickers icon={c.icon} hue={c.hue} />
+                          <button className="btn btn--secondary btn--sm">Save</button></form>
+                        <div className="adm-act">
+                          <CategoryImageUpload id={c._id} label={c.imageUrl ? "Replace image" : "Upload image"} />
+                          {c.imageUrl && <form action={removeCategoryImage.bind(null, c._id)}><input type="hidden" name="back" value={back} /><button className="btn btn--secondary btn--sm">Remove image</button></form>}
+                        </div>
+                        <div className="adm-act">
+                          <form action={moveCategory.bind(null, c._id, "up")}><input type="hidden" name="back" value={back} /><button className="btn btn--secondary btn--sm" disabled={pos === 0} aria-label={`Move ${c.label} up`}>↑ Up</button></form>
+                          <form action={moveCategory.bind(null, c._id, "down")}><input type="hidden" name="back" value={back} /><button className="btn btn--secondary btn--sm" disabled={pos === sibs.length - 1} aria-label={`Move ${c.label} down`}>↓ Down</button></form>
+                          <form action={setCategoryFeatured.bind(null, c._id, !c.featured)}><input type="hidden" name="back" value={back} /><button className="btn btn--secondary btn--sm">{c.featured ? "Unfeature" : "Feature"}</button></form>
+                          <form action={setCategoryEnabled.bind(null, c._id, !c.enabled)}><input type="hidden" name="back" value={back} /><button className={`btn btn--sm ${c.enabled ? "btn--danger" : "btn--primary"}`}>{c.enabled ? "Disable" : "Enable"}</button></form>
+                          <form action={deleteCategory.bind(null, c._id)}><input type="hidden" name="back" value={back} /><button className="btn btn--danger btn--sm" aria-label={`Delete ${c.label}`}>Delete</button></form>
+                        </div>
                       </div>
                     </details>
                   )}
                 </div>
-                {cats.saved && c._id && (
-                  <div className="adm-act">
-                    <form action={moveCategory.bind(null, c._id, "up")}><input type="hidden" name="back" value={back} /><button className="btn btn--secondary btn--sm" disabled={pos === 0} aria-label={`Move ${c.label} up`}>↑</button></form>
-                    <form action={moveCategory.bind(null, c._id, "down")}><input type="hidden" name="back" value={back} /><button className="btn btn--secondary btn--sm" disabled={pos === sibs.length - 1} aria-label={`Move ${c.label} down`}>↓</button></form>
-                    <form action={setCategoryFeatured.bind(null, c._id, !c.featured)}><input type="hidden" name="back" value={back} /><button className="btn btn--secondary btn--sm">{c.featured ? "Unfeature" : "Feature"}</button></form>
-                    <form action={setCategoryEnabled.bind(null, c._id, !c.enabled)}><input type="hidden" name="back" value={back} /><button className={`btn btn--sm ${c.enabled ? "btn--danger" : "btn--primary"}`}>{c.enabled ? "Disable" : "Enable"}</button></form>
-                    <form action={deleteCategory.bind(null, c._id)}><input type="hidden" name="back" value={back} /><button className="btn btn--danger btn--sm" aria-label={`Delete ${c.label}`}>Delete</button></form>
-                  </div>
-                )}
               </li>
             );
           })}

@@ -1528,3 +1528,15 @@ body:has(.d-layout) { background: var(--ivory, #FAF9F6); }
   .adm-row { gap: var(--s-2); padding: var(--s-3) 0; }
   .adm-row__main { min-width: 0; flex-basis: 100%; }
 }
+
+.adm-manage { display: grid; gap: var(--s-3); padding: var(--s-3); border: 1px solid var(--line); border-radius: 12px; background: #fff; }
+.adm-manage .adm-act { align-items: stretch; }
+@media (max-width: 639px) {
+
+  /* Decision forms: note on its own row, buttons side by side */
+  .adm-act { width: 100%; }
+  .adm-act form { width: 100%; }
+  .adm-act input:not([type=hidden]), .adm-act select { flex: 1 1 100%; min-width: 0; min-height: 44px; }
+  .adm-act .btn { flex: 1; min-height: 44px; }
+  .adm-manage .adm-act form { width: auto; flex: 1; }
+}

@@ -53,8 +53,8 @@ export default async function AdminReviews({ searchParams }: { searchParams: Pro
                   <p className="adm-quote">{r.text || "(no written review)"}</p>
                   <span>Hidden because: {r.hiddenReason}</span>
                 </div>
-                <form action={restoreReview} className="adm-act"><input type="hidden" name="id" value={r._id} /><input type="hidden" name="back" value="/admin/reviews" />
-                  <input name="reason" maxLength={500} placeholder="Note (optional)" aria-label="Restore note" /><button className="btn btn--secondary btn--sm">Restore</button></form>
+                <details className="adm-more"><summary className="btn btn--secondary btn--sm">Restore…</summary><form action={restoreReview} ><input type="hidden" name="id" value={r._id} /><input type="hidden" name="back" value="/admin/reviews" />
+                  <input name="reason" maxLength={500} placeholder="Note (optional)" aria-label="Restore note" /><button className="btn btn--secondary btn--sm">Confirm restore</button></form></details>
               </li>
             ))}
           </ul>
