@@ -106,6 +106,7 @@ export default defineSchema({
     .index("by_customerId", ["customerId"])
     // Overlap check on accept: only this provider's accepted/completed rows that end after the new start.
     .index("by_provider_and_status_and_endsAt", ["providerId", "status", "endsAt"])
+    .index("by_provider_and_startsAt", ["providerId", "startsAt"])
     // Reminder sweep: accepted bookings by start time.
     .index("by_status_and_startsAt", ["status", "startsAt"]),
 

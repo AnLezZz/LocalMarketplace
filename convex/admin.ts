@@ -302,7 +302,7 @@ export const resolveReviewReport = mutation({
     const provider = await ctx.db.get(report.providerId);
     await notify(ctx, report.reporterId, {
       kind: "report_resolved", title: a.action === "hide" ? "The review was removed" : "We kept the review",
-      body: a.action === "hide" ? `We removed the review you reported. ${note}` : `We looked into your report about a review of ${provider?.name ?? "your business"} and it stays up.${note ? ` ${note}` : ""}`, href: "/provider#reviews",
+      body: a.action === "hide" ? `We removed the review you reported. ${note}` : `We looked into your report about a review of ${provider?.name ?? "your business"} and it stays up.${note ? ` ${note}` : ""}`, href: "/provider/reviews",
     });
   },
 });

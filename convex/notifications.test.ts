@@ -61,7 +61,7 @@ describe("notifications", () => {
     await owner.mutation(api.bookings.transition, { bookingId: id, to: "accepted" });
     await owner.mutation(api.bookings.transition, { bookingId: id, to: "completed" });
     await customer.mutation(api.reviews.create, { bookingId: id, rating: 5, text: "" });
-    expect((await owner.query(api.notifications.mine, {}))[0]).toMatchObject({ kind: "review_received", href: "/provider#reviews" });
+    expect((await owner.query(api.notifications.mine, {}))[0]).toMatchObject({ kind: "review_received", href: "/provider/reviews" });
   });
 
   test("unread count and mark-read are private to the owner", async () => {

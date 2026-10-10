@@ -3,13 +3,17 @@ import { mutation, query } from "./_generated/server";
 import { getUser, requireUser } from "./model/auth";
 
 /** The signed-in user's latest notifications. Reactive: the bell updates without a refresh. */
+/** Notifications stored before the dashboard was split into pages point at sections that no longer exist. */
+const LEGACY_HREFS: Record<string, string> = { "/provider#reviews": "/provider/reviews", "/provider#bookings": "/provider/bookings", "/provider#calendar": "/provider/calendar" };
+export const currentHref = (href: string) => LEGACY_HREFS[href] ?? href;
+
 export const mine = query({
   args: {},
   handler: async (ctx) => {
     const user = await getUser(ctx);
     if (!user) return [];
     const rows = await ctx.db.query("notifications").withIndex("by_user", (q) => q.eq("userId", user._id)).order("desc").take(30);
-    return rows.map((n) => ({ _id: n._id, kind: n.kind, title: n.title, body: n.body, href: n.href, read: n.read, at: n._creationTime }));
+    return rows.map((n) => ({ _id: n._id, kind: n.kind, title: n.title, body: n.body, href: currentHref(n.href), read: n.read, at: n._creationTime }));
   },
 });
 

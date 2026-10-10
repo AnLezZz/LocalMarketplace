@@ -1603,3 +1603,7 @@ body:has(.d-layout) { background: var(--ivory, #FAF9F6); }
 .up-item__what a { font-weight: 600; color: var(--forest); overflow-wrap: anywhere; }
 .up-item__what span { font-size: 14px; color: var(--ink-3); }
 @media (max-width: 639px) { .up-item { flex-direction: column; gap: 4px; } .up-item__when { min-width: 0; } }
+.pager { display: flex; justify-content: space-between; gap: var(--s-3); padding-top: var(--s-4); }
+.pager .btn { min-height: 44px; }
+a.cal-event { display: block; text-decoration: none; color: inherit; }
+.cal-empty { margin: var(--s-3) 0 0; text-align: center; }

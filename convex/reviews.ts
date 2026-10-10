@@ -1,4 +1,5 @@
 import { ConvexError, v } from "convex/values";
+import { paginationOptsValidator } from "convex/server";
 import { mutation, query } from "./_generated/server";
 import { getUser, requireUser } from "./model/auth";
 import { notify } from "./model/notify";
@@ -12,6 +13,19 @@ export const forProvider = query({
     if (!provider?.approved) return [];
     const rows = await ctx.db.query("reviews").withIndex("by_provider", (q) => q.eq("providerId", providerId)).order("desc").take(50);
     return rows.filter((r) => !r.hidden).map((r) => ({ _id: r._id, customerName: r.customerName, rating: r.rating, text: r.text, at: r._creationTime }));
+  },
+});
+
+/** The signed-in provider's own reviews, newest first, a page at a time (hidden ones are left out, as on their public profile). */
+export const minePage = query({
+  args: { paginationOpts: paginationOptsValidator },
+  handler: async (ctx, { paginationOpts }) => {
+    const user = await getUser(ctx);
+    const provider = user && (await ctx.db.query("providers").withIndex("by_userId", (q) => q.eq("userId", user._id)).first());
+    if (!provider) return { page: [], isDone: true, continueCursor: "" };
+    const opts = { ...paginationOpts, numItems: Math.min(Math.max(paginationOpts.numItems, 1), 50) };
+    const result = await ctx.db.query("reviews").withIndex("by_provider", (q) => q.eq("providerId", provider._id)).order("desc").filter((f) => f.neq(f.field("hidden"), true)).paginate(opts);
+    return { ...result, page: result.page.map((r) => ({ _id: r._id, customerName: r.customerName, rating: r.rating, text: r.text, at: r._creationTime })) };
   },
 });
 
@@ -43,7 +57,7 @@ export const create = mutation({
     if (!provider) throw new ConvexError("booking not found");
     const name = (user.name ?? booking.customerName).trim().split(/\s+/)[0] || "Customer";
     await ctx.db.insert("reviews", { bookingId: booking._id, providerId: provider._id, customerId: user._id, customerName: name, rating: a.rating, text });
-    await notify(ctx, provider.userId, { kind: "review_received", title: "New review", body: `${name} left ${a.rating} ${a.rating === 1 ? "star" : "stars"}.`, href: "/provider#reviews" });
+    await notify(ctx, provider.userId, { kind: "review_received", title: "New review", body: `${name} left ${a.rating} ${a.rating === 1 ? "star" : "stars"}.`, href: "/provider/reviews" });
     // Incremental, so any rating already on the profile keeps its weight.
     await ctx.db.patch(provider._id, withReview(provider, a.rating));
   },

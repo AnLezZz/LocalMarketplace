@@ -1,5 +1,7 @@
 import { ConvexError, v } from "convex/values";
-import { mutation, query } from "./_generated/server";
+import { paginationOptsValidator } from "convex/server";
+import { mutation, query, type QueryCtx } from "./_generated/server";
+import type { Doc } from "./_generated/dataModel";
 import { getUser, requireUser } from "./model/auth";
 import { canTransition, type Actor } from "./model/bookingRules";
 import { getProviderForUser } from "./model/providers";
@@ -55,25 +57,88 @@ export const create = mutation({
   },
 });
 
-/** Requests for the signed-in user's own provider profile. */
+// A list never carries contact details or the street address; the detail view applies the rules.
+const listRow = (b: Doc<"bookings">) => ({
+  _id: b._id, _creationTime: b._creationTime, providerId: b.providerId, customerName: b.customerName, description: b.description,
+  startsAt: b.startsAt, endsAt: b.endsAt, status: b.status, serviceName: b.serviceName, suburb: b.suburb,
+  priceType: b.priceType, estimateCents: b.estimateCents, quoteStatus: b.quoteStatus, quoteCents: b.quoteCents,
+});
+
+async function ownProviderOrNull(ctx: QueryCtx) {
+  const user = await getUser(ctx);
+  return user ? await getProviderForUser(ctx, user._id) : null;
+}
+
+const SUMMARY_CAP = 1000; // counts stop here and say so ("1,000+") instead of reading a provider's whole history on every change
+const emptyPage = { page: [], isDone: true, continueCursor: "" } as const;
+
+/** The newest 200 for the signed-in provider. Kept for callers that want one small list; the dashboard uses providerPage. */
 export const listIncoming = query({
   args: {},
   handler: async (ctx) => {
-    const user = await getUser(ctx);
-    if (!user) return [];
-    const provider = await getProviderForUser(ctx, user._id);
+    const provider = await ownProviderOrNull(ctx);
     if (!provider) return [];
-    const rows = await ctx.db
-      .query("bookings")
-      .withIndex("by_provider", (i) => i.eq("providerId", provider._id))
-      .order("desc")
-      .take(200);
-    // A list never carries contact details or the street address; the detail view applies the rules.
-    return rows.map((b) => ({
-      _id: b._id, _creationTime: b._creationTime, providerId: b.providerId, customerName: b.customerName, description: b.description,
-      startsAt: b.startsAt, endsAt: b.endsAt, status: b.status, serviceName: b.serviceName, suburb: b.suburb,
-      priceType: b.priceType, estimateCents: b.estimateCents, quoteStatus: b.quoteStatus, quoteCents: b.quoteCents,
-    }));
+    const rows = await ctx.db.query("bookings").withIndex("by_provider", (i) => i.eq("providerId", provider._id)).order("desc").take(200);
+    return rows.map(listRow);
+  },
+});
+
+/** Counts for the dashboard, each from its own index so none depends on what a list happens to show. `capped`: some count hit the cap. */
+export const providerSummary = query({
+  args: {},
+  handler: async (ctx) => {
+    const provider = await ownProviderOrNull(ctx);
+    if (!provider) return null;
+    const now = Date.now();
+    const byStatus = (status: Doc<"bookings">["status"]) => ctx.db.query("bookings").withIndex("by_provider_and_status_and_endsAt", (i) => i.eq("providerId", provider._id).eq("status", status));
+    const n = async (q: { take: (n: number) => Promise<unknown[]> }) => (await q.take(SUMMARY_CAP + 1)).length;
+    const pending = await n(byStatus("requested"));
+    const upcoming = await n(ctx.db.query("bookings").withIndex("by_provider_and_status_and_endsAt", (i) => i.eq("providerId", provider._id).eq("status", "accepted").gte("endsAt", now)));
+    const pastAccepted = await n(ctx.db.query("bookings").withIndex("by_provider_and_status_and_endsAt", (i) => i.eq("providerId", provider._id).eq("status", "accepted").lt("endsAt", now)));
+    const completed = await n(byStatus("completed"));
+    const declined = await n(byStatus("declined"));
+    const cancelled = await n(byStatus("cancelled"));
+    const history = completed + declined + cancelled + pastAccepted;
+    return {
+      pending: Math.min(pending, SUMMARY_CAP), upcoming: Math.min(upcoming, SUMMARY_CAP), completed: Math.min(completed, SUMMARY_CAP),
+      history: Math.min(history, SUMMARY_CAP), all: Math.min(pending + upcoming + history, SUMMARY_CAP),
+      cap: SUMMARY_CAP, capped: [pending, upcoming, completed, history].some((x) => x > SUMMARY_CAP),
+    };
+  },
+});
+
+/**
+ * One page of the provider's bookings. Pending and upcoming come straight from an index (so an old request that is still
+ * open is always there); history and all walk the newest first. `numItems` is clamped to 50.
+ */
+export const providerPage = query({
+  // asOf: "now" for the whole walk. A cursor is only valid for the same query, and upcoming/history filter on the time, so the first
+  // page's time is carried in every link to the next one.
+  args: { tab: v.union(v.literal("pending"), v.literal("upcoming"), v.literal("history"), v.literal("all")), paginationOpts: paginationOptsValidator, asOf: v.optional(v.number()) },
+  handler: async (ctx, { tab, paginationOpts, asOf }) => {
+    const provider = await ownProviderOrNull(ctx);
+    if (!provider) return emptyPage;
+    const opts = { ...paginationOpts, numItems: Math.min(Math.max(paginationOpts.numItems, 1), 50) };
+    const now = Math.min(asOf ?? Date.now(), Date.now());
+    const idx = ctx.db.query("bookings");
+    const result =
+      tab === "pending" ? await idx.withIndex("by_provider_and_status_and_endsAt", (i) => i.eq("providerId", provider._id).eq("status", "requested")).order("asc").paginate(opts)
+      : tab === "upcoming" ? await idx.withIndex("by_provider_and_status_and_endsAt", (i) => i.eq("providerId", provider._id).eq("status", "accepted").gte("endsAt", now)).order("asc").paginate(opts)
+      : tab === "history" ? await idx.withIndex("by_provider", (i) => i.eq("providerId", provider._id)).order("desc")
+          .filter((f) => f.and(f.neq(f.field("status"), "requested"), f.or(f.neq(f.field("status"), "accepted"), f.lt(f.field("endsAt"), now)))).paginate(opts)
+      : await idx.withIndex("by_provider", (i) => i.eq("providerId", provider._id)).order("desc").paginate(opts);
+    return { ...result, page: result.page.map(listRow) };
+  },
+});
+
+/** Bookings that start in [from, to): what one visible week of the calendar needs. Declined and cancelled ones are left out. */
+export const providerRange = query({
+  args: { from: v.number(), to: v.number() },
+  handler: async (ctx, { from, to }) => {
+    const provider = await ownProviderOrNull(ctx);
+    if (!provider || !(to > from) || to - from > 40 * 86_400_000) return [];
+    const rows = await ctx.db.query("bookings").withIndex("by_provider_and_startsAt", (i) => i.eq("providerId", provider._id).gte("startsAt", from).lt("startsAt", to)).take(500);
+    return rows.filter((b) => b.status !== "declined" && b.status !== "cancelled").map(listRow);
   },
 });
 
