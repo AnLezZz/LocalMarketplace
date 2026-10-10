@@ -2,6 +2,7 @@ import Link from "next/link";
 import Icon, { type IconName } from "./Icon";
 import Avatar from "./Avatar";
 import { getMe } from "../lib/auth";
+import LiveRefresh from "./provider/LiveRefresh";
 import "./account-shell.css";
 
 const ITEMS: { id: "bookings" | "favourites" | "notifications" | "settings"; label: string; icon: IconName; href: string }[] = [
@@ -16,6 +17,7 @@ export default async function AccountShell({ active, children }: { active: (type
   const me = await getMe();
   return (
     <div className="page page--wide acct-shell">
+      <LiveRefresh role="customer" />
       <aside className="acct-shell__side">
         {me && (
           <div className="acct-shell__who">

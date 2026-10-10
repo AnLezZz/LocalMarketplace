@@ -177,3 +177,24 @@ describe("the live pulse a provider's dashboard listens to", () => {
     expect(await t.query(api.bookings.providerPulse, {})).toBeNull(); // signed out
   });
 });
+
+describe("the live pulse a customer's pages listen to", () => {
+  test("changes when their own bookings change (and a notification arrives), not for anyone else's", async () => {
+    const { t, owner, providerId, add } = await world();
+    const customerId = await createUser(t, "customer", "kiri@example.nz");
+    const customer = asUser(t, customerId), stranger = asUser(t, await createUser(t, "customer"));
+    const pulse = (who: typeof customer) => who.query(api.bookings.customerPulse, {});
+    const empty = await pulse(customer);
+    const id = await t.run((ctx) => ctx.db.insert("bookings", { providerId, customerId, customerName: "Kiri", customerEmail: "kiri@example.nz", description: "job", startsAt: Date.now() + 3 * DAY, endsAt: Date.now() + 3 * DAY + 3_600_000, status: "requested" }));
+    const requested = await pulse(customer);
+    expect(requested).not.toBe(empty);
+    await add(providerId, "requested", Date.now() + 5 * DAY); // someone else's booking
+    expect(await pulse(customer)).toBe(requested);
+    expect(await pulse(stranger)).toBe(empty);
+    await owner.mutation(api.bookings.transition, { bookingId: id, to: "accepted" });
+    const accepted = await pulse(customer);
+    expect(accepted).not.toBe(requested);
+    expect(accepted).not.toContain("Kiri");
+    expect(await t.query(api.bookings.customerPulse, {})).toBeNull();
+  });
+});

@@ -5,12 +5,12 @@ import { useQuery } from "convex/react";
 import { api } from "../../lib/convex";
 
 /**
- * Keeps a provider's dashboard current without a reload. Convex pushes a fingerprint of their bookings; when it changes the
+ * Keeps a dashboard (the provider's, or the customer's account area) current without a reload. Convex pushes a fingerprint of their bookings; when it changes the
  * page's server data is re-fetched in place (what you are typing and where you are scrolled stays put). Renders nothing.
  */
-export default function LiveRefresh() {
+export default function LiveRefresh({ role = "provider" }: { role?: "provider" | "customer" }) {
   const router = useRouter();
-  const pulse = useQuery(api.bookings.providerPulse) as string | null | undefined;
+  const pulse = useQuery(role === "customer" ? api.bookings.customerPulse : api.bookings.providerPulse) as string | null | undefined;
   const last = useRef<string | null | undefined>(undefined);
   useEffect(() => {
     if (pulse === undefined) return;

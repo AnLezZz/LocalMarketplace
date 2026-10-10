@@ -53,7 +53,8 @@ describe("bookings.create", () => {
   test("validates the time window and text", async () => {
     const { customer, providerA } = await setup();
     const base = { providerId: providerA, customerName: "Kiri", description: "d" };
-    await expect(customer.mutation(api.bookings.create, { address: "12 Test Street", suburb: "Ponsonby", ...base, startsAt: soon(), endsAt: soon() })).rejects.toThrow("invalid time window");
+    const same = soon(); // one value: two soon() calls can differ by a millisecond
+    await expect(customer.mutation(api.bookings.create, { address: "12 Test Street", suburb: "Ponsonby", ...base, startsAt: same, endsAt: same })).rejects.toThrow("invalid time window");
     await expect(customer.mutation(api.bookings.create, { address: "12 Test Street", suburb: "Ponsonby", ...base, startsAt: Date.now() - HOUR, endsAt: soon() })).rejects.toThrow("invalid time window");
     await expect(customer.mutation(api.bookings.create, { address: "12 Test Street", suburb: "Ponsonby", ...base, description: "  ", startsAt: soon(), endsAt: soon() + HOUR })).rejects.toThrow("missing fields");
   });

@@ -127,6 +127,23 @@ export const providerPulse = query({
   },
 });
 
+/**
+ * The customer's counterpart of providerPulse: a fingerprint of their own bookings plus their newest notification (every accept,
+ * decline, quote, reschedule proposal and meeting-link change makes one), so their pages can follow along without a reload.
+ */
+export const customerPulse = query({
+  args: {},
+  handler: async (ctx) => {
+    const user = await getUser(ctx);
+    if (!user) return null;
+    const mine = await ctx.db.query("bookings").withIndex("by_customerId", (i) => i.eq("customerId", user._id)).order("desc").take(100);
+    const [latest] = await ctx.db.query("notifications").withIndex("by_user", (i) => i.eq("userId", user._id)).order("desc").take(1);
+    let h = 2166136261;
+    for (const b of mine) for (const ch of `${b._id}${b.status}${b.startsAt}${b.endsAt}${b.quoteStatus ?? ""}${b.meetingLink ? 1 : 0}`) h = Math.imul(h ^ ch.charCodeAt(0), 16777619);
+    return `${mine.length}.${latest?._id ?? ""}.${h >>> 0}`;
+  },
+});
+
 /** Counts for the dashboard, each from its own index so none depends on what a list happens to show. `capped`: some count hit the cap. */
 export const providerSummary = query({
   args: { asOf: v.number() }, // "now", passed in: a query must not read the clock
