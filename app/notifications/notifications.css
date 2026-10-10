@@ -17,3 +17,4 @@ body:has(.nt-bar), body:has(.nt-skel), body:has(.nt-list) { background: var(--iv
 .nt-row { display: grid; grid-template-columns: 1fr 44px; gap: var(--s-1); align-items: start; }
 .nt-clear { display: grid; place-items: center; width: 44px; height: 44px; border: 0; border-radius: 12px; background: transparent; color: var(--ink-3); cursor: pointer; }
 .nt-clear:hover { background: #F0EDE5; color: var(--ink); }
+.nt-more { display: flex; justify-content: center; padding: var(--s-4) 0; min-height: 44px; }

@@ -35,7 +35,18 @@ body:has(.lp) { background: var(--ivory); }
 .lp-section { margin-top: var(--s-10); scroll-margin-top: var(--s-6); }
 .lp-section__head { display: flex; align-items: baseline; justify-content: space-between; gap: var(--s-3); }
 .lp-section__sub { color: var(--ink-3); font-size: 14px; margin: 2px 0 var(--s-4); }
-.lp-pros { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: var(--s-4); }
+/* Featured providers: one scrolling row (a carousel), so the landing page never grows past it. */
+.lp-car { position: relative; }
+.lp-car__track { display: flex; gap: var(--s-4); overflow-x: auto; scroll-snap-type: x mandatory; scroll-padding-inline: 2px; padding: 2px 2px var(--s-3); scrollbar-width: none; overscroll-behavior-x: contain; }
+.lp-car__track::-webkit-scrollbar { display: none; }
+.lp-car__track:focus-visible { outline: 2px solid var(--forest); outline-offset: 2px; border-radius: 16px; }
+.lp-car__track > .lp-pro { flex: 0 0 min(250px, 72vw); scroll-snap-align: start; }
+.lp-car__btn { position: absolute; top: 40%; z-index: 2; display: none; place-items: center; width: 44px; height: 44px; border: 1px solid #E6E1D6; border-radius: 50%; background: #fff; color: var(--ink); font-size: 26px; line-height: 1; cursor: pointer; box-shadow: var(--shadow-2); }
+.lp-car__btn[hidden] { display: none; }
+.lp-car__btn--prev { left: -14px; }
+.lp-car__btn--next { right: -14px; }
+@media (hover: hover) and (min-width: 720px) { .lp-car__btn { display: grid; } .lp-car__btn[hidden] { display: none; } }
+@media (prefers-reduced-motion: no-preference) { .lp-car__track { scroll-behavior: smooth; } }
 .lp-pro { display: block; padding: var(--s-3); background: #fff; border: 1px solid #ECE8DF; border-radius: 16px; color: var(--ink); text-decoration: none; transition: box-shadow .2s; }
 .lp-pro:hover { box-shadow: var(--shadow-2); }
 .lp-pro__photo { position: relative; display: grid; place-items: center; height: 150px; border-radius: 12px; background: #EFE8DC; margin-bottom: var(--s-3); }

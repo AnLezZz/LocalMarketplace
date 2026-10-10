@@ -1,6 +1,7 @@
 "use client";
 import { useRouter } from "next/navigation";
-import { useMutation, useQuery } from "convex/react";
+import { useEffect, useRef } from "react";
+import { useMutation, usePaginatedQuery, useQuery } from "convex/react";
 import { api } from "../../lib/convex";
 import Icon from "../../components/Icon";
 
@@ -10,7 +11,18 @@ const fmt = new Intl.DateTimeFormat("en-NZ", { timeZone: "Pacific/Auckland", day
 /** Live list. New notifications appear and read state flips without a refresh. */
 export default function NotificationList() {
   const router = useRouter();
-  const items = useQuery(api.notifications.mine) as N[] | undefined;
+  const { results, status, loadMore } = usePaginatedQuery(api.notifications.listPage, {}, { initialNumItems: 20 });
+  const items = status === "LoadingFirstPage" ? undefined : (results as N[]);
+  const end = useRef<HTMLDivElement>(null);
+  // Infinite scroll: reaching the end of the list asks for the next 20. The button below does the same for keyboards and no-JS observers.
+  useEffect(() => {
+    const el = end.current;
+    if (!el || status !== "CanLoadMore") return;
+    const io = new IntersectionObserver((e) => { if (e[0].isIntersecting) loadMore(20); }, { rootMargin: "200px" });
+    io.observe(el);
+    return () => io.disconnect();
+  }, [status, loadMore, items?.length]);
+  const unreadAll = useQuery(api.notifications.unreadCount) as number | undefined; // the full count (capped at 100), not just what is loaded
   const markRead = useMutation(api.notifications.markRead);
   const markAll = useMutation(api.notifications.markAllRead);
   const clear = useMutation(api.notifications.clear);
@@ -27,11 +39,11 @@ export default function NotificationList() {
       </div>
     );
   }
-  const unread = items.filter((n) => !n.read).length;
+  const unread = unreadAll ?? items.filter((n) => !n.read).length;
   return (
     <>
       <div className="nt-bar">
-        <span className="num">{unread} unread</span>
+        <span className="num">{unread}{unread >= 100 ? "+" : ""} unread</span>
         <span className="nt-bar__actions">
           <button className="link-btn" disabled={unread === 0} onClick={() => void markAll({})}>Mark all as read</button>
           <button className="link-btn" onClick={() => void wipe()}>Clear all</button>
@@ -50,6 +62,10 @@ export default function NotificationList() {
           </li>
         ))}
       </ul>
+      <div ref={end} className="nt-more">
+        {status === "CanLoadMore" && <button type="button" className="btn btn--secondary btn--sm" onClick={() => loadMore(20)}>Show older notifications</button>}
+        {status === "LoadingMore" && <span className="field__hint" role="status">Loading…</span>}
+      </div>
     </>
   );
 }

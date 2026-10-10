@@ -8,6 +8,7 @@ import Icon from "../components/Icon";
 import PlaceInput from "../components/PlaceInput";
 import FeaturedCategories from "../components/FeaturedCategories";
 import ProviderPhoto from "../components/ProviderPhoto";
+import ProviderCarousel from "../components/ProviderCarousel";
 import { Rating } from "../components/Pill";
 import { type ProviderSummary } from "../components/ProviderCard";
 import { rate, partOfDay } from "../components/format";
@@ -26,7 +27,7 @@ function href(p: Params) {
   return qs ? `/?${qs}` : "/";
 }
 
-const SHOWN = 8;
+const SHOWN = 12; // a single scrolling row: the best twelve
 
 export default async function Home({ searchParams }: { searchParams: Promise<Params> }) {
   const { category, suburb, q } = await searchParams;
@@ -101,7 +102,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<Par
             )}
           </div>
         ) : (
-          <div className="lp-pros">
+          <ProviderCarousel label="Featured providers">
             {list.map((p) => {
               const price = rate(p.rateCents, p.rateBasis);
               return (
@@ -117,7 +118,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<Par
                 </Link>
               );
             })}
-          </div>
+          </ProviderCarousel>
         )}
         {found.total > list.length && (
           <p className="lp-more"><Link href={`/search${filtered ? `?${new URLSearchParams(Object.entries({ q, category, where: suburb }).filter(([, v]) => v) as [string, string][])}` : ""}`} className="btn btn--secondary">See all {found.total}{found.capped ? "+" : ""} providers</Link></p>

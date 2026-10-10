@@ -1,4 +1,5 @@
 import { ConvexError, v } from "convex/values";
+import { paginationOptsValidator } from "convex/server";
 import { internalMutation, mutation, query } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { getUser, requireUser } from "./model/auth";
@@ -8,13 +9,27 @@ import { getUser, requireUser } from "./model/auth";
 const LEGACY_HREFS: Record<string, string> = { "/provider#reviews": "/provider/reviews", "/provider#bookings": "/provider/bookings", "/provider#calendar": "/provider/calendar" };
 export const currentHref = (href: string) => LEGACY_HREFS[href] ?? href;
 
+const shape = (n: { _id: string; kind: string; title: string; body: string; href: string; read: boolean; _creationTime: number }) =>
+  ({ _id: n._id, kind: n.kind, title: n.title, body: n.body, href: currentHref(n.href), read: n.read, at: n._creationTime });
+
+/** The newest 30, for a quick look (the notifications page uses `listPage`). */
 export const mine = query({
   args: {},
   handler: async (ctx) => {
     const user = await getUser(ctx);
     if (!user) return [];
-    const rows = await ctx.db.query("notifications").withIndex("by_user", (q) => q.eq("userId", user._id)).order("desc").take(30);
-    return rows.map((n) => ({ _id: n._id, kind: n.kind, title: n.title, body: n.body, href: currentHref(n.href), read: n.read, at: n._creationTime }));
+    return (await ctx.db.query("notifications").withIndex("by_user", (q) => q.eq("userId", user._id)).order("desc").take(30)).map(shape);
+  },
+});
+
+/** The signed-in user's notifications, newest first, a page at a time. Reactive, so the page keeps scrolling and updating live. */
+export const listPage = query({
+  args: { paginationOpts: paginationOptsValidator },
+  handler: async (ctx, { paginationOpts }) => {
+    const user = await getUser(ctx);
+    if (!user) return { page: [], isDone: true, continueCursor: "" };
+    const r = await ctx.db.query("notifications").withIndex("by_user", (q) => q.eq("userId", user._id)).order("desc").paginate(paginationOpts);
+    return { ...r, page: r.page.map(shape) };
   },
 });
 

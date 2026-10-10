@@ -126,3 +126,23 @@ describe("old notifications", () => {
     } finally { vi.useRealTimers(); }
   });
 });
+
+describe("the notifications page list", () => {
+  test("pages newest first without repeats or gaps, and only ever the caller's own", async () => {
+    const { t, owner, customer, stranger, request } = await setup();
+    for (let i = 0; i < 9; i++) await request();
+    const all: string[] = []; let cursor: string | null = null;
+    for (let i = 0; i < 10; i++) {
+      const r: { page: { _id: string }[]; isDone: boolean; continueCursor: string } = await owner.query(api.notifications.listPage, { paginationOpts: { numItems: 4, cursor } });
+      all.push(...r.page.map((n) => n._id));
+      if (r.isDone) break;
+      cursor = r.continueCursor;
+    }
+    expect(all).toHaveLength(9);
+    expect(new Set(all).size).toBe(9);
+    expect(all).toEqual((await owner.query(api.notifications.mine, {})).map((n) => n._id)); // the same order as the quick list
+    expect((await customer.query(api.notifications.listPage, { paginationOpts: { numItems: 4, cursor: null } })).page).toEqual([]);
+    expect((await stranger.query(api.notifications.listPage, { paginationOpts: { numItems: 4, cursor: null } })).page).toEqual([]);
+    expect(await t.query(api.notifications.listPage, { paginationOpts: { numItems: 4, cursor: null } })).toMatchObject({ page: [], isDone: true });
+  });
+});
