@@ -1,6 +1,7 @@
 import { ConvexError, v } from "convex/values";
 import { internalMutation, query } from "./_generated/server";
 import { getUser } from "./model/auth";
+import { authEmailAvailable, verificationRequired } from "./model/authEmail";
 
 export const me = query({
   args: {},
@@ -22,5 +23,26 @@ export const grantAdmin = internalMutation({
     if (!user) throw new ConvexError("No user with that email. They must sign up first.");
     await ctx.db.patch(user._id, { role: "admin" });
     return null;
+  },
+});
+
+/** What the sign-in page may offer. Reveals only whether features are on, never any key. */
+export const authFeatures = query({
+  args: {},
+  handler: async () => ({ passwordReset: authEmailAvailable(), emailVerification: verificationRequired() }),
+});
+
+/**
+ * Before turning on REQUIRE_EMAIL_VERIFICATION on a deployment that already has users, run this once so they are not
+ * all asked for a code: npx convex run users:markExistingVerified. Only do it when you trust the existing emails.
+ */
+export const markExistingVerified = internalMutation({
+  args: {},
+  handler: async (ctx) => {
+    let n = 0;
+    for (const account of await ctx.db.query("authAccounts").take(1000)) {
+      if (account.provider === "password" && !account.emailVerified) { await ctx.db.patch(account._id, { emailVerified: account.providerAccountId }); n++; }
+    }
+    return n;
   },
 });

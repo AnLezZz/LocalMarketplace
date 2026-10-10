@@ -14,7 +14,13 @@ Turborepo + Next.js + Convex. Spec: local services marketplace PRD v1.1.
 ## Auth setup
 Convex Auth needs `JWT_PRIVATE_KEY`, `JWKS` and `SITE_URL` on each deployment (dev and prod). Generate the key pair with `jose` (RS256) and set each with `npx convex env set "NAME=VALUE"`. `SITE_URL` is the app's origin (`http://localhost:3000` in dev).
 
-First admin: sign up, then `npx convex run users:grantAdmin '{"email":"you@example.nz"}'`. On the production deployment add `--prod` (`npx convex run --prod users:grantAdmin ...`), and only after you have signed in successfully with that email on production. Emails are not verified, so granting admin to an address someone else may have registered first would promote the wrong person. There is deliberately no public way to become an admin.
+First admin: sign up, then `npx convex run users:grantAdmin '{"email":"you@example.nz"}'`. On the production deployment add `--prod` (`npx convex run --prod users:grantAdmin ...`), and only after you have signed in successfully with that email on production. Unless `REQUIRE_EMAIL_VERIFICATION` is on, emails are not verified, so granting admin to an address someone else may have registered first would promote the wrong person. There is deliberately no public way to become an admin.
+
+## Password reset and email verification
+Both use one-time 8 digit codes (valid 20 minutes) sent through Resend, so they need the Email setup below.
+- **Password reset** turns on as soon as email can be sent. `/signin` then shows "Forgot your password?", which goes to `/signin/reset`. The page gives the same answer for unknown addresses. Resetting cancels the account's other sessions; an access token already issued stays valid until it expires (up to an hour).
+- **Email verification** is a separate switch, because it makes every account without a verified email enter a code at its next sign-in: `npx convex env set REQUIRE_EMAIL_VERIFICATION true`. On a deployment that already has users, run `npx convex run users:markExistingVerified` first (only if you trust the existing emails), or they will all be asked for a code.
+- **Development without Resend:** `npx convex env set AUTH_LOG_CODES true` logs the codes in the Convex logs instead of emailing them. Never set it on production.
 
 ## Email (Resend)
 Booking and review notifications are also emailed, and a reminder goes to both sides once an accepted booking is within 24 hours (an hourly cron, `convex/crons.ts`). Emails are sent from Convex with Resend. Without a key the app still works: emails are skipped and logged.
