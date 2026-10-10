@@ -1,6 +1,5 @@
 "use client";
 import { useEffect, useRef } from "react";
-import NotificationBell from "./NotificationBell";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import Icon, { type IconName } from "./Icon";
@@ -44,7 +43,7 @@ export function HeaderNav({ signedIn, userRole }: { signedIn: boolean; userRole?
     <nav className="header-nav" aria-label="Main">
       <div className="header-nav__center">
         {link("/search", dashboard ? "Find services ↗" : "Find services")}
-        {signedIn ? !dashboard && link("/bookings", "My bookings") : <>
+        {signedIn ? null : <>
           {link("/#how-it-works", "How it works")}
           {link("/provider/register", "Become a provider")}
         </>}
@@ -54,7 +53,6 @@ export function HeaderNav({ signedIn, userRole }: { signedIn: boolean; userRole?
           <Link href="/signin" className="header-nav__login">Log in</Link>
           <Link href="/signin" className="btn btn--forest btn--pill">Sign up</Link>
         </> : <>
-          <NotificationBell />
           <details className="profile-nav" ref={profile}>
             <summary className="profile-nav__trigger"><Icon name="user" size={18} /><span>Profile</span><span className="profile-nav__caret" aria-hidden="true">⌄</span></summary>
             <div className="profile-nav__panel" onClick={(event) => {
