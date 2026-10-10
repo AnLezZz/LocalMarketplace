@@ -47,6 +47,11 @@ export default async function Home({ searchParams }: { searchParams: Promise<Par
   const list = found.rows;
   const everyone = { length: (anyone ?? found).total };
 
+  // Popular: the categories most of the featured providers are listed under, so every link is known to lead to someone.
+  const tally = new Map<string, number>();
+  for (const p of list) tally.set(p.category, (tally.get(p.category) ?? 0) + 1);
+  const popular = [...tally.entries()].sort((a, b) => b[1] - a[1]).slice(0, 4).map(([slug]) => ({ slug, label: metaIn(cats.all, slug).label }));
+
   const firstName = me?.name?.trim().split(/\s+/)[0];
   const greeting = `Good ${partOfDay()}${firstName ? `, ${firstName}` : ""}.`;
   const heading = filtered
@@ -75,8 +80,13 @@ export default async function Home({ searchParams }: { searchParams: Promise<Par
             </div>
             <button className="btn btn--forest">Search</button>
           </form>
+          {popular.length > 0 && (
+            <p className="lp-popular"><span>Popular:</span>
+              {popular.map((c) => <Link key={c.slug} href={`/categories/${encodeURIComponent(c.slug)}`} className="lp-popular__chip">{c.label}</Link>)}
+            </p>
+          )}
           <ul className="lp-trust" aria-label="Why people use Localo">
-            <li><Icon name="shield" size={16} />Providers are approved before they appear</li>
+            <li><Icon name="shield" size={16} />{everyone.length > 0 ? `${everyone.length} approved ${everyone.length === 1 ? "provider" : "providers"}` : "Providers are approved before they appear"}</li>
             <li><Icon name="calendar" size={16} />Pick from their real availability</li>
             <li><Icon name="check" size={16} />Pay your provider directly</li>
           </ul>
