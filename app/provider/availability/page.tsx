@@ -37,7 +37,7 @@ export default async function Availability({ searchParams }: { searchParams: Pro
 
   return (
     <div className="d-layout">
-      <DashboardSidebar portal="business" activeId="availability" user={{ name: profile.name, subtext: "View profile", profileHref: "/provider/register" }} items={providerSidebarItems()} />
+      <DashboardSidebar portal="business" activeId="availability" user={{ name: profile.name, subtext: "View profile", profileHref: "/provider/profile" }} items={providerSidebarItems()} />
       <div className="d-main">
         <header className="d-header">
           <div className="d-header__info">

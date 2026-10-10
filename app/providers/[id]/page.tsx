@@ -7,6 +7,7 @@ import ProviderPhoto from "../../../components/ProviderPhoto";
 import { Rating } from "../../../components/Pill";
 import { categoryMeta } from "../../../components/categories";
 import { durationLabel, priceLabel, rate } from "../../../components/format";
+import Image from "next/image";
 import "./booking.css";
 import FavouriteButton from "../../../components/FavouriteButton";
 import { authOpts } from "../../../lib/auth";
@@ -21,6 +22,7 @@ export default async function Provider({ params }: { params: Promise<{ id: strin
   const services = (await fetchQuery(api.services.listForProvider, { providerId: id })) as { _id: string; name: string; description: string; priceType: string; priceCents?: number; durationMinutes: number }[];
   const saved = ((await fetchQuery(api.favourites.mineIds, {}, await authOpts())) as string[]).includes(id);
   const reviews = (await fetchQuery(api.reviews.forProvider, { providerId: id })) as { _id: string; customerName: string; rating: number; text: string; at: number }[];
+  const gallery = (await fetchQuery(api.providers.gallery, { providerId: id })) as { _id: string; url: string; caption?: string }[];
   const price = rate(p.rateCents, p.rateBasis);
   const cat = categoryMeta(p.category);
   const bookHref = `/providers/${id}/book`;
@@ -50,6 +52,14 @@ export default async function Provider({ params }: { params: Promise<{ id: strin
             <h2 id="about-h" className="bk__h">About</h2>
             <p className="bk__about bk__about--in">{p.bio}</p>
           </section>
+          {gallery.length > 0 && (
+            <section className="bk__card" aria-labelledby="gal-h">
+              <h2 id="gal-h" className="bk__h">Recent work</h2>
+              <ul className="pf-gallery">
+                {gallery.map((g) => <li key={g._id}><Image src={g.url} alt={g.caption ?? `Work by ${p.name}`} width={240} height={180} className="pf-gallery__img" />{g.caption && <small>{g.caption}</small>}</li>)}
+              </ul>
+            </section>
+          )}
           <section className="bk__card" aria-labelledby="svc-h">
             <h2 id="svc-h" className="bk__h">Services</h2>
             {services.length === 0 ? (

@@ -7,6 +7,6 @@ export function providerSidebarItems(pendingRequests = 0) {
     { id: "availability", label: "Availability", icon: "clock" as const, href: "/provider/availability" },
     { id: "services", label: "Services", icon: "briefcase" as const, href: "/provider/services" },
     { id: "reviews", label: "Reviews", icon: "star" as const, href: "/provider#reviews" },
-    { id: "profile", label: "Profile", icon: "user" as const, href: "/provider/register" },
+    { id: "profile", label: "Profile", icon: "user" as const, href: "/provider/profile" },
   ];
 }

@@ -64,7 +64,7 @@ export default async function ProviderHome({
         user={{
           name: profile.name,
           subtext: "View profile",
-          profileHref: "/provider/register",
+          profileHref: "/provider/profile",
         }}
         items={sidebarItems}
       />

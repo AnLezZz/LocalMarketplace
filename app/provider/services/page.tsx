@@ -27,7 +27,7 @@ export default async function Services({ searchParams }: { searchParams: Promise
 
   return (
     <div className="d-layout">
-      <DashboardSidebar portal="business" activeId="services" user={{ name: profile.name, subtext: "View profile", profileHref: "/provider/register" }} items={providerSidebarItems()} />
+      <DashboardSidebar portal="business" activeId="services" user={{ name: profile.name, subtext: "View profile", profileHref: "/provider/profile" }} items={providerSidebarItems()} />
       <div className="d-main">
         <header className="d-header">
           <div className="d-header__info">

@@ -1373,3 +1373,12 @@ body:has(.d-layout) { background: var(--ivory, #FAF9F6); }
 .adm-act form { display: flex; gap: var(--s-2); flex-wrap: wrap; }
 .adm-quote { margin: 4px 0 0; padding: var(--s-3); background: var(--surface-sunk); border-radius: 10px; overflow-wrap: anywhere; color: var(--ink); }
 .suspended-bar { background: var(--danger-tint); color: var(--danger); border-bottom: 1px solid var(--danger-line); padding: var(--s-3) var(--s-4); text-align: center; font-size: 14px; font-weight: 500; }
+
+/* Provider profile editor */
+.pf-photo { display: flex; gap: var(--s-5); align-items: center; flex-wrap: wrap; }
+.pf-photo__side { display: grid; gap: var(--s-3); flex: 1; min-width: 220px; }
+.upl { display: grid; gap: 4px; justify-items: start; }
+.upl__err { color: var(--danger); font-size: 13px; margin: 0; }
+.pf-gallery { list-style: none; margin: 0 0 var(--s-4); padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: var(--s-3); }
+.pf-gallery li { display: grid; gap: var(--s-2); }
+.pf-gallery__img { width: 100%; height: auto; aspect-ratio: 4 / 3; object-fit: cover; border-radius: 12px; background: var(--surface-sunk); }

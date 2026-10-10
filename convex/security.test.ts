@@ -9,7 +9,7 @@ const sources = Object.entries(all).filter(([path]) => !path.endsWith(".test.ts"
 // When this fails, a public mutation was added or removed. Add it to the signed-out sweep below.
 const PUBLIC_MUTATIONS = [
   "admin.cancelBooking", "admin.reactivateProvider", "admin.reactivateUser", "admin.resolveDispute", "admin.resolveReviewReport", "admin.restoreReview", "admin.review", "admin.suspendProvider", "admin.suspendUser", "availability.addTimeOff", "availability.removeTimeOff", "availability.setHours",
-  "bookings.create", "bookings.respondToQuote", "bookings.submitQuote", "bookings.transition", "disputes.open", "favourites.toggle", "notifications.markAllRead", "notifications.markRead", "providers.setServiceAreas", "providers.submitProfile", "reviews.create", "reviews.report",
+  "bookings.create", "bookings.respondToQuote", "bookings.submitQuote", "bookings.transition", "disputes.open", "favourites.toggle", "notifications.markAllRead", "notifications.markRead", "providers.addGalleryPhoto", "providers.generateUploadUrl", "providers.removeGalleryPhoto", "providers.removePhoto", "providers.setPhoto", "providers.setServiceAreas", "providers.submitProfile", "providers.updateProfile", "reviews.create", "reviews.report",
   "services.archive", "services.create", "services.setEnabled", "services.update",
 ];
 // A public action can write via ctx.runMutation. Add one here deliberately and give it its own signed-out check.
@@ -54,6 +54,7 @@ test("every public mutation refuses a signed-out caller", async () => {
   const reviewId = await t.run((ctx) => ctx.db.insert("reviews", { bookingId, providerId, customerId, customerName: "x", rating: 5, text: "" }));
   const reportId = await t.run((ctx) => ctx.db.insert("reviewReports", { reviewId, providerId, reporterId: owner, reason: "unfair review", status: "open" }));
   const disputeId = await t.run((ctx) => ctx.db.insert("disputes", { bookingId, openedById: customerId, openedBy: "customer", reason: "something went wrong", status: "open" }));
+  const storageId = await t.run((ctx) => ctx.storage.store(new Blob(["x"], { type: "image/png" })));
   const calls = [
     () => t.mutation(api.admin.review, { providerId, decision: "approve", submittedAt: 1 }),
     () => t.mutation(api.bookings.create, { address: "12 Test Street", suburb: "Ponsonby", providerId, customerName: "A", description: "d", startsAt, endsAt: startsAt + 3_600_000 }),
@@ -74,6 +75,12 @@ test("every public mutation refuses a signed-out caller", async () => {
     () => t.mutation(api.bookings.submitQuote, { bookingId, amountCents: 5000 }),
     () => t.mutation(api.bookings.respondToQuote, { bookingId, accept: true }),
     () => t.mutation(api.providers.setServiceAreas, { suburbs: [] }),
+    () => t.mutation(api.providers.updateProfile, { name: "N", bio: "B", category: "cleaning", suburb: "S", rateCents: 4500, rateBasis: "hourly" }),
+    () => t.mutation(api.providers.generateUploadUrl, {}),
+    () => t.mutation(api.providers.setPhoto, { storageId }),
+    () => t.mutation(api.providers.removePhoto, {}),
+    () => t.mutation(api.providers.addGalleryPhoto, { storageId }),
+    () => t.mutation(api.providers.removeGalleryPhoto, { id: "x" }),
     () => t.mutation(api.favourites.toggle, { providerId }),
     () => t.mutation(api.notifications.markRead, { id: "x" }),
     () => t.mutation(api.notifications.markAllRead, {}),

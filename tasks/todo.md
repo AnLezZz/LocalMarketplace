@@ -109,7 +109,7 @@ Notes: legacy bookings have no address (shown as "not recorded"); a provider-sid
 3. [x] Password reset and email verification: see the review below.
 4. [x] Quotes and saved pricing: see the review below.
 5. [x] Admin moderation and support: see the S7 review below.
-6. Provider profile editing and photo uploads: approved profiles are locked; photos are seed-managed (needs Convex file storage).
+6. [x] Provider profile editing and photo uploads: see the S9 review below.
 
 ---
 
@@ -150,6 +150,12 @@ Test data left on dev: reviews/disputes/bookings tagged "S7a", resolved, plus th
 
 # Before deploying (checklist)
 
+Vercel facts found on 2026-10-10 (project `localmarketplace-marketplace`):
+- [ ] Production `NEXT_PUBLIC_CONVEX_URL` points at the DEV Convex deployment (`benevolent-boar-32`). Fine while everything is dev; switch it to the production deployment URL before real users.
+- [ ] `NEXT_PUBLIC_CONVEX_URL` exists for the Production target only, so Preview deployments (other branches) build but fail at runtime. Add it for Preview if previews are needed.
+- [ ] Vercel Authentication is on for `*.vercel.app` (all except custom domains), so the site needs a Vercel login to open. Add a custom domain or relax this when the site should be public.
+- [ ] Convex `SITE_URL` is a localhost URL, so links in emails (bookings, reminders) point at localhost. Set it to the real origin on each deployment.
+
 The repo is public and the demo data is dev-only. Do these before pointing anything at a production Convex deployment:
 
 - [ ] Delete `TEST_ACCOUNTS.md` (it lists demo and E2E account passwords). They stay in git history, so never create these accounts, or reuse those passwords, on prod.
@@ -185,4 +191,23 @@ Decisions: explicit contact sharing (customer opts in per booking; phone + email
 The repo was set up as a pnpm + turbo monorepo for several apps; it is one app. Flattened to a single Next.js app at the root: `apps/marketplace/{app,components,lib,public,middleware.ts,next.config.mjs,PRODUCT.md}` moved to the root with `git mv` (history kept), `packages/design-tokens/tokens.css` became `app/tokens.css`, and `turbo.json`, `pnpm-workspace.yaml`, `tsconfig.base.json`, both extra `package.json` files and the workspace package were removed. One `package.json` (name `localo`; `jose` is now a dev dependency; `pnpm typecheck` added), one `tsconfig.json` (`convex/` keeps its own), one `.env.local`. `pnpm dev` now uses port 3100 to match the README and TEST_ACCOUNTS.md.
 Verified from the new layout: typecheck, 114 tests, `next build`, and a browser smoke test.
 Older entries above (and `docs/superpowers`) still mention `apps/marketplace/...` paths; they are history and were not rewritten.
-Manual follow-ups: if the app is already on Vercel, change the project's Root Directory from `apps/marketplace` to the repository root. `AGENTS.md` still contains a block that turbo wrote about Turborepo; it is stale now.
+Vercel: the project `localmarketplace-marketplace` (team ans-projects) still had Root Directory `apps/marketplace`, so the deployment for the flatten commit failed ("The specified Root Directory does not exist"). Fixed on 2026-10-10: Root Directory is now the repository root, and `main` was redeployed (READY, production). `AGENTS.md` still contains a block that turbo wrote about Turborepo; it is stale now.
+
+---
+
+# S9: Provider profile editing and photo uploads (backlog priority 6)
+
+Decisions: approved providers edit name/bio/category/suburb/rate directly with the same validation as the application (no re-review; moderation is suspension); pending/rejected keep the application form; suspended cannot edit. Photos use Convex file storage: owner-only upload URLs, type (jpeg/png/webp) and size (5 MB) checked on the stored file before it is attached, the old file deleted when replaced. One profile photo (falls back to the seeded demo image) and a work gallery of up to 6.
+Known limits to record: the type check uses the stored content type, not the file bytes; an upload that is never attached stays in storage; no admin tool to remove a photo (suspend instead).
+
+- [x] Schema: providers.photoStorageId, providerPhotos
+- [x] providers.updateProfile, generateUploadUrl, setPhoto/removePhoto, gallery add/remove/list; public queries resolve storage URLs
+- [x] next.config remote image pattern; ProviderPhoto uses the URL
+- [x] /provider/profile page: details form, photo, gallery; sidebar Profile link
+- [x] Gallery section on the public profile
+- [x] Tests; browser verification
+
+## S9 review (2026-10-10)
+Done: `providers.updateProfile` (approved providers edit name/bio/category/suburb/rate directly, same validation as an application; pending/rejected are told to use the application form; suspended refused); Convex file storage uploads: `generateUploadUrl` (owner only), `setPhoto`/`removePhoto` (one profile photo that replaces the seeded image everywhere via `withPhotoUrl`, old file deleted on replace), work gallery of up to 6 (`addGalleryPhoto`/`removeGalleryPhoto`/`gallery`/`galleryMine`); files are checked (JPEG/PNG/WebP, 5 MB) and a bad file is deleted and reported as a result; `/provider/profile` (photo, details, gallery; client-side checks too), gallery on the public profile ("Recent work"), sidebar Profile now goes there; `next.config` allows `*.convex.cloud` images.
+Verified: 124 convex tests (edit rules, upload URL access, photo in get/list/mine/favourites with the storage id hidden, replace/remove/fallback, rejected types and sizes deleted, gallery limit/captions/ownership/approval, suspended refused, signed-out sweep) and a browser run with real uploads to Convex storage (so the real content-type check ran): wrong type and >5 MB blocked client-side, profile photo upload shows on the editor, search card and public profile, details edit goes live, invalid rate blocked, two gallery photos appear on the public profile, customers are redirected away, cleanup restored the seeded photo and bio.
+Known limits: convex-test does not record a content type, so unit tests supply it (the real rule `imageProblem` is tested directly; the real storage metadata was exercised in the browser); the type check trusts the stored content type, not the file bytes; an upload that is never attached stays in storage (no cleanup job); there is no admin tool to remove a photo (suspend the listing); no image cropping or resizing; edits to an approved profile are not re-reviewed.

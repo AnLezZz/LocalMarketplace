@@ -47,6 +47,8 @@ export default defineSchema({
     // Set by an admin. A suspended provider has approved=false, so public searches and bookings exclude them.
     suspendedAt: v.optional(v.number()),
     suspendedReason: v.optional(v.string()),
+    // An uploaded profile photo in Convex storage. Public queries turn it into `photo` (a URL); it wins over the seeded `photo` path.
+    photoStorageId: v.optional(v.id("_storage")),
   })
     .index("by_approved", ["approved"])
     .index("by_userId", ["userId"])
@@ -126,6 +128,13 @@ export default defineSchema({
     endsAt: v.number(),
     reason: v.optional(v.string()),
   }).index("by_provider_and_endsAt", ["providerId", "endsAt"]),
+
+  // Work photos shown on a provider's public profile.
+  providerPhotos: defineTable({
+    providerId: v.id("providers"),
+    storageId: v.id("_storage"),
+    caption: v.optional(v.string()),
+  }).index("by_provider", ["providerId"]),
 
   favourites: defineTable({
     userId: v.id("users"),

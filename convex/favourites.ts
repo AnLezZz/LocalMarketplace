@@ -1,6 +1,7 @@
 import { ConvexError, v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { getUser, requireUser } from "./model/auth";
+import { withPhotoUrl } from "./model/photos";
 
 /** Provider ids the signed-in user has saved (for heart state). */
 export const mineIds = query({
@@ -21,7 +22,7 @@ export const listMine = query({
     if (!user) return [];
     const rows = await ctx.db.query("favourites").withIndex("by_user", (q) => q.eq("userId", user._id)).order("desc").take(200);
     const providers = await Promise.all(rows.map((r) => ctx.db.get(r.providerId)));
-    return providers.filter((p) => p?.approved);
+    return await Promise.all(providers.filter((p): p is NonNullable<typeof p> => !!p?.approved).map((p) => withPhotoUrl(ctx, p)));
   },
 });
 
