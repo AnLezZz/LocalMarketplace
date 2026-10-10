@@ -64,6 +64,9 @@ export function HeaderNav({ signedIn, userRole }: { signedIn: boolean; userRole?
             <Link href="/bookings" className="header-nav__link">
               My Bookings
             </Link>
+            <Link href="/favourites" className="header-nav__link">
+              Favourites
+            </Link>
             <SignOutButton className="btn btn--secondary btn--sm" />
           </div>
         )}

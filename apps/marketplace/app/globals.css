@@ -1331,3 +1331,19 @@ body:has(.d-layout) { background: var(--ivory, #FAF9F6); }
 .svc-item__desc, .svc-item__meta { color: var(--ink-3); font-size: 14px; }
 .svc-item__actions { display: flex; gap: var(--s-2); flex-wrap: wrap; }
 .svc-item__actions form { display: contents; }
+
+/* Provider availability editor */
+.avl { display: grid; gap: var(--s-2); margin-bottom: var(--s-4); }
+.avl__row { display: grid; gap: var(--s-2); padding: var(--s-3) 0; border-top: 1px solid var(--hairline); }
+.avl__day { display: flex; align-items: center; gap: var(--s-2); font-weight: 600; }
+.avl__day input { width: 20px; height: 20px; }
+.avl__times { display: flex; align-items: center; gap: var(--s-2); flex-wrap: wrap; color: var(--ink-3); font-size: 14px; }
+.avl__times select { width: auto; min-height: 44px; }
+@media (min-width: 900px) { .avl__row { grid-template-columns: 160px auto 1fr; align-items: center; } }
+
+/* Favourite heart */
+.fav { display: grid; place-items: center; width: 44px; height: 44px; border-radius: 50%; border: 1px solid #E6E1D6; background: #fff; color: var(--ink-2); cursor: pointer; }
+.fav svg { fill: none; }
+.fav--on { color: #C0392B; border-color: #F0C9C3; background: #FDF2F0; }
+.fav--on svg { fill: currentColor; }
+.fav:focus-visible { outline: 3px solid var(--forest); outline-offset: 2px; }

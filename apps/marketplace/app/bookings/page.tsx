@@ -24,10 +24,12 @@ function tabOf(b: { status: string; endsAt: number }, now: number): Tab {
 
 export const dynamic = "force-dynamic";
 
-export default async function MyBookings({ searchParams }: { searchParams: Promise<{ err?: string; tab?: string }> }) {
-  const { err, tab: t } = await searchParams;
+export default async function MyBookings({ searchParams }: { searchParams: Promise<{ err?: string; tab?: string; reviewed?: string }> }) {
+  const { err, tab: t, reviewed: justReviewed } = await searchParams;
   const tab: Tab = TABS.some(([k]) => k === t) ? (t as Tab) : "upcoming";
-  const all = await fetchQuery(api.bookings.listMine, {}, await authOpts());
+  const opts = await authOpts();
+  const all = await fetchQuery(api.bookings.listMine, {}, opts);
+  const reviewed = new Map(((await fetchQuery(api.reviews.mine, {}, opts)) as { bookingId: string; rating: number }[]).map((r) => [r.bookingId, r.rating]));
   const now = Date.now();
   const counts = { upcoming: 0, past: 0, cancelled: 0 };
   for (const b of all) counts[tabOf(b, now)]++;
@@ -53,6 +55,7 @@ export default async function MyBookings({ searchParams }: { searchParams: Promi
         ))}
       </nav>
       {err && <Banner tone="error">{err}</Banner>}
+      {justReviewed && <Banner tone="success">Thanks, your review is published.</Banner>}
       {rows.length === 0 && (
         <div className="empty card">
           <span className="empty__icon"><Icon name="calendar" size={26} /></span>
@@ -81,6 +84,9 @@ export default async function MyBookings({ searchParams }: { searchParams: Promi
               <p className="booking__desc">{b.description}</p>
               <div className="booking__actions">
                 <Link href={`/providers/${b.providerId}`} className="btn btn--secondary">View provider</Link>
+                {b.status === "completed" && (reviewed.has(b._id)
+                  ? <span className="booking__rated">Reviewed <b aria-label={`${reviewed.get(b._id)} out of 5`}>{"★".repeat(reviewed.get(b._id)!)}</b></span>
+                  : <Link href={`/bookings/${b._id}/review`} className="btn btn--forest">Leave a review</Link>)}
                 {(b.status === "requested" || b.status === "accepted") && (
                   <form action={cancel}>
                     <input type="hidden" name="id" value={b._id} />

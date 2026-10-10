@@ -2,6 +2,7 @@ import Link from "next/link";
 import { providerSidebarItems } from "../../lib/providerNav";
 import { transitionBooking } from "./actions";
 import "../bookings/bookings.css";
+import "../providers/[id]/booking.css";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { fetchQuery, fetchMutation } from "convex/nextjs";
@@ -30,6 +31,7 @@ export default async function ProviderHome({
   if (!profile) redirect("/provider/register");
 
   const rows = await fetchQuery(api.bookings.listIncoming, {}, opts);
+  const reviews = ((await fetchQuery(api.reviews.forProvider, { providerId: profile._id })) as { _id: string; customerName: string; rating: number; text: string }[]).slice(0, 5);
 
   // Compute live KPIs
   const pendingRequests = rows.filter((b: any) => b.status === "requested").length;
@@ -260,6 +262,23 @@ export default async function ProviderHome({
           {/* Column 2: Your Calendar Schedule Widget */}
           <section id="calendar" aria-label="Interactive weekly calendar">
             <WeeklyCalendar bookings={rows} providerCategory={profile.category} />
+          </section>
+          <section className="card d-card" id="reviews" aria-labelledby="rev-h">
+            <div className="d-card__head">
+              <div><h2 id="rev-h" className="d-card__title">Recent reviews</h2><span className="d-card__sub num">{profile.reviewCount} total</span></div>
+            </div>
+            {reviews.length === 0 ? (
+              <div className="empty"><h3 className="empty__title">No written reviews yet</h3><p className="empty__text">Reviews appear here after customers rate a completed job.</p></div>
+            ) : (
+              <ul className="rv-list">
+                {reviews.map((r) => (
+                  <li key={r._id} className="rv">
+                    <div className="rv__head"><strong>{r.customerName}</strong><span className="rv__stars" aria-label={`${r.rating} out of 5`}>{"★".repeat(r.rating)}{"☆".repeat(5 - r.rating)}</span></div>
+                    {r.text && <p>{r.text}</p>}
+                  </li>
+                ))}
+              </ul>
+            )}
           </section>
         </div>
       </div>

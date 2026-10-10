@@ -8,6 +8,8 @@ import { Rating } from "../../../components/Pill";
 import { categoryMeta } from "../../../components/categories";
 import { durationLabel, priceLabel, rate } from "../../../components/format";
 import "./booking.css";
+import FavouriteButton from "../../../components/FavouriteButton";
+import { authOpts } from "../../../lib/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -17,6 +19,8 @@ export default async function Provider({ params }: { params: Promise<{ id: strin
   if (!p) notFound();
 
   const services = (await fetchQuery(api.services.listForProvider, { providerId: id })) as { _id: string; name: string; description: string; priceType: string; priceCents?: number; durationMinutes: number }[];
+  const saved = ((await fetchQuery(api.favourites.mineIds, {}, await authOpts())) as string[]).includes(id);
+  const reviews = (await fetchQuery(api.reviews.forProvider, { providerId: id })) as { _id: string; customerName: string; rating: number; text: string; at: number }[];
   const price = rate(p.rateCents, p.rateBasis);
   const cat = categoryMeta(p.category);
   const bookHref = `/providers/${id}/book`;
@@ -36,6 +40,7 @@ export default async function Provider({ params }: { params: Promise<{ id: strin
           <Rating avg={p.ratingAvg} count={p.reviewCount} />
         </div>
         <div className="bk__price"><span className="num">{price.amount}</span><small>{p.rateBasis === "hourly" ? "per hour" : "fixed price"}</small></div>
+        <FavouriteButton providerId={id} saved={saved} back={`/providers/${id}`} name={p.name} />
         <Link href={bookHref} className="btn btn--forest">Book now</Link>
       </section>
 
@@ -62,6 +67,22 @@ export default async function Provider({ params }: { params: Promise<{ id: strin
                 <Link href={`${bookHref}?service=${s._id}`} className="btn btn--forest btn--sm">Select</Link>
               </div>
             ))}
+          </section>
+          <section className="bk__card" aria-labelledby="rev-h">
+            <h2 id="rev-h" className="bk__h">Reviews</h2>
+            {reviews.length === 0 ? (
+              <p className="bk__sub">No written reviews yet. Customers can review a job once it is completed.</p>
+            ) : (
+              <ul className="rv-list">
+                {reviews.map((r) => (
+                  <li key={r._id} className="rv">
+                    <div className="rv__head"><strong>{r.customerName}</strong><span className="rv__stars" aria-label={`${r.rating} out of 5`}>{"★".repeat(r.rating)}{"☆".repeat(5 - r.rating)}</span>
+                      <time dateTime={new Date(r.at).toISOString()}>{new Date(r.at).toLocaleDateString("en-NZ", { day: "numeric", month: "short", year: "numeric", timeZone: "Pacific/Auckland" })}</time></div>
+                    {r.text && <p>{r.text}</p>}
+                  </li>
+                ))}
+              </ul>
+            )}
           </section>
         </div>
         <aside className="bk__side">

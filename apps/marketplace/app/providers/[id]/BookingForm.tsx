@@ -2,15 +2,18 @@
 import { useState } from "react";
 import Icon from "../../../components/Icon";
 import { dollars, durationLabel, priceLabel } from "../../../components/format";
+import { minuteLabel } from "../../../lib/time";
 
-const SLOTS = [8, 9, 10, 11, 12, 13, 14, 15, 16, 17];
-const DAYS = 14;
+const STEP = 30; // start times every half hour
 const pad = (n: number) => String(n).padStart(2, "0");
-const label = (h: number) => `${h % 12 || 12}:00 ${h < 12 ? "AM" : "PM"}`;
+
+/** Per day, Auckland minutes: when the provider works, and when they are already taken. */
+export type AvailabilityDay = { date: string; windows: [number, number][]; busy: [number, number][] };
 
 export type ServiceOption = { id: string; name: string; description: string; priceType: "fixed" | "hourly" | "quote"; priceCents?: number; durationMinutes: number };
 
 type Props = {
+  availability: AvailabilityDay[];
   services: ServiceOption[];
   initialServiceId?: string;
   action: (fd: FormData) => void | Promise<void>;
@@ -21,40 +24,54 @@ type Props = {
 };
 
 /** Day strip + time slots + details. Emits the same `start`/`hours`/`name`/`description` fields the server action reads. */
-export default function BookingForm({ action, now, defaultName, provider, services, initialServiceId }: Props) {
+export default function BookingForm({ action, now, defaultName, provider, services, initialServiceId, availability }: Props) {
   const [today, nowTime] = now.split("T");
-  const days = Array.from({ length: DAYS }, (_, i) => {
-    const d = new Date(`${today}T00:00:00Z`);
-    d.setUTCDate(d.getUTCDate() + i);
-    return { key: d.toISOString().slice(0, 10), wd: d.toLocaleDateString("en-NZ", { weekday: "short", timeZone: "UTC" }), dm: d.toLocaleDateString("en-NZ", { day: "numeric", month: "short", timeZone: "UTC" }), long: d.toLocaleDateString("en-NZ", { weekday: "long", day: "numeric", month: "long", year: "numeric", timeZone: "UTC" }) };
+  const nowMinute = Number(nowTime.slice(0, 2)) * 60 + Number(nowTime.slice(3, 5));
+  const days = availability.map((a) => {
+    const d = new Date(`${a.date}T00:00:00Z`);
+    return { ...a, key: a.date, wd: d.toLocaleDateString("en-NZ", { weekday: "short", timeZone: "UTC" }), dm: d.toLocaleDateString("en-NZ", { day: "numeric", month: "short", timeZone: "UTC" }), long: d.toLocaleDateString("en-NZ", { weekday: "long", day: "numeric", month: "long", year: "numeric", timeZone: "UTC" }) };
   });
-  const isPast = (k: string, h: number) => k === today && `${pad(h)}:00` <= nowTime;
-  // Late in the day every slot for today is gone, so start on the first day with a free one.
-  const firstOpen = Math.max(0, days.findIndex((d) => SLOTS.some((h) => !isPast(d.key, h))));
-  const [page, setPage] = useState(0);
-  const [day, setDay] = useState(days[firstOpen].key);
-  const [hour, setHour] = useState<number | null>(null);
   const [serviceId, setServiceId] = useState(services.find((x) => x.id === initialServiceId)?.id ?? services[0]?.id ?? "");
   const service = services.find((x) => x.id === serviceId);
   const [hours, setHours] = useState(service ? service.durationMinutes / 60 : 2);
+  const dur = Math.round(hours * 60);
+  /** Start minutes that fit inside working hours, clear of busy time, and not already past. */
+  const slotsFor = (date: string) => {
+    const d = days.find((x) => x.key === date);
+    if (!d) return [];
+    const out: number[] = [];
+    for (let m = 0; m + dur <= 1440; m += STEP) {
+      if (date === today && m <= nowMinute) continue;
+      if (d.windows.some(([s, e]) => m >= s && m + dur <= e) && !d.busy.some(([s, e]) => m < e && s < m + dur)) out.push(m);
+    }
+    return out;
+  };
+  const [page, setPage] = useState(0);
+  const [pickedDay, setDay] = useState<string | null>(null);
+  // Until they pick, start on the first day that has a free slot.
+  const day = pickedDay ?? days.find((d) => slotsFor(d.key).length > 0)?.key ?? days[0]?.key ?? today;
+  const slots = slotsFor(day);
+  const [chosen, setHour] = useState<number | null>(null);
+  // A time chosen earlier is dropped if a longer duration or another day no longer fits it.
+  const startMin = chosen !== null && slots.includes(chosen) ? chosen : null;
   const [desc, setDesc] = useState("");
   const [name, setName] = useState(defaultName);
   const [step, setStep] = useState(0);
   const detailsOk = name.trim() !== "" && desc.trim() !== "";
 
-  const picked = days.find((d) => d.key === day)!;
+  const picked = days.find((d) => d.key === day) ?? days[0];
   const visible = days.slice(page * 7, page * 7 + 7);
   // With services, price comes from the chosen one; otherwise from the provider's general rate.
   const priceType = service ? service.priceType : provider.rateBasis;
   const unitCents = service ? (service.priceCents ?? 0) : provider.rateCents;
   const hourly = priceType === "hourly";
   const price = hourly ? unitCents * hours : unitCents;
-  const end = hour !== null ? hour + hours : null;
+  const end = startMin !== null ? startMin + dur : null;
   const fmtHours = (h: number) => durationLabel(Math.round(h * 60));
 
   return (
-    <form action={action} className="bk__grid" onSubmit={(e) => { if (step < 2) { e.preventDefault(); if (step === 0 ? hour !== null : detailsOk) setStep(step + 1); } }}>
-      <input type="hidden" name="start" value={hour !== null ? `${day}T${pad(hour)}:00` : ""} />
+    <form action={action} className="bk__grid" onSubmit={(e) => { if (step < 2) { e.preventDefault(); if (step === 0 ? startMin !== null : detailsOk) setStep(step + 1); } }}>
+      <input type="hidden" name="start" value={startMin !== null ? `${day}T${pad(Math.floor(startMin / 60))}:${pad(startMin % 60)}` : ""} />
       <input type="hidden" name="hours" value={hours} />
       <input type="hidden" name="serviceId" value={serviceId} />
       <input type="hidden" name="name" value={name} />
@@ -88,7 +105,7 @@ export default function BookingForm({ action, now, defaultName, provider, servic
             <button type="button" className="bk__arrow" aria-label="Earlier days" disabled={page === 0} onClick={() => setPage(0)}><Icon name="chevronLeft" size={18} /></button>
             <div className="bk__daylist" role="radiogroup" aria-label="Date">
               {visible.map((d) => (
-                <button type="button" key={d.key} role="radio" aria-checked={d.key === day} className="bk__day" onClick={() => { setDay(d.key); setHour(null); }}>
+                <button type="button" key={d.key} role="radio" aria-checked={d.key === day} className="bk__day" disabled={slotsFor(d.key).length === 0} onClick={() => { setDay(d.key); setHour(null); }}>
                   <span>{d.wd}</span><span>{d.dm}</span>
                 </button>
               ))}
@@ -97,8 +114,9 @@ export default function BookingForm({ action, now, defaultName, provider, servic
           </div>
           <h3 className="bk__h3">Available times – {picked.long.replace(/ \d{4}$/, "")}</h3>
           <div className="bk__slots" role="radiogroup" aria-label="Start time">
-            {SLOTS.map((h) => (
-              <button type="button" key={h} role="radio" aria-checked={hour === h} disabled={isPast(day, h)} className="bk__slot" onClick={() => setHour(h)}>{label(h)}</button>
+            {slots.length === 0 && <p className="bk__sub">No times available on this day{dur > 60 ? " for that duration" : ""}. Try another day.</p>}
+            {slots.map((m) => (
+              <button type="button" key={m} role="radio" aria-checked={startMin === m} className="bk__slot" onClick={() => setHour(m)}>{minuteLabel(m).toUpperCase()}</button>
             ))}
           </div>
           <div className="bk__dur">
@@ -109,7 +127,7 @@ export default function BookingForm({ action, now, defaultName, provider, servic
           </div>
           <div className="bk__actions">
             <a href="/" className="btn btn--secondary bk__back"><Icon name="chevronLeft" size={18} />Back</a>
-            <button type="button" className="btn btn--forest bk__go" disabled={hour === null} onClick={() => setStep(1)}>{hour === null ? "Pick a time to continue" : <>Continue <Icon name="chevronRight" size={18} /></>}</button>
+            <button type="button" className="btn btn--forest bk__go" disabled={startMin === null} onClick={() => setStep(1)}>{startMin === null ? "Pick a time to continue" : <>Continue <Icon name="chevronRight" size={18} /></>}</button>
           </div>
         </section>}
 
@@ -135,7 +153,7 @@ export default function BookingForm({ action, now, defaultName, provider, servic
           <h2 id="cf-h" className="bk__h">Confirm your request</h2>
           <p className="bk__sub">Check everything looks right. {provider.name} will accept or decline.</p>
           <dl className="bk__review">
-            <div><dt>When</dt><dd>{picked.long}, {hour !== null && end !== null ? `${label(hour)} – ${label(end)}` : ""}</dd></div>
+            <div><dt>When</dt><dd>{picked.long}, {startMin !== null && end !== null ? `${minuteLabel(startMin)} – ${minuteLabel(end)}` : ""}</dd></div>
             <div><dt>Name</dt><dd>{name}</dd></div>
             <div><dt>Job</dt><dd>{desc}</dd></div>
           </dl>
@@ -152,7 +170,7 @@ export default function BookingForm({ action, now, defaultName, provider, servic
           <p className="bk__who"><strong>{service?.name ?? provider.category}</strong><span>{provider.name}</span></p>
           <dl className="bk__sum">
             <div><Icon name="calendar" size={22} /><dt>Date</dt><dd>{picked.long}</dd></div>
-            <div><Icon name="clock" size={22} /><dt>Time</dt><dd>{hour !== null && end !== null ? `${label(hour)} – ${label(end)} (${fmtHours(hours)})` : "Pick a start time"}</dd></div>
+            <div><Icon name="clock" size={22} /><dt>Time</dt><dd>{startMin !== null && end !== null ? `${minuteLabel(startMin)} – ${minuteLabel(end)} (${fmtHours(hours)})` : "Pick a start time"}</dd></div>
             <div><Icon name="pin" size={22} /><dt>Location</dt><dd>{provider.suburb}, Auckland</dd></div>
             <div><Icon name="tag" size={22} /><dt>Estimated price</dt><dd>{priceType === "quote" ? <strong>Quote on request</strong> : <strong className="num">{dollars(price)}</strong>}<small>{hourly ? `${dollars(unitCents)}/hr × ${fmtHours(hours)}. ` : ""}{priceType === "quote" ? "The provider will quote after your request." : "Final price may vary based on details."}</small></dd></div>
           </dl>

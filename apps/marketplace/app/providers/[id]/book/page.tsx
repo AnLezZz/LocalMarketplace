@@ -6,6 +6,7 @@ import { authOpts, getMe } from "../../../../lib/auth";
 import { attempt } from "../../../../lib/actions";
 import BookingForm from "../BookingForm";
 import "../booking.css";
+import { aucklandNow, aucklandToDate } from "../../../../lib/time";
 import Icon from "../../../../components/Icon";
 import ProviderPhoto from "../../../../components/ProviderPhoto";
 import Banner from "../../../../components/Banner";
@@ -14,21 +15,6 @@ import { categoryMeta } from "../../../../components/categories";
 import { rate } from "../../../../components/format";
 
 export const dynamic = "force-dynamic";
-const TZ = "Pacific/Auckland";
-
-// Convert a datetime-local value (Auckland wall time) to a UTC instant.
-function aucklandToDate(local: string): Date {
-  const guess = new Date(local + "Z");
-  const parts = new Intl.DateTimeFormat("en-US", { timeZone: TZ, timeZoneName: "longOffset" }).formatToParts(guess);
-  const off = parts.find((p) => p.type === "timeZoneName")!.value.replace("GMT", "") || "+00:00";
-  return new Date(`${local}:00${off}`);
-}
-
-// Auckland wall time now, "YYYY-MM-DDTHH:mm".
-function aucklandNow(): string {
-  const p = Object.fromEntries(new Intl.DateTimeFormat("en-CA", { timeZone: TZ, hourCycle: "h23", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" }).formatToParts(new Date()).map((x) => [x.type, x.value]));
-  return `${p.year}-${p.month}-${p.day}T${p.hour}:${p.minute}`;
-}
 
 export default async function Book({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ sent?: string; error?: string; service?: string }> }) {
   const { id } = await params;
@@ -36,6 +22,7 @@ export default async function Book({ params, searchParams }: { params: Promise<{
   const p = await fetchQuery(api.providers.get, { id });
   if (!p) notFound();
   const me = await getMe();
+  const av = (await fetchQuery(api.availability.forProvider, { providerId: id, days: 14 })) as { days: { date: string; windows: [number, number][]; busy: [number, number][] }[] };
   const services = ((await fetchQuery(api.services.listForProvider, { providerId: id })) as any[]).map((s) => ({ id: s._id as string, name: s.name, description: s.description, priceType: s.priceType, priceCents: s.priceCents, durationMinutes: s.durationMinutes }));
 
   async function submit(fd: FormData) {
@@ -94,7 +81,7 @@ export default async function Book({ params, searchParams }: { params: Promise<{
           </ol>
         </section>
       ) : me ? (
-        <BookingForm action={submit} services={services} initialServiceId={service} now={aucklandNow()} defaultName={first} provider={{ name: p.name, category: cat.label, suburb: p.suburb, rateCents: p.rateCents, rateBasis: p.rateBasis }} />
+        <BookingForm action={submit} availability={av.days} services={services} initialServiceId={service} now={aucklandNow()} defaultName={first} provider={{ name: p.name, category: cat.label, suburb: p.suburb, rateCents: p.rateCents, rateBasis: p.rateBasis }} />
       ) : (
         <section className="bk__card signin-prompt">
           <span className="signin-prompt__icon"><Icon name="user" size={24} /></span>

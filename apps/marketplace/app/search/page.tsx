@@ -7,6 +7,8 @@ import { Rating } from "../../components/Pill";
 import { categoryMeta } from "../../components/categories";
 import { rate } from "../../components/format";
 import type { ProviderSummary } from "../../components/ProviderCard";
+import FavouriteButton from "../../components/FavouriteButton";
+import { authOpts } from "../../lib/auth";
 import "./search.css";
 
 export const dynamic = "force-dynamic";
@@ -23,8 +25,11 @@ const SORTS: Record<string, [string, (a: ProviderSummary, b: ProviderSummary) =>
 export default async function Search({ searchParams }: { searchParams: Promise<Params> }) {
   const { q, suburb, category, max, rating, sort } = await searchParams;
   const all = (await fetchQuery(api.providers.list, { category: category || undefined, suburb: suburb || undefined, q: q || undefined })) as ProviderSummary[];
+  const saved = new Set((await fetchQuery(api.favourites.mineIds, {}, await authOpts())) as string[]);
   const tags = new Map<string, string[]>();
   for (const t of (await fetchQuery(api.services.listPublic, {})) as { providerId: string; name: string }[]) tags.set(t.providerId, [...(tags.get(t.providerId) ?? []), t.name]);
+  // The heart returns here with the same keyword and filters.
+  const here = `/search${Object.entries({ q, suburb, category, max, rating, sort }).filter(([, v]) => v).length ? "?" + new URLSearchParams(Object.entries({ q, suburb, category, max, rating, sort }).filter(([, v]) => v) as [string, string][]).toString() : ""}`;
   const maxCents = Number(max) * 100, minRating = Number(rating);
   const sortKey = sort && SORTS[sort] ? sort : "best";
   const list = all
@@ -111,6 +116,7 @@ export default async function Search({ searchParams }: { searchParams: Promise<P
                   </div>
                 </div>
                 <div className="srch__cta">
+                  <FavouriteButton providerId={p._id} saved={saved.has(p._id)} back={here} name={p.name} />
                   <span className="srch__price">From <strong className="num">{price.amount}</strong> {price.unit.trim()}</span>
                   <Link href={`/providers/${p._id}`} className="btn btn--forest btn--sm">View profile</Link>
                 </div>
