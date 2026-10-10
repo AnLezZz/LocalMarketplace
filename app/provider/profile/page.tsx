@@ -9,7 +9,7 @@ import DashboardSidebar from "../../../components/dashboard/DashboardSidebar";
 import Banner from "../../../components/Banner";
 import ProviderPhoto from "../../../components/ProviderPhoto";
 import { categoryMeta } from "../../../components/categories";
-import PhotoUpload from "./PhotoUpload";
+import PhotoUpload from "../../../components/PhotoUpload";
 import { removeGalleryPhoto, removeProfilePhoto, saveProfile } from "./actions";
 import "../../providers/[id]/booking.css";
 

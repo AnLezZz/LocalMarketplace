@@ -22,6 +22,7 @@ export default async function Book({ params, searchParams }: { params: Promise<{
   const p = await fetchQuery(api.providers.get, { id });
   if (!p) notFound();
   const me = await getMe();
+  const acct = me ? ((await fetchQuery(api.account.mine, {}, await authOpts())) as { contactPhone: string; addresses: any[] } | null) : null;
   const av = (await fetchQuery(api.availability.forProvider, { providerId: id, days: 14 })) as { days: { date: string; windows: [number, number][]; busy: [number, number][] }[] };
   const services = ((await fetchQuery(api.services.listForProvider, { providerId: id })) as any[]).map((s) => ({ id: s._id as string, name: s.name, description: s.description, priceType: s.priceType, priceCents: s.priceCents, durationMinutes: s.durationMinutes }));
 
@@ -85,7 +86,7 @@ export default async function Book({ params, searchParams }: { params: Promise<{
           </ol>
         </section>
       ) : me ? (
-        <BookingForm action={submit} availability={av.days} services={services} initialServiceId={service} now={aucklandNow()} defaultName={first} provider={{ name: p.name, category: cat.label, suburb: p.suburb, rateCents: p.rateCents, rateBasis: p.rateBasis, serviceSuburbs: p.serviceSuburbs }} />
+        <BookingForm action={submit} savedAddresses={acct?.addresses ?? []} savedPhone={acct?.contactPhone ?? ""} availability={av.days} services={services} initialServiceId={service} now={aucklandNow()} defaultName={first} provider={{ name: p.name, category: cat.label, suburb: p.suburb, rateCents: p.rateCents, rateBasis: p.rateBasis, serviceSuburbs: p.serviceSuburbs }} />
       ) : (
         <section className="bk__card signin-prompt">
           <span className="signin-prompt__icon"><Icon name="user" size={24} /></span>

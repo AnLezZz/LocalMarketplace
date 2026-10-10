@@ -8,6 +8,7 @@ const sources = Object.entries(all).filter(([path]) => !path.endsWith(".test.ts"
 
 // When this fails, a public mutation was added or removed. Add it to the signed-out sweep below.
 const PUBLIC_MUTATIONS = [
+  "account.addAddress", "account.generateUploadUrl", "account.removeAddress", "account.removePhoto", "account.setDefaultAddress", "account.setEmailPrefs", "account.setPhoto", "account.updateProfile",
   "admin.cancelBooking", "admin.reactivateProvider", "admin.reactivateUser", "admin.resolveDispute", "admin.resolveReviewReport", "admin.restoreReview", "admin.review", "admin.suspendProvider", "admin.suspendUser", "availability.addTimeOff", "availability.removeTimeOff", "availability.setHours",
   "bookings.create", "bookings.respondToQuote", "bookings.submitQuote", "bookings.transition", "disputes.open", "favourites.toggle", "notifications.markAllRead", "notifications.markRead", "providers.addGalleryPhoto", "providers.generateUploadUrl", "providers.removeGalleryPhoto", "providers.removePhoto", "providers.setPhoto", "providers.setServiceAreas", "providers.submitProfile", "providers.updateProfile", "reviews.create", "reviews.report",
   "services.archive", "services.create", "services.setEnabled", "services.update",
@@ -74,6 +75,14 @@ test("every public mutation refuses a signed-out caller", async () => {
     () => t.mutation(api.admin.resolveDispute, { disputeId: disputeId, resolution: "resolved for the test" }),
     () => t.mutation(api.bookings.submitQuote, { bookingId, amountCents: 5000 }),
     () => t.mutation(api.bookings.respondToQuote, { bookingId, accept: true }),
+    () => t.mutation(api.account.updateProfile, { name: "N" }),
+    () => t.mutation(api.account.generateUploadUrl, {}),
+    () => t.mutation(api.account.setPhoto, { storageId }),
+    () => t.mutation(api.account.removePhoto, {}),
+    () => t.mutation(api.account.addAddress, { label: "Home", address: "12 Test Street", suburb: "Ponsonby" }),
+    () => t.mutation(api.account.removeAddress, { id: "x" }),
+    () => t.mutation(api.account.setDefaultAddress, { id: "x" }),
+    () => t.mutation(api.account.setEmailPrefs, { updates: true, reminders: true, reviews: true }),
     () => t.mutation(api.providers.setServiceAreas, { suburbs: [] }),
     () => t.mutation(api.providers.updateProfile, { name: "N", bio: "B", category: "cleaning", suburb: "S", rateCents: 4500, rateBasis: "hourly" }),
     () => t.mutation(api.providers.generateUploadUrl, {}),

@@ -19,6 +19,11 @@ export default defineSchema({
     // Set by an admin. Suspended users can sign in and read, but every write is refused.
     suspendedAt: v.optional(v.number()),
     suspendedReason: v.optional(v.string()),
+    // Account settings. `phone` belongs to the auth library, so the contact number has its own field.
+    contactPhone: v.optional(v.string()),
+    imageStorageId: v.optional(v.id("_storage")),
+    // Email only: in-app notifications always happen. Missing means every category is on.
+    emailPrefs: v.optional(v.object({ updates: v.boolean(), reminders: v.boolean(), reviews: v.boolean() })),
   })
     .index("email", ["email"])
     .index("phone", ["phone"]),
@@ -135,6 +140,15 @@ export default defineSchema({
     storageId: v.id("_storage"),
     caption: v.optional(v.string()),
   }).index("by_provider", ["providerId"]),
+
+  savedAddresses: defineTable({
+    userId: v.id("users"),
+    label: v.string(),
+    address: v.string(),
+    suburb: v.string(),
+    accessNotes: v.optional(v.string()),
+    isDefault: v.boolean(),
+  }).index("by_user", ["userId"]),
 
   favourites: defineTable({
     userId: v.id("users"),

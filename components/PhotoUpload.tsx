@@ -2,17 +2,18 @@
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useMutation } from "convex/react";
-import { api } from "../../../lib/convex";
+import { api } from "../lib/convex";
 
 const TYPES = ["image/jpeg", "image/png", "image/webp"];
 const MAX = 5 * 1024 * 1024;
 
 /** Picks an image, uploads it straight to Convex storage, then attaches it to the profile or gallery. */
-export default function PhotoUpload({ kind, label }: { kind: "profile" | "gallery"; label: string }) {
+/** `profile` and `gallery` are a provider's photos; `account` is the signed-in user's own picture. */
+export default function PhotoUpload({ kind, label }: { kind: "profile" | "gallery" | "account"; label: string }) {
   const router = useRouter();
   const input = useRef<HTMLInputElement>(null);
-  const makeUrl = useMutation(api.providers.generateUploadUrl);
-  const attach = useMutation(kind === "profile" ? api.providers.setPhoto : api.providers.addGalleryPhoto);
+  const makeUrl = useMutation(kind === "account" ? api.account.generateUploadUrl : api.providers.generateUploadUrl);
+  const attach = useMutation(kind === "account" ? api.account.setPhoto : kind === "profile" ? api.providers.setPhoto : api.providers.addGalleryPhoto);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 

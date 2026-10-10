@@ -80,3 +80,12 @@ html { scroll-behavior: smooth; }
 .d-sidebar__logo-text { font-size: 26px; }
 .lp-pro__photo { overflow: hidden; height: 190px; }
 .lp-pro__rating { z-index: 1; }
+
+/* Brand: the original blue tokens become Localo forest green everywhere, not just on the landing page and dashboards. */
+:root {
+  --blue: #315C48; --blue-light: #3F7358; --blue-tint: #E6EFE9; --blue-ring: rgba(49, 92, 72, 0.55);
+  --gradient-primary: linear-gradient(135deg, #3F7358 0%, #315C48 100%);
+  --shadow-button: 0 1px 2px rgba(49, 92, 72, 0.18), 0 6px 16px rgba(49, 92, 72, 0.22);
+  --shadow-button-hover: 0 2px 4px rgba(49, 92, 72, 0.2), 0 10px 22px rgba(49, 92, 72, 0.28);
+}
+input[type="checkbox"], input[type="radio"] { accent-color: var(--forest); }

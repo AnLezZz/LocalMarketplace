@@ -12,7 +12,12 @@ export type AvailabilityDay = { date: string; windows: [number, number][]; busy:
 
 export type ServiceOption = { id: string; name: string; description: string; priceType: "fixed" | "hourly" | "quote"; priceCents?: number; durationMinutes: number };
 
+export type SavedAddress = { _id: string; label: string; address: string; suburb: string; accessNotes?: string; isDefault: boolean };
+
 type Props = {
+  /** From account settings. The default one prefills the job location; the phone prefills the contact number. */
+  savedAddresses?: SavedAddress[];
+  savedPhone?: string;
   availability: AvailabilityDay[];
   services: ServiceOption[];
   initialServiceId?: string;
@@ -24,7 +29,7 @@ type Props = {
 };
 
 /** Day strip + time slots + details. Emits the same `start`/`hours`/`name`/`description` fields the server action reads. */
-export default function BookingForm({ action, now, defaultName, provider, services, initialServiceId, availability }: Props) {
+export default function BookingForm({ action, now, defaultName, provider, services, initialServiceId, availability, savedAddresses = [], savedPhone = "" }: Props) {
   const [today, nowTime] = now.split("T");
   const nowMinute = Number(nowTime.slice(0, 2)) * 60 + Number(nowTime.slice(3, 5));
   const days = availability.map((a) => {
@@ -57,10 +62,12 @@ export default function BookingForm({ action, now, defaultName, provider, servic
   const [desc, setDesc] = useState("");
   const [name, setName] = useState(defaultName);
   const [step, setStep] = useState(0);
-  const [address, setAddress] = useState("");
-  const [suburb, setSuburb] = useState("");
-  const [notes, setNotes] = useState("");
-  const [phone, setPhone] = useState("");
+  const firstSaved = savedAddresses.find((a) => a.isDefault) ?? savedAddresses[0];
+  const [address, setAddress] = useState(firstSaved?.address ?? "");
+  const [suburb, setSuburb] = useState(firstSaved?.suburb ?? "");
+  const [notes, setNotes] = useState(firstSaved?.accessNotes ?? "");
+  const [phone, setPhone] = useState(savedPhone);
+  const [savedId, setSavedId] = useState(firstSaved?._id ?? "");
   const [share, setShare] = useState(false);
   const detailsOk = name.trim() !== "" && desc.trim() !== "" && address.trim().length >= 5 && suburb.trim() !== "" && (!share || phone.trim() !== "");
   const area = provider.serviceSuburbs?.length ? [provider.suburb, ...provider.serviceSuburbs] : [];
@@ -156,6 +163,17 @@ export default function BookingForm({ action, now, defaultName, provider, servic
             <span className="bk__count num">{desc.length}/2000</span>
           </div>
           <h3 className="bk__h3">Where is the job?</h3>
+          {savedAddresses.length > 0 && (
+            <div className="field"><label htmlFor="saved" className="field__label">Use a saved address</label>
+              <select id="saved" value={savedId} onChange={(e) => {
+                const a = savedAddresses.find((x) => x._id === e.target.value);
+                setSavedId(e.target.value);
+                if (a) { setAddress(a.address); setSuburb(a.suburb); setNotes(a.accessNotes ?? ""); }
+              }}>
+                <option value="">Enter a different address</option>
+                {savedAddresses.map((a) => <option key={a._id} value={a._id}>{a.label} · {a.address}, {a.suburb}</option>)}
+              </select></div>
+          )}
           <div className="field">
             <label htmlFor="address" className="field__label">Street address</label>
             <input id="address" value={address} onChange={(e) => setAddress(e.target.value)} autoComplete="street-address" required maxLength={200} placeholder="12 Ponsonby Road" />

@@ -67,6 +67,9 @@ export function HeaderNav({ signedIn, userRole }: { signedIn: boolean; userRole?
             <Link href="/favourites" className="header-nav__link">
               Favourites
             </Link>
+            <Link href="/account" className="header-nav__link" aria-current={path === "/account" ? "page" : undefined}>
+              Account
+            </Link>
             <SignOutButton className="btn btn--secondary btn--sm" />
           </div>
         )}
@@ -88,7 +91,7 @@ export function TabBar({ signedIn, userRole }: { signedIn: boolean; userRole?: s
       icon: "calendar",
     },
     {
-      href: signedIn ? (userRole === "admin" ? "/admin" : userRole === "provider" ? "/provider" : "/bookings") : "/signin",
+      href: signedIn ? "/account" : "/signin",
       label: signedIn ? "Profile" : "Log in",
       short: signedIn ? "Profile" : "Log in",
       icon: "user",
