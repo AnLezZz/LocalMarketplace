@@ -208,3 +208,33 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--forest); }
 .lp-launch__icon { display: grid; place-items: center; width: 48px; height: 48px; border-radius: 50%; background: #EFEDE7; color: var(--forest); }
 .lp-launch__card--accent .lp-launch__icon { background: #fff; }
 @media (min-width: 720px) { .lp-launch__cards { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+
+/* ---- phones: a short photo banner, the search floating over its edge, the rest on the plain page ---- */
+.lp-search__field input, .lp-search__field .placein > input { padding: 0; }
+@media (max-width: 719px) {
+  .lp-hero { display: block; min-height: 0; background: transparent; border-radius: 0; }
+  .lp-hero::after { inset: 0 0 auto 0; height: 250px; background: linear-gradient(180deg, rgba(20,28,22,.15) 0%, rgba(20,28,22,.72) 100%); }
+  .lp-hero__img { inset: 0 0 auto 0 !important; height: 250px !important; }
+  .lp-hero__body { padding: 0; max-width: none; }
+  .lp-hero__text { position: relative; z-index: 1; height: 250px; display: flex; flex-direction: column; justify-content: flex-end; padding: var(--s-5) var(--s-5) calc(var(--s-5) + 30px); }
+  .lp-hero__title { font-size: 36px; }
+  .lp-hero__sub { margin: var(--s-2) 0 0; font-size: 15px; }
+  .lp-hero__tools { position: relative; z-index: 2; margin: -28px var(--s-3) 0; }
+  .lp-search { padding: var(--s-3); gap: var(--s-2); border-radius: 18px; box-shadow: 0 10px 30px rgba(20,28,22,.18); }
+  .lp-search__field { gap: var(--s-2); padding: 0 var(--s-3); min-height: 52px; border: 1px solid #E6E1D6; border-radius: 12px; background: #fff; }
+  .lp-search .btn { min-height: 52px; }
+  .lp-popular { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; margin: var(--s-4) calc(var(--s-3) * -1) 0; padding: 0 var(--s-3); color: var(--ink-3); }
+  .lp-popular::-webkit-scrollbar { display: none; }
+  .lp-popular > * { flex: none; }
+  .lp-popular__chip { color: var(--forest); border-color: #CFE0D6; background: #E7EFEA; backdrop-filter: none; }
+  .lp-popular__chip:hover { background: #D8E7DE; }
+  .lp-trust { color: var(--ink-3); margin: var(--s-3) 0 0; padding: 0 var(--s-1); }
+  .lp-trust li { font-size: 13px; }
+  .lp-section { margin-top: var(--s-8); }
+  .lp-biz, .lp-foot { margin-top: var(--s-8); }
+  .lp-section__sub { margin-bottom: var(--s-3); }
+  /* Categories: a swipeable row with a fade, so it is clear there is more */
+  .lp-cats { scroll-snap-type: x proximity; padding: var(--s-5) var(--s-3) var(--s-1) 2px; gap: 12px; margin-right: calc(var(--s-4) * -1); -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 44px), transparent 100%); mask-image: linear-gradient(90deg, #000 calc(100% - 44px), transparent 100%); }
+  .lp-cat { width: 92px; scroll-snap-align: start; }
+  .lp-cat__icon { width: 56px; height: 56px; }
+}

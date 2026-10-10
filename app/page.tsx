@@ -65,8 +65,11 @@ export default async function Home({ searchParams }: { searchParams: Promise<Par
       <section className="lp-hero">
         <Image src="/images/hero_gardener.jpg" alt="" fill priority sizes="(min-width: 1080px) 1032px, 100vw" className="lp-hero__img" />
         <div className="lp-hero__body">
-          <h1 className="lp-hero__title">{me ? greeting : "Good help."}<br />{me ? "What needs doing?" : "Right around the corner."}</h1>
-          <p className="lp-hero__sub">Find trusted local people for everyday jobs.</p>
+          <div className="lp-hero__text">
+            <h1 className="lp-hero__title">{me ? greeting : "Good help."}<br />{me ? "What needs doing?" : "Right around the corner."}</h1>
+            <p className="lp-hero__sub">Find trusted local people for everyday jobs.</p>
+          </div>
+          <div className="lp-hero__tools">
           <form className="lp-search" role="search" action="/search">
             {category && <input type="hidden" name="category" value={category} />}
             <label className="lp-search__field">
@@ -92,6 +95,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<Par
             <li><Icon name="calendar" size={16} />Pick from their real availability</li>
             <li><Icon name="check" size={16} />Pay your provider directly</li>
           </ul>
+          </div>
         </div>
       </section>
 
