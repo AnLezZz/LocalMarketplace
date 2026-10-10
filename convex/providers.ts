@@ -1,5 +1,5 @@
 import { ConvexError, v } from "convex/values";
-import { mutation, query } from "./_generated/server";
+import { mutation, query, type QueryCtx } from "./_generated/server";
 import type { Doc, Id } from "./_generated/dataModel";
 import { getUser, requireUser } from "./model/auth";
 import { getProviderForUser, providerStatus, validateProfile } from "./model/providers";
@@ -8,30 +8,69 @@ import { requireSupportedSuburb } from "./model/locations";
 import { hasPlaces, isClosed, linkBase, MAX_AREAS, syncProviderAreas } from "./model/coverage";
 import { checkImage, MAX_GALLERY, withPhotoUrl } from "./model/photos";
 
-export const list = query({
-  args: { category: v.optional(v.string()), suburb: v.optional(v.string()), q: v.optional(v.string()), placeId: v.optional(v.id("places")) },
-  handler: async (ctx, { category, suburb, q, placeId }) => {
-    // By place: providers who serve it, a wider area around it, or (for a region or council) something inside it. Indexed, not a scan.
-    let all: Doc<"providers">[];
-    if (placeId) {
-      const place = await ctx.db.get(placeId);
-      if (!place) return [];
-      const ids = new Set<string>();
-      for (const [pid, mode] of [[placeId, "serves"], [placeId, "within"], ...[...place.regionIds, ...place.taIds, ...(place.subdivisionIds ?? [])].map((a) => [a, "serves"] as const)] as const) {
-        for (const r of await ctx.db.query("providerAreas").withIndex("by_place", (i) => i.eq("placeId", pid).eq("mode", mode)).take(500)) ids.add(r.providerId);
-      }
-      all = (await Promise.all([...ids].map((id) => ctx.db.get(id as Id<"providers">)))).flatMap((p) => (p?.approved ? [p] : []));
-    } else {
-      all = await ctx.db.query("providers").withIndex("by_approved", (i) => i.eq("approved", true)).collect();
+/** The most approved providers one search will look at. Past this the result says `capped`, so a count is never silently wrong. */
+const SEARCH_POOL = 2000;
+
+type Search = { category?: string; suburb?: string; q?: string; placeId?: Id<"places"> };
+const searchArgs = { category: v.optional(v.string()), suburb: v.optional(v.string()), q: v.optional(v.string()), placeId: v.optional(v.id("places")) };
+
+/** The approved providers matching the keyword, category and place (before price, rating and order). Bounded by SEARCH_POOL. */
+async function matching(ctx: QueryCtx, { category, suburb, q, placeId }: Search) {
+  // By place: providers who serve it, a wider area around it, or (for a region or council) something inside it. Indexed, not a scan.
+  let all: Doc<"providers">[];
+  let capped = false;
+  if (placeId) {
+    const place = await ctx.db.get(placeId);
+    if (!place) return { rows: [], capped: false };
+    const ids = new Set<string>();
+    for (const [pid, mode] of [[placeId, "serves"], [placeId, "within"], ...[...place.regionIds, ...place.taIds, ...(place.subdivisionIds ?? [])].map((a) => [a, "serves"] as const)] as const) {
+      for (const r of await ctx.db.query("providerAreas").withIndex("by_place", (i) => i.eq("placeId", pid).eq("mode", mode)).take(500)) ids.add(r.providerId);
     }
-    const s = suburb?.toLowerCase(), k = q?.toLowerCase();
-    // A category matches the providers listed under it or anything below it (Hair finds a Women's Haircut specialist).
-    const wanted = category ? slugWithDescendants(await loadCategoryRows(ctx), category) : null;
-    const found = all.filter((p) =>
-      (!wanted || [...providerSlugs(p)].some((c) => wanted.has(c))) &&
-      (!s || p.suburb.toLowerCase().includes(s)) &&
-      (!k || p.name.toLowerCase().includes(k) || p.bio.toLowerCase().includes(k)));
-    return await Promise.all(found.map((p) => withPhotoUrl(ctx, p)));
+    all = (await Promise.all([...ids].slice(0, SEARCH_POOL).map((id) => ctx.db.get(id as Id<"providers">)))).flatMap((p) => (p?.approved ? [p] : []));
+    capped = ids.size > SEARCH_POOL;
+  } else {
+    const pool = await ctx.db.query("providers").withIndex("by_approved", (i) => i.eq("approved", true)).take(SEARCH_POOL + 1);
+    capped = pool.length > SEARCH_POOL;
+    all = pool.slice(0, SEARCH_POOL);
+  }
+  const s = suburb?.toLowerCase(), k = q?.toLowerCase();
+  // A category matches the providers listed under it or anything below it (Hair finds a Women's Haircut specialist).
+  const wanted = category ? slugWithDescendants(await loadCategoryRows(ctx), category) : null;
+  const rows = all.filter((p) =>
+    (!wanted || [...providerSlugs(p)].some((c) => wanted.has(c))) &&
+    (!s || p.suburb.toLowerCase().includes(s)) &&
+    (!k || p.name.toLowerCase().includes(k) || p.bio.toLowerCase().includes(k)));
+  return { rows, capped };
+}
+
+/** Everything matching, with photos. Kept for callers that need the whole (bounded) set. */
+export const list = query({
+  args: searchArgs,
+  handler: async (ctx, a) => await Promise.all((await matching(ctx, a)).rows.map((p) => withPhotoUrl(ctx, p))),
+});
+
+const ORDERS = {
+  best: (a: Doc<"providers">, b: Doc<"providers">) => b.ratingAvg - a.ratingAvg || b.reviewCount - a.reviewCount,
+  low: (a: Doc<"providers">, b: Doc<"providers">) => a.rateCents - b.rateCents,
+  high: (a: Doc<"providers">, b: Doc<"providers">) => b.rateCents - a.rateCents,
+  reviews: (a: Doc<"providers">, b: Doc<"providers">) => b.reviewCount - a.reviewCount,
+} as const;
+export const SEARCH_MAX_LIMIT = 50;
+
+/**
+ * One page of search results, with the true total. Price and rating filters and the order are applied here (so the page and the
+ * total agree), and photos are only looked up for the rows on the page.
+ */
+export const search = query({
+  args: { ...searchArgs, maxCents: v.optional(v.number()), minRating: v.optional(v.number()), sort: v.optional(v.string()), offset: v.number(), limit: v.number() },
+  handler: async (ctx, { maxCents, minRating, sort, offset, limit, ...rest }) => {
+    const { rows, capped } = await matching(ctx, rest);
+    const order = ORDERS[(sort && sort in ORDERS ? sort : "best") as keyof typeof ORDERS];
+    const found = rows
+      .filter((p) => (!maxCents || p.rateCents <= maxCents) && (!minRating || (p.reviewCount > 0 && p.ratingAvg >= minRating)))
+      .sort((a, b) => order(a, b) || a._creationTime - b._creationTime); // a stable order, so pages never repeat or skip a provider
+    const from = Math.max(0, Math.floor(offset)), size = Math.min(SEARCH_MAX_LIMIT, Math.max(1, Math.floor(limit)));
+    return { rows: await Promise.all(found.slice(from, from + size).map((p) => withPhotoUrl(ctx, p))), total: found.length, capped };
   },
 });
 

@@ -26,25 +26,30 @@ function href(p: Params) {
   return qs ? `/?${qs}` : "/";
 }
 
+const SHOWN = 8;
+
 export default async function Home({ searchParams }: { searchParams: Promise<Params> }) {
   const { category, suburb, q } = await searchParams;
   const cats = await loadCategories();
   const places = await loadLocations();
   const featuredCats = await preloadQuery(api.categories.featured, {});
   const filtered = !!(category || suburb || q);
-  const [list, all, me] = await Promise.all([
-    fetchQuery(api.providers.list, { category: category || undefined, suburb: suburb || undefined, q: q || undefined }) as Promise<ProviderSummary[]>,
-    // Unfiltered list feeds the category tiles' "from $X" and pro counts.
-    filtered ? (fetchQuery(api.providers.list, {}) as Promise<ProviderSummary[]>) : null,
+  // The homepage shows the best few; the full, paged list is /search. The total is the real number of matches.
+  const search = (extra: { category?: string; suburb?: string; q?: string }, limit: number) =>
+    fetchQuery(api.providers.search, { ...extra, offset: 0, limit }) as Promise<{ rows: ProviderSummary[]; total: number; capped: boolean }>;
+  const [found, anyone, me] = await Promise.all([
+    search({ category: category || undefined, suburb: suburb || undefined, q: q || undefined }, SHOWN),
+    filtered ? search({}, 1) : null,
     getMe(),
   ]);
-  const everyone = all ?? list;
+  const list = found.rows;
+  const everyone = { length: (anyone ?? found).total };
 
   const firstName = me?.name?.trim().split(/\s+/)[0];
   const greeting = `Good ${partOfDay()}${firstName ? `, ${firstName}` : ""}.`;
   const heading = filtered
-    ? `${list.length} ${list.length === 1 ? "pro" : "pros"}${category ? ` for ${metaIn(cats.all, category).label.toLowerCase()}` : ""}${suburb ? ` near ${suburb}` : ""}`
-    : `${list.length} ${list.length === 1 ? "pro" : "pros"}`;
+    ? `${found.total} ${found.total === 1 ? "pro" : "pros"}${category ? ` for ${metaIn(cats.all, category).label.toLowerCase()}` : ""}${suburb ? ` near ${suburb}` : ""}`
+    : `${found.total} ${found.total === 1 ? "pro" : "pros"}`;
 
   return (
     <div className="page page--wide lp">
@@ -113,6 +118,9 @@ export default async function Home({ searchParams }: { searchParams: Promise<Par
               );
             })}
           </div>
+        )}
+        {found.total > list.length && (
+          <p className="lp-more"><Link href={`/search${filtered ? `?${new URLSearchParams(Object.entries({ q, category, where: suburb }).filter(([, v]) => v) as [string, string][])}` : ""}`} className="btn btn--secondary">See all {found.total}{found.capped ? "+" : ""} providers</Link></p>
         )}
       </section>
 

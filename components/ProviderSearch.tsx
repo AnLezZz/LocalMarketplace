@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { fetchQuery } from "convex/nextjs";
 import { api } from "../lib/convex";
 import { indented, loadCategories, loadLocations, metaIn } from "../lib/categories";
@@ -13,23 +14,20 @@ import FavouriteButton from "./FavouriteButton";
 import { authOpts } from "../lib/auth";
 import "../app/search/search.css";
 
-export type SearchParams = { q?: string; suburb?: string; where?: string; place?: string; category?: string; max?: string; rating?: string; sort?: string };
+export type SearchParams = { q?: string; suburb?: string; where?: string; place?: string; category?: string; max?: string; rating?: string; sort?: string; page?: string };
+type Found = { rows: ProviderSummary[]; total: number; capped: boolean };
+const PAGE_SIZE = 20;
 type Place = { _id: string; name: string; kind: string; context: string };
 type Resolved = { status: "unrecognised" } | { status: "not_launched"; name: string } | { status: "ambiguous"; options: Place[] } | { status: "ok"; place: Place };
 
-const SORTS: Record<string, [string, (a: ProviderSummary, b: ProviderSummary) => number]> = {
-  best: ["Best match", (a, b) => b.ratingAvg - a.ratingAvg || b.reviewCount - a.reviewCount],
-  low: ["Price: low to high", (a, b) => a.rateCents - b.rateCents],
-  high: ["Price: high to low", (a, b) => b.rateCents - a.rateCents],
-  reviews: ["Most reviews", (a, b) => b.reviewCount - a.reviewCount],
-};
+const SORTS: Record<string, string> = { best: "Best match", low: "Price: low to high", high: "Price: high to low", reviews: "Most reviews" };
 
 /**
  * The provider search: keyword, location, category, price and rating filters, sorting, and the result list with its empty states.
  * Used by /search and by every category page (which locks the category and keeps its own path).
  */
 export default async function ProviderSearch({ params, basePath, lockedCategory }: { params: SearchParams; basePath: string; lockedCategory?: string }) {
-  const { q, suburb: legacySuburb, where: whereParam, place, max, rating, sort } = params;
+  const { q, suburb: legacySuburb, where: whereParam, place, max, rating, sort, page: pageParam } = params;
   const category = lockedCategory ?? params.category;
   const cats = await loadCategories();
   const places = await loadLocations();
@@ -40,20 +38,33 @@ export default async function ProviderSearch({ params, basePath, lockedCategory 
     ? ((await fetchQuery(api.locations.resolveSearchPlace, { name: where || undefined, placeId: place || undefined })) as Resolved)
     : null;
   const placeId = resolved?.status === "ok" ? resolved.place._id : undefined;
-  const find = async (extra: { category?: string; q?: string }) => (resolved && !placeId ? [] : ((await fetchQuery(api.providers.list, { ...extra, ...(placeId ? { placeId } : { suburb: where || undefined }) })) as ProviderSummary[]));
-  const all = await find({ category: category || undefined, q: q || undefined });
-  const atPlace = placeId && all.length === 0 && (category || q) ? await find({}) : all;
+  const sortKey = sort && SORTS[sort] ? sort : "best";
+  const page = Math.max(1, Math.floor(Number(pageParam)) || 1);
+  const pageHref = (n: number) => {
+    const qs = new URLSearchParams(Object.entries({ q, where: suburb, place: placeId, category: lockedCategory ? undefined : category, max, rating, sort }).filter(([, v]) => v) as [string, string][]);
+    if (n > 1) qs.set("page", String(n));
+    return qs.size ? `${basePath}?${qs}` : basePath;
+  };
+  const none: Found = { rows: [], total: 0, capped: false };
+  // Filters, order and the page are applied in Convex, so the count and the rows always agree.
+  const find = async (extra: { category?: string; q?: string; max?: string; rating?: string; sort?: string }, offset: number, limit: number): Promise<Found> =>
+    resolved && !placeId ? none : ((await fetchQuery(api.providers.search, {
+      category: extra.category, q: extra.q, sort: extra.sort,
+      maxCents: extra.max ? Number(extra.max) * 100 : undefined, minRating: extra.rating ? Number(extra.rating) : undefined,
+      ...(placeId ? { placeId } : { suburb: where || undefined }), offset, limit,
+    })) as Found);
+  const result = await find({ category: category || undefined, q: q || undefined, max, rating, sort: sortKey }, (page - 1) * PAGE_SIZE, PAGE_SIZE);
+  const list = result.rows;
+  const pages = Math.max(1, Math.ceil(result.total / PAGE_SIZE));
+  if (page > pages) redirect(pageHref(pages)); // a link to a page that no longer exists lands on the last one
+  // Only when nothing is shown, and only to say why: how many match without the price and rating, and without the category and keyword.
+  const allTotal = result.total === 0 && (max || rating) ? (await find({ category: category || undefined, q: q || undefined }, 0, 1)).total : result.total;
+  const atPlaceTotal = placeId && allTotal === 0 && (category || q) ? (await find({}, 0, 1)).total : allTotal;
   const saved = new Set((await fetchQuery(api.favourites.mineIds, {}, await authOpts())) as string[]);
   const tags = new Map<string, string[]>();
   for (const t of (await fetchQuery(api.services.listPublic, {})) as { providerId: string; name: string }[]) tags.set(t.providerId, [...(tags.get(t.providerId) ?? []), t.name]);
   // The heart returns here with the same keyword and filters.
   const here = `${basePath}${Object.entries({ q, where: suburb, place: placeId, category, max, rating, sort }).filter(([, v]) => v).length ? "?" + new URLSearchParams(Object.entries({ q, where: suburb, place: placeId, category, max, rating, sort }).filter(([, v]) => v) as [string, string][]).toString() : ""}`;
-  const maxCents = Number(max) * 100, minRating = Number(rating);
-  const sortKey = sort && SORTS[sort] ? sort : "best";
-  const list = all
-    .filter((p) => (!max || p.rateCents <= maxCents) && (!rating || (p.reviewCount > 0 && p.ratingAvg >= minRating)))
-    .sort(SORTS[sortKey][1]);
-
   return (
     <div className="page page--wide srch">
       <SuburbOptions suburbs={places.suburbs} />
@@ -103,11 +114,11 @@ export default async function ProviderSearch({ params, basePath, lockedCategory 
         </div>
 
         <div className="srch__count">
-          <span><span className="num">{list.length}</span> {list.length === 1 ? "provider" : "providers"} found</span>
+          <span><span className="num">{result.total}</span>{result.capped ? "+" : ""} {result.total === 1 ? "provider" : "providers"} found{pages > 1 ? ` · page ${page} of ${pages}` : ""}</span>
           <label className="srch__sort">
             <span>Sort by</span>
             <select name="sort" defaultValue={sortKey}>
-              {Object.entries(SORTS).map(([k, [label]]) => <option key={k} value={k}>{label}</option>)}
+              {Object.entries(SORTS).map(([k, label]) => <option key={k} value={k}>{label}</option>)}
             </select>
           </label>
         </div>
@@ -124,9 +135,9 @@ export default async function ProviderSearch({ params, basePath, lockedCategory 
             if (resolved?.status === "not_launched") return <><h2 className="empty__title">Localo hasn&apos;t launched in {resolved.name} yet</h2><p className="empty__text">We&apos;re not taking bookings there yet. Try a nearby area.</p></>;
             if (resolved?.status === "ambiguous") return <><h2 className="empty__title">Which {where}?</h2><p className="empty__text">More than one place has that name.</p>
               <ul className="srch__choices">{resolved.options.map((o) => <li key={o._id}><Link href={`${basePath}?${new URLSearchParams({ ...(q ? { q } : {}), ...(category && !lockedCategory ? { category } : {}), where: o.name, place: o._id }).toString()}`}><strong>{o.name}</strong><span className="field__hint">{o.context || "Region"}</span></Link></li>)}</ul></>;
-            if (resolved?.status === "ok" && atPlace.length === 0) return <><h2 className="empty__title">No providers serve {resolved.place.name} yet</h2><p className="empty__text">Localo is open there, but nobody has added it as a service area. Try a wider area, such as the region.</p></>;
-            if (resolved?.status === "ok" && all.length === 0) return <><h2 className="empty__title">No {catLabel ? `${catLabel} ` : ""}providers serve {resolved.place.name}{q ? ` for “${q}”` : ""}</h2><p className="empty__text">{atPlace.length} {atPlace.length === 1 ? "provider serves" : "providers serve"} {resolved.place.name} in other categories. Try removing the category or keyword.</p></>;
-            if (resolved?.status === "ok") return <><h2 className="empty__title">Your filters exclude everyone</h2><p className="empty__text">{all.length} {all.length === 1 ? "provider serves" : "providers serve"} {resolved.place.name}, but none match the price or rating you chose.</p></>;
+            if (resolved?.status === "ok" && atPlaceTotal === 0) return <><h2 className="empty__title">No providers serve {resolved.place.name} yet</h2><p className="empty__text">Localo is open there, but nobody has added it as a service area. Try a wider area, such as the region.</p></>;
+            if (resolved?.status === "ok" && allTotal === 0) return <><h2 className="empty__title">No {catLabel ? `${catLabel} ` : ""}providers serve {resolved.place.name}{q ? ` for “${q}”` : ""}</h2><p className="empty__text">{atPlaceTotal} {atPlaceTotal === 1 ? "provider serves" : "providers serve"} {resolved.place.name} in other categories. Try removing the category or keyword.</p></>;
+            if (resolved?.status === "ok") return <><h2 className="empty__title">Your filters exclude everyone</h2><p className="empty__text">{allTotal} {allTotal === 1 ? "provider serves" : "providers serve"} {resolved.place.name}, but none match the price or rating you chose.</p></>;
             return <><h2 className="empty__title">No pros match that search</h2><p className="empty__text">Try another suburb, keyword or filter.</p></>;
           })()}
           {!(lockedCategory && !resolved && !q && !max && !rating) && <Link href={basePath} className="btn btn--secondary">Clear filters</Link>}
@@ -156,6 +167,13 @@ export default async function ProviderSearch({ params, basePath, lockedCategory 
             );
           })}
         </ul>
+      )}
+      {pages > 1 && (
+        <nav className="srch__pages" aria-label="Pages of results">
+          {page > 1 ? <Link href={pageHref(page - 1)} className="btn btn--secondary btn--sm" rel="prev">← Previous</Link> : <span />}
+          <span className="num">Page {page} of {pages}</span>
+          {page < pages ? <Link href={pageHref(page + 1)} className="btn btn--secondary btn--sm" rel="next">Next →</Link> : <span />}
+        </nav>
       )}
     </div>
   );
