@@ -12,7 +12,7 @@ import { HeaderNav, TabBar, type NavLink } from "../components/Nav";
 const inter = Inter({ subsets: ["latin"], weight: ["400", "500", "600", "700"], variable: "--font-inter", display: "swap" });
 const serif = Instrument_Serif({ subsets: ["latin"], weight: "400", variable: "--font-serif", display: "swap" });
 
-export const metadata = { title: "Localo", description: "Find trusted local help in Auckland" };
+export const metadata = { title: "Localo — trusted local help", description: "Find and book trusted local cleaners, gardeners, handymen and more." };
 export const viewport = { width: "device-width", initialScale: 1, viewportFit: "cover", themeColor: "#F0F5F9" };
 
 const SIGN_IN: NavLink = { href: "/signin", label: "Sign in", short: "Sign in", icon: "signIn" };
