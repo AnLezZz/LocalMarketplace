@@ -1,4 +1,4 @@
-/* Localo app styles. Tokens live in @localhub/design-tokens/tokens.css. Mobile first; 720px is the phone/desktop break. */
+/* Localo app styles. Design tokens live in ./tokens.css. Mobile first; 720px is the phone/desktop break. */
 
 /* ---------- Base and browser surfaces ---------- */
 *, *::before, *::after { box-sizing: border-box; }

@@ -1,14 +1,27 @@
-# LocalHub (MVP slice)
+# Localo
 
-Turborepo + Next.js + Convex. Spec: local services marketplace PRD v1.1.
+A local services marketplace: customers find and book providers, providers manage services, availability and bookings, admins moderate. One Next.js app and one Convex backend.
+
+## Project layout
+```
+app/          Next.js App Router pages (customer, /provider, /admin)
+components/   Shared React components
+lib/          Server helpers (auth, actions, formatting, time)
+public/       Static files (images)
+convex/       Backend: schema, queries and mutations, auth, crons, tests
+test-utils/   Test harness for the Convex tests
+tasks/        Plans, reviews and the pre-deploy checklist
+docs/         Specs and plans
+```
+`PRODUCT.md` describes the product and design context.
 
 ## Run
 1. `pnpm install`
 2. `npx convex dev` (log in once; creates the deployment and writes `.env.local`). Leave it running.
-3. Set the auth secrets once per deployment (see "Auth setup" below).
-4. `pnpm convex:seed`
-5. Put `NEXT_PUBLIC_CONVEX_URL` from `.env.local` into `apps/marketplace/.env.local`, then `pnpm dev`.
-6. Open http://localhost:3100 (port 3000 is occupied by OrbStack on macOS).
+3. Make sure `.env.local` has `NEXT_PUBLIC_CONVEX_URL` (the same value as `CONVEX_URL`). `convex dev` normally adds it for a Next.js project.
+4. Set the auth secrets once per deployment (see "Auth setup" below).
+5. `pnpm convex:seed`
+6. `pnpm dev`, then open http://localhost:3100 (the dev server uses 3100 because port 3000 is occupied by OrbStack on macOS).
 7. Pre-seeded test accounts for Admin, Provider, and Customer are documented in [TEST_ACCOUNTS.md](TEST_ACCOUNTS.md).
 
 ## Auth setup
@@ -37,14 +50,14 @@ npx convex env set EMAIL_FROM "Localo <bookings@your-verified-domain>"   # optio
 - `admin` is granted only from the CLI.
 
 ## Tests
-`pnpm test` runs the Convex function tests (Vitest + convex-test). `convex/security.test.ts` fails if a public mutation is added without a signed-out check.
+`pnpm typecheck` checks the app and `convex/`. `pnpm test` runs the Convex function tests (Vitest + convex-test). `convex/security.test.ts` fails if a public mutation is added without a signed-out check.
 
 `convex/_generated` is gitignored, so a fresh clone needs `npx convex codegen` (or `npx convex dev --once`) before `pnpm test`.
 
 ## Deploy
 Do not run the seed (`pnpm convex:seed`) on a production deployment: seeded listings have no owner, are demo-only, and cannot answer bookings.
 
-`npx convex deploy`, set the auth variables on the production deployment (with `SITE_URL` set to the production origin), then Vercel: root dir `apps/marketplace`, env `NEXT_PUBLIC_CONVEX_URL` = the production URL.
+`npx convex deploy`, set the auth variables on the production deployment (with `SITE_URL` set to the production origin), then Vercel: import the repository with the default settings (the app is at the repository root), env `NEXT_PUBLIC_CONVEX_URL` = the production URL.
 
 ## Notes
 - Overlap protection: the `bookings.transition` mutation checks overlaps inside a Convex transaction, so concurrent accepts cannot double-book.

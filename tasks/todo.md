@@ -177,3 +177,12 @@ Decisions: explicit contact sharing (customer opts in per booking; phone + email
 - [x] Booking form collects address, suburb, access notes, optional phone + share toggle; summary shows the real location
 - [x] /bookings/[id] customer detail page; provider detail shows address/contact when allowed
 - [x] Tests for every rule above; browser verification
+
+---
+
+# Repo reorganisation (2026-10-10)
+
+The repo was set up as a pnpm + turbo monorepo for several apps; it is one app. Flattened to a single Next.js app at the root: `apps/marketplace/{app,components,lib,public,middleware.ts,next.config.mjs,PRODUCT.md}` moved to the root with `git mv` (history kept), `packages/design-tokens/tokens.css` became `app/tokens.css`, and `turbo.json`, `pnpm-workspace.yaml`, `tsconfig.base.json`, both extra `package.json` files and the workspace package were removed. One `package.json` (name `localo`; `jose` is now a dev dependency; `pnpm typecheck` added), one `tsconfig.json` (`convex/` keeps its own), one `.env.local`. `pnpm dev` now uses port 3100 to match the README and TEST_ACCOUNTS.md.
+Verified from the new layout: typecheck, 114 tests, `next build`, and a browser smoke test.
+Older entries above (and `docs/superpowers`) still mention `apps/marketplace/...` paths; they are history and were not rewritten.
+Manual follow-ups: if the app is already on Vercel, change the project's Root Directory from `apps/marketplace` to the repository root. `AGENTS.md` still contains a block that turbo wrote about Turborepo; it is stale now.

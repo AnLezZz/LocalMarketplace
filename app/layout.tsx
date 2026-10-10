@@ -1,4 +1,4 @@
-import "@localhub/design-tokens/tokens.css";
+import "./tokens.css";
 import "./globals.css";
 import "./landing.css";
 import { Inter, Instrument_Serif } from "next/font/google";

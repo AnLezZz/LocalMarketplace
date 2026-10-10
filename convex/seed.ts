@@ -19,7 +19,7 @@ export const run = internalMutation({
   },
 });
 
-// Demo portraits in apps/marketplace/public/images, matched to the seeded businesses by trade.
+// Demo portraits in public/images, matched to the seeded businesses by trade.
 const DEMO_PHOTOS: Record<string, string> = {
   "Alex Morgan": "/images/alex_morgan.jpg",
   "Sparkle & Shine Cleaning": "/images/priya_sharma.jpg",
