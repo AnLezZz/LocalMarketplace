@@ -1,13 +1,13 @@
 import Link from "next/link";
 import Image from "next/image";
 import { fetchQuery } from "convex/nextjs";
-import { api, CATEGORIES } from "../lib/convex";
+import { api } from "../lib/convex";
+import { loadCategories, loadLocations, metaIn } from "../lib/categories";
 import { getMe } from "../lib/auth";
 import Icon from "../components/Icon";
 import ProviderPhoto from "../components/ProviderPhoto";
 import { Rating } from "../components/Pill";
 import { type ProviderSummary } from "../components/ProviderCard";
-import { categoryMeta } from "../components/categories";
 import { rate, partOfDay } from "../components/format";
 
 export const dynamic = "force-dynamic";
@@ -26,6 +26,7 @@ function href(p: Params) {
 
 export default async function Home({ searchParams }: { searchParams: Promise<Params> }) {
   const { category, suburb, q } = await searchParams;
+  const cats = await loadCategories();
   const filtered = !!(category || suburb || q);
   const [list, all, me] = await Promise.all([
     fetchQuery(api.providers.list, { category: category || undefined, suburb: suburb || undefined, q: q || undefined }) as Promise<ProviderSummary[]>,
@@ -38,7 +39,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<Par
   const firstName = me?.name?.trim().split(/\s+/)[0];
   const greeting = `Good ${partOfDay()}${firstName ? `, ${firstName}` : ""}.`;
   const heading = filtered
-    ? `${list.length} ${list.length === 1 ? "pro" : "pros"}${category ? ` for ${categoryMeta(category).label.toLowerCase()}` : ""}${suburb ? ` near ${suburb}` : ""}`
+    ? `${list.length} ${list.length === 1 ? "pro" : "pros"}${category ? ` for ${metaIn(cats.all, category).label.toLowerCase()}` : ""}${suburb ? ` near ${suburb}` : ""}`
     : `${list.length} ${list.length === 1 ? "pro" : "pros"}`;
 
   return (
@@ -66,8 +67,9 @@ export default async function Home({ searchParams }: { searchParams: Promise<Par
       </section>
 
       <nav className="lp-cats" id="services" aria-label="Categories">
-        {CATEGORIES.map((c) => {
-          const m = categoryMeta(c);
+        {cats.enabled.map((cat) => {
+          const c = cat.slug;
+          const m = metaIn(cats.all, c);
           return (
             <Link key={c} href={`/search?category=${encodeURIComponent(c)}`} className="lp-cat" aria-current={category === c ? "page" : undefined}>
               <span className="lp-cat__icon"><Icon name={m.icon} size={26} /></span>
@@ -110,7 +112,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<Par
                     <span className="lp-pro__rating"><Rating avg={p.ratingAvg} count={p.reviewCount} /></span>
                   </div>
                   <h3 className="lp-pro__name">{p.name}</h3>
-                  <div className="lp-pro__meta">{categoryMeta(p.category).label}</div>
+                  <div className="lp-pro__meta">{metaIn(cats.all, p.category).label}</div>
                   <div className="lp-pro__meta"><Icon name="pin" size={13} /> {p.suburb}</div>
                   <div className="lp-pro__price">From <strong className="num">{price.amount}</strong> {price.unit.trim()}</div>
                 </Link>

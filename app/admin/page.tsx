@@ -9,7 +9,7 @@ import Icon from "../../components/Icon";
 import Avatar from "../../components/Avatar";
 import Banner from "../../components/Banner";
 import { StatusPill } from "../../components/Pill";
-import { categoryMeta } from "../../components/categories";
+import { loadCategories, metaIn } from "../../lib/categories";
 import { bookingWindow } from "../../components/format";
 import { adminSidebarItems } from "../../lib/adminNav";
 import DashboardSidebar from "../../components/dashboard/DashboardSidebar";
@@ -27,6 +27,7 @@ export default async function Admin({
 
   const { err } = await searchParams;
   const opts = await authOpts();
+  const cats = await loadCategories();
 
   const [pending, stats, recentBookings] = await Promise.all([
     fetchQuery(api.admin.listPending, {}, opts),
@@ -199,7 +200,7 @@ export default async function Admin({
             ) : (
               <ul className="d-app-list">
                 {pending.map((p: any) => {
-                  const cat = categoryMeta(p.category);
+                  const cat = metaIn(cats.all, p.category);
                   const rateStr = `$${(p.rateCents / 100).toFixed(2)} ${
                     p.rateBasis === "hourly" ? "per hour" : "fixed"
                   }`;

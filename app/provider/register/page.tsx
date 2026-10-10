@@ -1,15 +1,18 @@
 import { redirect } from "next/navigation";
 import { fetchQuery, fetchMutation } from "convex/nextjs";
-import { api, CATEGORIES } from "../../../lib/convex";
+import { api } from "../../../lib/convex";
+import { loadCategories, loadLocations } from "../../../lib/categories";
+import SuburbOptions from "../../../components/SuburbOptions";
 import { authOpts } from "../../../lib/auth";
 import { attempt } from "../../../lib/actions";
 import Banner from "../../../components/Banner";
-import { categoryMeta } from "../../../components/categories";
 
 export const dynamic = "force-dynamic";
 
 export default async function Register({ searchParams }: { searchParams: Promise<{ err?: string }> }) {
   const { err } = await searchParams;
+  const cats = await loadCategories();
+  const places = await loadLocations();
   const profile = await fetchQuery(api.providers.mine, {}, await authOpts());
   if (profile?.status === "approved") redirect("/provider");
 
@@ -34,6 +37,7 @@ export default async function Register({ searchParams }: { searchParams: Promise
       <p className="page__sub">We review every application before it appears in search.</p>
       {err && <Banner tone="error">{err}</Banner>}
       <form action={submit} className="card card--pad form">
+        <SuburbOptions suburbs={places.suburbs} />
         <div className="field">
           <label htmlFor="name" className="field__label">Business or trading name</label>
           <input id="name" name="name" defaultValue={profile?.name} required maxLength={80} autoComplete="organization" />
@@ -43,12 +47,12 @@ export default async function Register({ searchParams }: { searchParams: Promise
             <label htmlFor="category" className="field__label">Category</label>
             <select id="category" name="category" defaultValue={profile?.category ?? ""} required>
               <option value="" disabled>Choose a category</option>
-              {CATEGORIES.map((c) => <option key={c} value={c}>{categoryMeta(c).label}</option>)}
+              {cats.all.filter((c) => c.enabled || c.slug === profile?.category).map((c) => <option key={c.slug} value={c.slug}>{c.label}</option>)}
             </select>
           </div>
           <div className="field field--grow">
             <label htmlFor="suburb" className="field__label">Suburb</label>
-            <input id="suburb" name="suburb" defaultValue={profile?.suburb} required maxLength={60} autoComplete="address-level2" />
+            <input id="suburb" name="suburb" defaultValue={profile?.suburb} required maxLength={60} list="suburb-options" autoComplete="address-level2" />
           </div>
         </div>
         <div className="form__row">

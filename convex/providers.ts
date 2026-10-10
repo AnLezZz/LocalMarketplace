@@ -3,6 +3,8 @@ import { mutation, query } from "./_generated/server";
 import type { Doc } from "./_generated/dataModel";
 import { getUser, requireUser } from "./model/auth";
 import { getProviderForUser, providerStatus, validateProfile } from "./model/providers";
+import { requireActiveCategory } from "./model/categories";
+import { requireSupportedSuburb } from "./model/locations";
 import { checkImage, MAX_GALLERY, withPhotoUrl } from "./model/photos";
 
 export const list = query({
@@ -48,6 +50,8 @@ export const submitProfile = mutation({
     const user = await requireUser(ctx);
     if (user.role === "admin") throw new ConvexError("Admins cannot be providers");
     const fields = validateProfile(args);
+    await requireActiveCategory(ctx, fields.category);
+    await requireSupportedSuburb(ctx, fields.suburb, (s) => `We don't operate in ${s} yet. Pick a suburb from the list.`);
     const existing = await getProviderForUser(ctx, user._id);
     // A suspended provider must not be able to resubmit and come back as "pending".
     if (existing?.suspendedAt !== undefined) throw new ConvexError("This listing is suspended. Contact support.");
@@ -76,6 +80,7 @@ export const setServiceAreas = mutation({
     const clean = [...new Set(suburbs.map((s) => s.trim().replace(/\s+/g, " ")).filter(Boolean))];
     if (clean.length > 30) throw new ConvexError("List at most 30 suburbs");
     if (clean.some((s) => s.length > 60)) throw new ConvexError("A suburb name is too long");
+    for (const s of clean) await requireSupportedSuburb(ctx, s, (x) => `${x} isn't a suburb we operate in`);
     await ctx.db.patch(provider._id, { serviceSuburbs: clean });
   },
 });
@@ -99,7 +104,11 @@ export const updateProfile = mutation({
   handler: async (ctx, args) => {
     const provider = await ownProvider(ctx);
     if (!provider.approved) throw new ConvexError("Your application is still being reviewed. Update it from the application form.");
-    await ctx.db.patch(provider._id, validateProfile(args));
+    const fields = validateProfile(args);
+    // An unchanged category or suburb stays valid even if it was disabled since; only a change is checked.
+    if (fields.category !== provider.category) await requireActiveCategory(ctx, fields.category);
+    if (fields.suburb.toLowerCase() !== provider.suburb.toLowerCase()) await requireSupportedSuburb(ctx, fields.suburb, (s) => `We don't operate in ${s} yet. Pick a suburb from the list.`);
+    await ctx.db.patch(provider._id, fields);
   },
 });
 

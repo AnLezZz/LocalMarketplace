@@ -1,10 +1,11 @@
 import Link from "next/link";
 import { fetchQuery } from "convex/nextjs";
-import { api, CATEGORIES } from "../../lib/convex";
+import { api } from "../../lib/convex";
+import { loadCategories, loadLocations, metaIn } from "../../lib/categories";
+import SuburbOptions from "../../components/SuburbOptions";
 import Icon from "../../components/Icon";
 import ProviderPhoto from "../../components/ProviderPhoto";
 import { Rating } from "../../components/Pill";
-import { categoryMeta } from "../../components/categories";
 import { rate } from "../../components/format";
 import type { ProviderSummary } from "../../components/ProviderCard";
 import FavouriteButton from "../../components/FavouriteButton";
@@ -24,6 +25,8 @@ const SORTS: Record<string, [string, (a: ProviderSummary, b: ProviderSummary) =>
 
 export default async function Search({ searchParams }: { searchParams: Promise<Params> }) {
   const { q, suburb, category, max, rating, sort } = await searchParams;
+  const cats = await loadCategories();
+  const places = await loadLocations();
   const all = (await fetchQuery(api.providers.list, { category: category || undefined, suburb: suburb || undefined, q: q || undefined })) as ProviderSummary[];
   const saved = new Set((await fetchQuery(api.favourites.mineIds, {}, await authOpts())) as string[]);
   const tags = new Map<string, string[]>();
@@ -38,6 +41,7 @@ export default async function Search({ searchParams }: { searchParams: Promise<P
 
   return (
     <div className="page page--wide srch">
+      <SuburbOptions suburbs={places.suburbs} />
       <form className="srch__form" role="search" action="/search">
         <div className="srch__bar">
           <label className="srch__field srch__field--main">
@@ -48,7 +52,7 @@ export default async function Search({ searchParams }: { searchParams: Promise<P
           <label className="srch__field">
             <span className="sr-only">Suburb</span>
             <Icon name="pin" size={18} />
-            <input name="suburb" placeholder="Suburb" defaultValue={suburb} autoComplete="address-level2" />
+            <input name="suburb" placeholder="Suburb" defaultValue={suburb} autoComplete="address-level2" list="suburb-options" />
           </label>
           <button className="srch__go" aria-label="Search">
             <Icon name="search" size={20} />
@@ -60,7 +64,7 @@ export default async function Search({ searchParams }: { searchParams: Promise<P
               <span className="sr-only">Category</span>
               <select name="category" defaultValue={category ?? ""}>
                 <option value="">All filters</option>
-                {CATEGORIES.map((c) => <option key={c} value={c}>{categoryMeta(c).label}</option>)}
+                {cats.enabled.map((c) => <option key={c.slug} value={c.slug}>{c.label}</option>)}
               </select>
             </label>
             <label className="srch__chip">
@@ -103,14 +107,14 @@ export default async function Search({ searchParams }: { searchParams: Promise<P
         <ul className="srch__list">
           {list.map((p) => {
             const price = rate(p.rateCents, p.rateBasis);
-            const cat = categoryMeta(p.category);
+            const cat = metaIn(cats.all, p.category);
             return (
               <li key={p._id} className="srch__item">
                 <ProviderPhoto name={p.name} photo={p.photo} size={96} />
                 <div className="srch__info">
                   <h2 className="srch__name">{p.name}</h2>
                   <Rating avg={p.ratingAvg} count={p.reviewCount} />
-                  <div className="srch__meta"><Icon name="pin" size={14} />{p.suburb}, Auckland</div>
+                  <div className="srch__meta"><Icon name="pin" size={14} />{p.suburb}, {places.city}</div>
                   <div className="srch__tags">
                     {(tags.get(p._id) ?? [cat.label]).slice(0, 3).map((n) => <span key={n} className="srch__tag">{n}</span>)}
                   </div>

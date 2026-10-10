@@ -253,6 +253,7 @@ main { padding: 0 var(--s-4); }
 .tile--petcare, .cat-dot--petcare { --t-bg: var(--cat-petcare-bg); --t-chip: var(--cat-petcare-chip); --t-ink: var(--cat-petcare-ink); }
 .tile--car, .cat-dot--car { --t-bg: var(--cat-car-bg); --t-chip: var(--cat-car-chip); --t-ink: var(--cat-car-ink); }
 .tile--moving, .cat-dot--moving { --t-bg: var(--cat-moving-bg); --t-chip: var(--cat-moving-chip); --t-ink: var(--cat-moving-ink); }
+.tile--neutral, .cat-dot--neutral { --t-bg: #EEF1F5; --t-chip: #DDE3EA; --t-ink: #40495E; }
 
 /* ---------- Provider cards ---------- */
 .plist { display: grid; gap: var(--s-3); }

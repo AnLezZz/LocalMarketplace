@@ -4,6 +4,8 @@ import { fetchQuery } from "convex/nextjs";
 import Image from "next/image";
 import { api } from "../../lib/convex";
 import { authOpts } from "../../lib/auth";
+import { loadLocations } from "../../lib/categories";
+import SuburbOptions from "../../components/SuburbOptions";
 import Avatar from "../../components/Avatar";
 import Banner from "../../components/Banner";
 import PhotoUpload from "../../components/PhotoUpload";
@@ -25,6 +27,7 @@ type Me = {
 export default async function Account({ searchParams }: { searchParams: Promise<{ err?: string; ok?: string }> }) {
   const { err, ok } = await searchParams;
   const me = (await fetchQuery(api.account.mine, {}, await authOpts())) as Me | null;
+  const places = await loadLocations();
   if (!me) redirect("/signin");
   const roleHome = me.role === "admin" ? { href: "/admin", label: "Admin dashboard" } : me.role === "provider" ? { href: "/provider", label: "Provider dashboard" } : null;
 
@@ -83,7 +86,7 @@ export default async function Account({ searchParams }: { searchParams: Promise<
             <form action={addAddress} className="form">
               <div className="form__row">
                 <div className="field field--grow"><label htmlFor="label" className="field__label">Name</label><input id="label" name="label" required maxLength={30} placeholder="Home" /></div>
-                <div className="field field--grow"><label htmlFor="suburb" className="field__label">Suburb</label><input id="suburb" name="suburb" required maxLength={60} placeholder="Ponsonby" autoComplete="address-level2" /></div>
+                <div className="field field--grow"><label htmlFor="suburb" className="field__label">Suburb</label><input id="suburb" name="suburb" required maxLength={60} placeholder="Ponsonby" autoComplete="address-level2" list="suburb-options" /><SuburbOptions suburbs={places.suburbs} /></div>
               </div>
               <div className="field"><label htmlFor="address" className="field__label">Street address</label><input id="address" name="address" required maxLength={200} placeholder="12 Ponsonby Road" autoComplete="street-address" /></div>
               <div className="field"><label htmlFor="notes" className="field__label">Access instructions (optional)</label><textarea id="notes" name="notes" rows={2} maxLength={500} placeholder="Gate code, parking, pets" /></div>

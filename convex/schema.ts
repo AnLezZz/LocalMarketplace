@@ -178,6 +178,24 @@ export default defineSchema({
     resolutionNote: v.optional(v.string()),
   }).index("by_status", ["status"]).index("by_review", ["reviewId"]),
 
+  categories: defineTable({
+    slug: v.string(), // what providers store; never changes after creation
+    label: v.string(),
+    icon: v.string(),
+    hue: v.string(),
+    order: v.number(),
+    enabled: v.boolean(),
+  }).index("by_slug", ["slug"]),
+
+  // Where the marketplace operates. No rows means "no restriction".
+  suburbs: defineTable({
+    name: v.string(),
+    key: v.string(), // normalised name, for matching
+    enabled: v.boolean(),
+  }).index("by_key", ["key"]),
+
+  marketplaceSettings: defineTable({ launchCity: v.string() }),
+
   rescheduleRequests: defineTable({
     bookingId: v.id("bookings"),
     proposedBy: v.union(v.literal("customer"), v.literal("provider")),

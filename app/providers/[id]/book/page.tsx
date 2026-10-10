@@ -11,7 +11,7 @@ import Icon from "../../../../components/Icon";
 import ProviderPhoto from "../../../../components/ProviderPhoto";
 import Banner from "../../../../components/Banner";
 import { Rating } from "../../../../components/Pill";
-import { categoryMeta } from "../../../../components/categories";
+import { loadCategories, loadLocations, metaIn } from "../../../../lib/categories";
 import { rate } from "../../../../components/format";
 
 export const dynamic = "force-dynamic";
@@ -46,7 +46,9 @@ export default async function Book({ params, searchParams }: { params: Promise<{
   }
 
   const price = rate(p.rateCents, p.rateBasis);
-  const cat = categoryMeta(p.category);
+  const cats = await loadCategories();
+  const places = await loadLocations();
+  const cat = metaIn(cats.all, p.category);
 
   const first = (me?.name ?? "").trim();
 
@@ -86,7 +88,7 @@ export default async function Book({ params, searchParams }: { params: Promise<{
           </ol>
         </section>
       ) : me ? (
-        <BookingForm action={submit} savedAddresses={acct?.addresses ?? []} savedPhone={acct?.contactPhone ?? ""} availability={av.days} services={services} initialServiceId={service} now={aucklandNow()} defaultName={first} provider={{ name: p.name, category: cat.label, suburb: p.suburb, rateCents: p.rateCents, rateBasis: p.rateBasis, serviceSuburbs: p.serviceSuburbs }} />
+        <BookingForm action={submit} city={places.city} suburbOptions={places.suburbs} savedAddresses={acct?.addresses ?? []} savedPhone={acct?.contactPhone ?? ""} availability={av.days} services={services} initialServiceId={service} now={aucklandNow()} defaultName={first} provider={{ name: p.name, category: cat.label, suburb: p.suburb, rateCents: p.rateCents, rateBasis: p.rateBasis, serviceSuburbs: p.serviceSuburbs }} />
       ) : (
         <section className="bk__card signin-prompt">
           <span className="signin-prompt__icon"><Icon name="user" size={24} /></span>

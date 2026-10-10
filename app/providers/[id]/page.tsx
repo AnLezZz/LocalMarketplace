@@ -5,7 +5,7 @@ import { api } from "../../../lib/convex";
 import Icon from "../../../components/Icon";
 import ProviderPhoto from "../../../components/ProviderPhoto";
 import { Rating } from "../../../components/Pill";
-import { categoryMeta } from "../../../components/categories";
+import { loadCategories, loadLocations, metaIn } from "../../../lib/categories";
 import { durationLabel, priceLabel, rate } from "../../../components/format";
 import Image from "next/image";
 import "./booking.css";
@@ -24,7 +24,9 @@ export default async function Provider({ params }: { params: Promise<{ id: strin
   const reviews = (await fetchQuery(api.reviews.forProvider, { providerId: id })) as { _id: string; customerName: string; rating: number; text: string; at: number }[];
   const gallery = (await fetchQuery(api.providers.gallery, { providerId: id })) as { _id: string; url: string; caption?: string }[];
   const price = rate(p.rateCents, p.rateBasis);
-  const cat = categoryMeta(p.category);
+  const cats = await loadCategories();
+  const places = await loadLocations();
+  const cat = metaIn(cats.all, p.category);
   const bookHref = `/providers/${id}/book`;
 
   return (
@@ -37,7 +39,7 @@ export default async function Provider({ params }: { params: Promise<{ id: strin
           <h1 className="bk__title">{p.name}</h1>
           <div className="bk__meta">
             <span className={`cat-dot cat-dot--${cat.hue}`}><Icon name={cat.icon} size={16} /></span>{cat.label}
-            <span className="bk__dot" /><Icon name="pin" size={16} />{p.suburb}, Auckland
+            <span className="bk__dot" /><Icon name="pin" size={16} />{p.suburb}, {places.city}
           </div>
           <Rating avg={p.ratingAvg} count={p.reviewCount} />
         </div>

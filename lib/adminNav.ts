@@ -7,6 +7,8 @@ export function adminSidebarItems(counts: { applications?: number; reports?: num
     { id: "customers", label: "Accounts", icon: "user" as const, href: "/admin/customers" },
     { id: "bookings", label: "Bookings", icon: "calendar" as const, href: "/admin/bookings" },
     { id: "reviews", label: "Reviews", icon: "star" as const, href: "/admin/reviews", badge: b(counts.reports) },
+    { id: "categories", label: "Categories", icon: "tag" as const, href: "/admin/categories" },
+    { id: "locations", label: "Locations", icon: "pin" as const, href: "/admin/locations" },
     { id: "disputes", label: "Disputes", icon: "alert" as const, href: "/admin/disputes", badge: b(counts.disputes) },
     { id: "audit", label: "Audit log", icon: "shield" as const, href: "/admin/audit" },
   ];

@@ -7,7 +7,7 @@ import Banner from "../../components/Banner";
 import ProviderPhoto from "../../components/ProviderPhoto";
 import FavouriteButton from "../../components/FavouriteButton";
 import { Rating } from "../../components/Pill";
-import { categoryMeta } from "../../components/categories";
+import { loadCategories, metaIn } from "../../lib/categories";
 import type { ProviderSummary } from "../../components/ProviderCard";
 import "../search/search.css";
 
@@ -15,6 +15,7 @@ export const dynamic = "force-dynamic";
 
 export default async function Favourites({ searchParams }: { searchParams: Promise<{ err?: string }> }) {
   const { err } = await searchParams;
+  const cats = await loadCategories();
   const list = (await fetchQuery(api.favourites.listMine, {}, await authOpts())) as ProviderSummary[];
   return (
     <div className="page page--narrow srch">
@@ -35,7 +36,7 @@ export default async function Favourites({ searchParams }: { searchParams: Promi
               <ProviderPhoto name={p.name} photo={p.photo} size={96} />
               <div className="srch__info">
                 <h2 className="srch__name">{p.name}</h2>
-                <div className="srch__meta">{categoryMeta(p.category).label} · {p.suburb}</div>
+                <div className="srch__meta">{metaIn(cats.all, p.category).label} · {p.suburb}</div>
                 <Rating avg={p.ratingAvg} count={p.reviewCount} />
               </div>
               <div className="srch__cta">

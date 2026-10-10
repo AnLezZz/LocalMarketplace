@@ -2,13 +2,14 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { fetchQuery } from "convex/nextjs";
 import Image from "next/image";
-import { api, CATEGORIES } from "../../../lib/convex";
+import { api } from "../../../lib/convex";
+import { loadCategories, loadLocations } from "../../../lib/categories";
+import SuburbOptions from "../../../components/SuburbOptions";
 import { authOpts } from "../../../lib/auth";
 import { providerSidebarItems } from "../../../lib/providerNav";
 import DashboardSidebar from "../../../components/dashboard/DashboardSidebar";
 import Banner from "../../../components/Banner";
 import ProviderPhoto from "../../../components/ProviderPhoto";
-import { categoryMeta } from "../../../components/categories";
 import PhotoUpload from "../../../components/PhotoUpload";
 import { removeGalleryPhoto, removeProfilePhoto, saveProfile } from "./actions";
 import "../../providers/[id]/booking.css";
@@ -18,6 +19,8 @@ const OK: Record<string, string> = { saved: "Profile saved.", "photo-removed": "
 
 export default async function ProfilePage({ searchParams }: { searchParams: Promise<{ err?: string; ok?: string }> }) {
   const { err, ok } = await searchParams;
+  const cats = await loadCategories();
+  const places = await loadLocations();
   const opts = await authOpts();
   const profile = await fetchQuery(api.providers.mine, {}, opts);
   if (!profile) redirect("/provider/register");
@@ -67,9 +70,9 @@ export default async function ProfilePage({ searchParams }: { searchParams: Prom
                 <textarea id="bio" name="bio" rows={5} defaultValue={profile.bio} required maxLength={1000} /></div>
               <div className="form__row">
                 <div className="field field--grow"><label htmlFor="category" className="field__label">Main category</label>
-                  <select id="category" name="category" defaultValue={profile.category}>{CATEGORIES.map((c) => <option key={c} value={c}>{categoryMeta(c).label}</option>)}</select></div>
+                  <select id="category" name="category" defaultValue={profile.category}>{cats.all.filter((c) => c.enabled || c.slug === profile.category).map((c) => <option key={c.slug} value={c.slug}>{c.label}</option>)}</select></div>
                 <div className="field field--grow"><label htmlFor="suburb" className="field__label">Your suburb</label>
-                  <input id="suburb" name="suburb" defaultValue={profile.suburb} required maxLength={60} /></div>
+                  <input id="suburb" name="suburb" defaultValue={profile.suburb} required maxLength={60} list="suburb-options" /><SuburbOptions suburbs={places.suburbs} /></div>
               </div>
               <div className="form__row">
                 <div className="field field--grow"><label htmlFor="rate" className="field__label">General rate (NZD)</label>

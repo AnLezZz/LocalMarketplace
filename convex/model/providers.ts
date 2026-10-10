@@ -1,7 +1,6 @@
 import { ConvexError } from "convex/values";
 import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
-import { CATEGORIES } from "./categories";
 
 export type ProviderStatus = "pending" | "approved" | "rejected" | "suspended";
 
@@ -29,7 +28,7 @@ export function validateProfile(input: ProfileInput): ProfileInput {
   const suburb = input.suburb.trim();
   if (!name || !bio || !suburb) throw new ConvexError("Name, bio and suburb are required");
   if (name.length > 80 || suburb.length > 60 || bio.length > 1000) throw new ConvexError("One of the fields is too long");
-  if (!(CATEGORIES as readonly string[]).includes(input.category)) throw new ConvexError("Unknown category");
+  // The category is checked against the admin-managed list by the mutations (requireActiveCategory).
   if (!Number.isInteger(input.rateCents) || input.rateCents < 100 || input.rateCents > 100_000) {
     throw new ConvexError("Rate must be between $1 and $1,000");
   }

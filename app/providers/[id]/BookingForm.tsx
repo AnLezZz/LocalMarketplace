@@ -15,6 +15,8 @@ export type ServiceOption = { id: string; name: string; description: string; pri
 export type SavedAddress = { _id: string; label: string; address: string; suburb: string; accessNotes?: string; isDefault: boolean };
 
 type Props = {
+  city: string;
+  suburbOptions?: string[];
   /** From account settings. The default one prefills the job location; the phone prefills the contact number. */
   savedAddresses?: SavedAddress[];
   savedPhone?: string;
@@ -29,7 +31,7 @@ type Props = {
 };
 
 /** Day strip + time slots + details. Emits the same `start`/`hours`/`name`/`description` fields the server action reads. */
-export default function BookingForm({ action, now, defaultName, provider, services, initialServiceId, availability, savedAddresses = [], savedPhone = "" }: Props) {
+export default function BookingForm({ action, now, defaultName, provider, services, initialServiceId, availability, savedAddresses = [], savedPhone = "", city, suburbOptions = [] }: Props) {
   const [today, nowTime] = now.split("T");
   const nowMinute = Number(nowTime.slice(0, 2)) * 60 + Number(nowTime.slice(3, 5));
   const days = availability.map((a) => {
@@ -163,6 +165,7 @@ export default function BookingForm({ action, now, defaultName, provider, servic
             <span className="bk__count num">{desc.length}/2000</span>
           </div>
           <h3 className="bk__h3">Where is the job?</h3>
+          {suburbOptions.length > 0 && <datalist id="suburb-options">{suburbOptions.map((x) => <option key={x} value={x} />)}</datalist>}
           {savedAddresses.length > 0 && (
             <div className="field"><label htmlFor="saved" className="field__label">Use a saved address</label>
               <select id="saved" value={savedId} onChange={(e) => {
@@ -180,7 +183,7 @@ export default function BookingForm({ action, now, defaultName, provider, servic
           </div>
           <div className="field">
             <label htmlFor="suburb" className="field__label">Suburb</label>
-            <input id="suburb" value={suburb} onChange={(e) => setSuburb(e.target.value)} autoComplete="address-level2" required maxLength={60} placeholder="Ponsonby" aria-describedby="area-hint" />
+            <input id="suburb" value={suburb} onChange={(e) => setSuburb(e.target.value)} autoComplete="address-level2" required maxLength={60} placeholder="Ponsonby" aria-describedby="area-hint" list="suburb-options" />
             <p id="area-hint" className={outside ? "field__hint bk__warn" : "field__hint"}>
               {outside ? `${provider.name} doesn't service ${suburb.trim()}. They cover ${area.join(", ")}.` : area.length ? `${provider.name} covers ${area.join(", ")}.` : "Your full address is only shown to the provider after they accept."}
             </p>
@@ -229,7 +232,7 @@ export default function BookingForm({ action, now, defaultName, provider, servic
           <dl className="bk__sum">
             <div><Icon name="calendar" size={22} /><dt>Date</dt><dd>{picked.long}</dd></div>
             <div><Icon name="clock" size={22} /><dt>Time</dt><dd>{startMin !== null && end !== null ? `${minuteLabel(startMin)} – ${minuteLabel(end)} (${fmtHours(hours)})` : "Pick a start time"}</dd></div>
-            <div><Icon name="pin" size={22} /><dt>Location</dt><dd>{suburb.trim() ? `${suburb.trim()}, Auckland` : "Enter your suburb in Details"}</dd></div>
+            <div><Icon name="pin" size={22} /><dt>Location</dt><dd>{suburb.trim() ? `${suburb.trim()}, ${city}` : "Enter your suburb in Details"}</dd></div>
             <div><Icon name="tag" size={22} /><dt>Estimated price</dt><dd>{priceType === "quote" ? <strong>Quote on request</strong> : <strong className="num">{dollars(price)}</strong>}<small>{hourly ? `${dollars(unitCents)}/hr × ${fmtHours(hours)}. ` : ""}{priceType === "quote" ? "The provider will quote after your request." : "Final price may vary based on details."}</small></dd></div>
           </dl>
           <p className="bk__note"><Icon name="shield" size={22} /><span><strong>Pay the provider directly</strong>Localo does not collect or hold payment.</span></p>
