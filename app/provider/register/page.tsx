@@ -27,6 +27,7 @@ export default async function Register({ searchParams }: { searchParams: Promise
         bio: String(fd.get("bio") ?? ""),
         category: String(fd.get("category") ?? ""),
         more: fd.getAll("more").map(String),
+        categorySuggestion: String(fd.get("suggestion") ?? ""),
         suburb: String(fd.get("suburb") ?? ""),
         rateCents: Math.round(dollars * 100),
         rateBasis: fd.get("basis") === "fixed" ? "fixed" : "hourly",
@@ -46,6 +47,11 @@ export default async function Register({ searchParams }: { searchParams: Promise
           <input id="name" name="name" defaultValue={profile?.name} required maxLength={80} autoComplete="organization" />
         </div>
         <CategoryPicker rows={cats.all} primary={profile?.category} more={profile?.categorySlugs} />
+        <div className="field">
+          <label htmlFor="suggestion" className="field__label">Can&apos;t find your service? (optional)</label>
+          <input id="suggestion" name="suggestion" defaultValue={profile?.categorySuggestion} maxLength={100} placeholder="e.g. Window tinting" />
+          <p className="field__hint">Pick the closest main category above, then tell us what you do. We read every suggestion when we review your application.</p>
+        </div>
         <div className="form__row">
           <div className="field field--grow">
             <label htmlFor="suburb" className="field__label">Suburb</label>

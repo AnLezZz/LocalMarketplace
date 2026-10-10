@@ -24,6 +24,21 @@ describe("providers.submitProfile", () => {
     expect(await t.query(api.providers.list, {})).toEqual([]);
   });
 
+  test("keeps a 'my service isn't listed' note for the admin, trimmed, and clears it on resubmit", async () => {
+    const t = newT();
+    const u = asUser(t, await createUser(t, "customer"));
+    await u.mutation(api.providers.submitProfile, { ...profile, categorySuggestion: "  Window   tinting " });
+    expect((await u.query(api.providers.mine, {}))?.categorySuggestion).toBe("Window tinting");
+    await u.mutation(api.providers.submitProfile, { ...profile, categorySuggestion: "  " });
+    expect((await u.query(api.providers.mine, {}))?.categorySuggestion).toBeUndefined();
+  });
+
+  test("rejects an over-long category suggestion", async () => {
+    const t = newT();
+    const u = asUser(t, await createUser(t, "customer"));
+    await expect(u.mutation(api.providers.submitProfile, { ...profile, categorySuggestion: "x".repeat(101) })).rejects.toThrow("under 100");
+  });
+
   test("one profile per user: resubmitting updates in place", async () => {
     const t = newT();
     const u = asUser(t, await createUser(t, "customer"));
