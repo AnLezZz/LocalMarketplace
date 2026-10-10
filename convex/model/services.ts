@@ -4,6 +4,7 @@ import type { MutationCtx, QueryCtx } from "../_generated/server";
 import { getUser } from "./auth";
 import { getProviderForUser } from "./providers";
 
+import { validateQuestions, type Question } from "./bookingQuestions";
 import { validateMeetingLink, validateVenue, type ServiceMode, type Venue } from "./serviceLocation";
 
 export type ServiceInput = {
@@ -11,6 +12,7 @@ export type ServiceInput = {
   priceCents?: number; durationMinutes: number;
   categorySlug?: string; locationMode?: ServiceMode;
   venue?: { name?: string; address?: string; suburb?: string; notes?: string }; onlineNote?: string; meetingLink?: string;
+  questions?: Question[];
 };
 export type ServiceFields = Omit<ServiceInput, "venue"> & { venue?: Venue };
 
@@ -36,7 +38,8 @@ export function validateService(input: ServiceInput): ServiceFields {
   if (!Number.isInteger(input.durationMinutes) || input.durationMinutes < 15 || input.durationMinutes > 720 || input.durationMinutes % 15) {
     throw new ConvexError("Duration must be 15 minutes to 12 hours, in 15 minute steps");
   }
-  const extra = { ...(input.categorySlug ? { categorySlug: input.categorySlug } : {}), ...locationFields(input) };
+  const questions = validateQuestions(input.questions);
+  const extra = { ...(questions.length ? { questions } : {}), ...(input.categorySlug ? { categorySlug: input.categorySlug } : {}), ...locationFields(input) };
   if (input.priceType === "quote") return { name, description, priceType: "quote", durationMinutes: input.durationMinutes, ...extra };
   const cents = input.priceCents;
   if (cents === undefined || !Number.isInteger(cents) || cents < 100 || cents > 100_000) throw new ConvexError("Price must be between $1 and $1,000");

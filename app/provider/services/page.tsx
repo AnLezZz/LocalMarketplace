@@ -9,6 +9,7 @@ import Icon from "../../../components/Icon";
 import Banner from "../../../components/Banner";
 import PlaceInput from "../../../components/PlaceInput";
 import ServiceLocationFields from "../../../components/ServiceLocationFields";
+import ServiceQuestionFields, { type Question } from "../../../components/ServiceQuestionFields";
 import { indented, loadCategories } from "../../../lib/categories";
 import { modeLabel, type ServiceMode, type Venue } from "../../../lib/serviceLocation";
 import { durationLabel, priceLabel } from "../../../components/format";
@@ -17,7 +18,7 @@ import "../../providers/[id]/booking.css";
 
 export const dynamic = "force-dynamic";
 
-type Service = { _id: string; name: string; description: string; priceType: "fixed" | "hourly" | "quote"; priceCents?: number; durationMinutes: number; enabled: boolean; categorySlug?: string; locationMode?: ServiceMode; venue?: Venue; onlineNote?: string; meetingLink?: string };
+type Service = { _id: string; name: string; description: string; priceType: "fixed" | "hourly" | "quote"; priceCents?: number; durationMinutes: number; enabled: boolean; categorySlug?: string; locationMode?: ServiceMode; venue?: Venue; onlineNote?: string; meetingLink?: string; questions?: Question[] };
 
 const DONE: Record<string, string> = { saved: "Service saved.", enabled: "Service enabled.", disabled: "Service disabled. Customers can no longer book it.", archived: "Service archived.", areas: "Service area saved.", "area-added": "Place added to your service area.", "area-removed": "Place removed from your service area." };
 const DURATIONS = [15, 30, 45, 60, 90, 120, 180, 240, 300, 360, 480];
@@ -112,6 +113,7 @@ export default async function Services({ searchParams }: { searchParams: Promise
                 </select>
                 <p className="field__hint">Customers browsing this category will find you. Setting one lists you under it.</p></div>
               <ServiceLocationFields mode={editing?.locationMode} venue={editing?.venue} onlineNote={editing?.onlineNote} meetingLink={editing?.meetingLink} />
+              <ServiceQuestionFields key={editing?._id ?? "new"} questions={editing?.questions} />
               <button className="btn btn--primary">{editing ? "Save changes" : "Add service"}</button>
             </form>
           </section>

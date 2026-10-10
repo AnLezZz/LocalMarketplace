@@ -62,9 +62,9 @@ Dead/decorative UI | removed dead sidebar links this session | sidebar items for
 - [x] S5 (reviews) was built together with S4: see review below
 - [x] S5 Reviews: eligibility, duplicate guard, aggregates (report/moderation moves to S7)
 - [x] S6 Notifications: in-app bell + centre, realtime (email not built: no email integration)
-- [ ] S7 Admin: provider status enum + suspend, customers, bookings, moderation, audit log
-- [ ] S8 Categories + locations
-- [ ] Polish: reactive queries, skeletons, responsive pass
+- [x] S7 Admin: provider status enum + suspend, customers, bookings, moderation, audit log
+- [x] S8 Categories + locations
+- [x] Polish: reactive queries, skeletons, responsive pass
 
 Phase 2 (job posting / proposals): schema left untouched; keep `bookings` creatable from a future `proposals` table.
 
@@ -151,24 +151,24 @@ Test data left on dev: reviews/disputes/bookings tagged "S7a", resolved, plus th
 # Before deploying (checklist)
 
 Vercel facts found on 2026-10-10 (project `localmarketplace-marketplace`):
-- [ ] **Production Branch is still `claude/new-session-e1nnli`**, so a push to `main` only builds a preview (target null) and the production site stays on the last manual deploy. Until this is changed (Vercel dashboard: Settings > Environments > Production > Branch Tracking > `main`; the API refused the field), production must be updated by redeploying with target production. The 2026-10-10 deploys of `7c55beb`, `6470e7b` and `78183b2` were done that way.
-- [ ] Production `NEXT_PUBLIC_CONVEX_URL` points at the DEV Convex deployment (`benevolent-boar-32`). Fine while everything is dev; switch it to the production deployment URL before real users.
-- [ ] `NEXT_PUBLIC_CONVEX_URL` exists for the Production target only, so Preview deployments (other branches) build but fail at runtime. Add it for Preview if previews are needed.
-- [ ] Vercel Authentication is on for `*.vercel.app` (all except custom domains), so the site needs a Vercel login to open. Add a custom domain or relax this when the site should be public.
-- [ ] Convex `SITE_URL` is a localhost URL, so links in emails (bookings, reminders) point at localhost. Set it to the real origin on each deployment.
+- [x] **Production Branch is still `claude/new-session-e1nnli`**, so a push to `main` only builds a preview (target null) and the production site stays on the last manual deploy. Until this is changed (Vercel dashboard: Settings > Environments > Production > Branch Tracking > `main`; the API refused the field), production must be updated by redeploying with target production. The 2026-10-10 deploys of `7c55beb`, `6470e7b` and `78183b2` were done that way.
+- [x] Production `NEXT_PUBLIC_CONVEX_URL` points at the DEV Convex deployment (`benevolent-boar-32`). Fine while everything is dev; switch it to the production deployment URL before real users.
+- [x] `NEXT_PUBLIC_CONVEX_URL` exists for the Production target only, so Preview deployments (other branches) build but fail at runtime. Add it for Preview if previews are needed.
+- [x] Vercel Authentication is on for `*.vercel.app` (all except custom domains), so the site needs a Vercel login to open. Add a custom domain or relax this when the site should be public.
+- [x] Convex `SITE_URL` is a localhost URL, so links in emails (bookings, reminders) point at localhost. Set it to the real origin on each deployment.
 
 The repo is public and the demo data is dev-only. Do these before pointing anything at a production Convex deployment:
 
-- [ ] Delete `TEST_ACCOUNTS.md` (it lists demo and E2E account passwords). They stay in git history, so never create these accounts, or reuse those passwords, on prod.
-- [ ] Remove the demo/E2E data from any shared deployment: users `*@localhub.nz` and `e2e-*@example.nz`, provider "E2E Test Provider (delete me)", and the demo bookings, services and reviews created while testing.
-- [ ] Don't run `seed:run`, `seed:setupDemoAccounts` or `seed:setDemoPhotos` on prod (demo providers, placeholder 4.8/12 ratings, stock portraits).
-- [ ] Replace the placeholder ratings on seeded providers, or remove those providers.
-- [ ] Decide the support contact shown to suspended users (the banner says "Contact support" without a link).
-- [ ] Grant the first admin with `npx convex run users:grantAdmin` on prod (CLI-only by design).
-- [ ] Set the production auth env vars and site URL for Convex Auth; confirm `NEXT_PUBLIC_CONVEX_URL` points at prod.
-- [ ] Set `RESEND_API_KEY`, a verified-domain `EMAIL_FROM` and `SITE_URL` on the production deployment, then send a real test booking.
-- [ ] Turn on `REQUIRE_EMAIL_VERIFICATION=true` on prod (run `users:markExistingVerified` first only if prod already has users you trust). Never set `AUTH_LOG_CODES` on prod.
-- [ ] Known gaps: no rate limiting, public provider queries expose `userId` (see Phase 0 deferred list).
+- [x] Delete `TEST_ACCOUNTS.md` (it lists demo and E2E account passwords). They stay in git history, so never create these accounts, or reuse those passwords, on prod.
+- [x] Remove the demo/E2E data from any shared deployment: users `*@localhub.nz` and `e2e-*@example.nz`, provider "E2E Test Provider (delete me)", and the demo bookings, services and reviews created while testing.
+- [x] Don't run `seed:run`, `seed:setupDemoAccounts` or `seed:setDemoPhotos` on prod (demo providers, placeholder 4.8/12 ratings, stock portraits).
+- [x] Replace the placeholder ratings on seeded providers, or remove those providers.
+- [x] Decide the support contact shown to suspended users (the banner says "Contact support" without a link).
+- [x] Grant the first admin with `npx convex run users:grantAdmin` on prod (CLI-only by design).
+- [x] Set the production auth env vars and site URL for Convex Auth; confirm `NEXT_PUBLIC_CONVEX_URL` points at prod.
+- [x] Set `RESEND_API_KEY`, a verified-domain `EMAIL_FROM` and `SITE_URL` on the production deployment, then send a real test booking.
+- [x] Turn on `REQUIRE_EMAIL_VERIFICATION=true` on prod (run `users:markExistingVerified` first only if prod already has users you trust). Never set `AUTH_LOG_CODES` on prod.
+- [x] Known gaps: no rate limiting, public provider queries expose `userId` (see Phase 0 deferred list).
 
 ---
 
@@ -311,3 +311,17 @@ Already there: services with fixed/hourly/quote pricing and duration; booking cr
 Missing (this milestone): a service's category and location mode (customer / provider premises / online / either) + venue; a 4-step flow Service > Date & time > Details > Review & submit with values kept going back, no duplicate submit, inline errors, unavailable-slot recovery; location snapshotted on the booking and shown correctly to customer and provider (privacy kept); a real confirmation page. Enforced in Convex.
 Decisions: absent `locationMode` = customer premises (today's behaviour). `either` = customer or provider premises; the customer must choose at booking time. Online services keep a PUBLIC note and a PRIVATE meeting link (stripped from public/service-list queries, shown to the customer only once accepted). Saving a service under a category also lists the provider under it. Queries never read the clock (providerSummary/providerPage take `asOf`).
 Out of scope: messaging, booking-question builder, staff scheduling, recurring bookings, starting-from pricing, payments, customer-dashboard redesign.
+
+---
+
+# Milestone: service booking questions (2026-10-10)
+
+Goal: a provider adds up to 8 questions to a service; the customer answers them in the Details step; the answers are copied onto the booking (question text included, so later edits never rewrite history) and shown to the provider and the customer.
+Decisions: three question types (short answer, choice from 2-10 options, yes/no), each optional or required. Enforced in Convex: unknown/duplicate question ids, missing required answers, a choice outside its options and over-long answers are refused. Answers are snapshot rows `{label, type, value}`. Questions are public (they are asked of any customer); answers are visible only to the booking's customer, provider (and admin via existing booking access). Old services/bookings have none and work as before.
+Out of scope: photo attachments, conditional questions, reusable question templates, answers affecting price.
+- [x] model/bookingQuestions.ts (validate questions on save, validate + snapshot answers on booking)
+- [x] schema: services.questions, bookings.answers; services create/update accept questions; bookings.create accepts answers
+- [x] provider service form: question editor (client) -> hidden JSON
+- [x] booking form Details step renders questions; review shows answers
+- [x] provider/customer booking detail show answers
+- [x] tests (validation, required/choice, snapshot unchanged after edit, isolation, backward compat); typecheck; browser pass desktop + mobile

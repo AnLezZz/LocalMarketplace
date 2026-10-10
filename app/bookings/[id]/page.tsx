@@ -74,6 +74,7 @@ export default async function BookingDetail({ params, searchParams }: { params: 
           {b.priceType === "quote" && b.quoteNote && <div><dt>Quote note</dt><dd>{b.quoteNote}</dd></div>}
           <BookingWhere b={b} role="customer" />
           <div><dt>Your job description</dt><dd>{b.description}</dd></div>
+          {b.answers?.map((a: { label: string; value: string }, i: number) => <div key={i}><dt>{a.label}</dt><dd>{a.value}</dd></div>)}
           <div><dt>Contact sharing</dt><dd>{b.shareContact ? `Your phone (${b.customerPhone}) and email are shared with ${b.providerName} once accepted.` : `Not shared. ${b.providerName} can see your name and the job details.`}</dd></div>
         </dl>
         {b.status === "requested" && b.quoteStatus === "offered" && (

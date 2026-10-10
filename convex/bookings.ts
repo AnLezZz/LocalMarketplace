@@ -10,6 +10,7 @@ import { withdrawPendingReschedules } from "./model/reschedules";
 import { latestDispute } from "./model/disputes";
 import { latestReschedule } from "./model/reschedules";
 import { providerMaySeePrivate, validateJob } from "./model/jobDetails";
+import { answerArg, snapshotAnswers } from "./model/bookingQuestions";
 import { bookingMode, bookingModeValidator, validateContact, validateMeetingLink } from "./model/serviceLocation";
 import { snapshotPrice, validateQuote, type PriceType } from "./model/pricing";
 import { isTimeAvailable } from "./model/availability";
@@ -19,7 +20,7 @@ import { providerServes } from "./model/coverage";
 export const create = mutation({
   args: {
     providerId: v.id("providers"), customerName: v.string(), description: v.string(),
-    startsAt: v.number(), endsAt: v.number(), serviceId: v.optional(v.id("services")),
+    startsAt: v.number(), endsAt: v.number(), serviceId: v.optional(v.id("services")), answers: v.optional(v.array(answerArg)),
     // Where it happens. Needed only for a service offered at either the customer's or the provider's place; any other value is refused.
     locationChoice: v.optional(bookingModeValidator),
     // The customer's address: required for a job at the customer's place, ignored (and not stored) otherwise.
@@ -44,6 +45,7 @@ export const create = mutation({
       service = await ctx.db.get(a.serviceId);
       if (!service || service.providerId !== provider._id || !service.enabled || service.archived) throw new ConvexError("service not found");
     }
+    const answers = snapshotAnswers(service, a.answers);
     const mode = bookingMode(service?.locationMode, a.locationChoice);
     let where: Partial<Doc<"bookings">>;
     if (mode === "customer") {
@@ -68,7 +70,7 @@ export const create = mutation({
       ...(service ? { serviceId: service._id, serviceName: service.name, ...(service.categorySlug ? { serviceCategorySlug: service.categorySlug } : {}) } : {}),
       ...(service ? snapshotPrice(service.priceType, service.priceCents, a.startsAt, a.endsAt) : snapshotPrice(provider.rateBasis, provider.rateCents, a.startsAt, a.endsAt)),
       providerId: provider._id, customerId: user._id, customerName, customerEmail: user.email,
-      description, startsAt: a.startsAt, endsAt: a.endsAt, status: "requested", ...where,
+      description, startsAt: a.startsAt, endsAt: a.endsAt, status: "requested", ...where, ...(answers.length ? { answers } : {}),
     });
     await ctx.db.insert("bookingEvents", { bookingId: id, actorId: user._id, toStatus: "requested" });
     await notify(ctx, provider.userId, { kind: "booking_requested", title: "New booking request", body: `${customerName} asked for ${service?.name ?? "a booking"}.`, href: `/provider/bookings/${id}` });
@@ -251,7 +253,7 @@ export const getForProvider = query({
     return {
       _id: b._id, customerName: b.customerName, description: b.description, startsAt: b.startsAt, endsAt: b.endsAt,
       status: b.status, serviceName: b.serviceName, suburb: b.suburb,
-      locationMode: b.locationMode, venue: b.venue, onlineNote: b.onlineNote, meetingLink: b.meetingLink, // the provider's own details: always theirs to see
+      answers: b.answers, locationMode: b.locationMode, venue: b.venue, onlineNote: b.onlineNote, meetingLink: b.meetingLink, // the provider's own details: always theirs to see
       priceType: b.priceType, unitCents: b.unitCents, estimateCents: b.estimateCents,
       quoteCents: b.quoteCents, quoteNote: b.quoteNote, quoteStatus: b.quoteStatus, agreedCents: b.agreedCents,
       // Full address and access notes only once accepted; contact only if the customer opted in.

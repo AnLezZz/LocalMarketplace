@@ -23,6 +23,14 @@ function location(fd: FormData) {
   return { locationMode: m };
 }
 
+/** The question editor sends its whole list as JSON; the server (Convex) does the real validation. */
+function questions(fd: FormData) {
+  try {
+    const list = JSON.parse(String(fd.get("questions") ?? "[]"));
+    return Array.isArray(list) ? list : [];
+  } catch { return []; }
+}
+
 /** Creates a service, or updates it when the form carries an id. */
 export async function saveService(fd: FormData) {
   const id = String(fd.get("id") ?? "");
@@ -34,6 +42,7 @@ export async function saveService(fd: FormData) {
     durationMinutes: Number(fd.get("duration")),
     categorySlug: String(fd.get("categorySlug") ?? "") || undefined,
     ...location(fd),
+    questions: questions(fd),
   };
   const r = await attempt(async () => id
     ? fetchMutation(api.services.update, { id, ...args }, await authOpts())

@@ -17,6 +17,7 @@ export type AvailabilityDay = { date: string; windows: [number, number][]; busy:
 export type ServiceOption = {
   id: string; name: string; description: string; priceType: "fixed" | "hourly" | "quote"; priceCents?: number; durationMinutes: number;
   categoryLabel?: string; locationMode?: ServiceMode; venue?: Venue; onlineNote?: string;
+  questions?: { id: string; label: string; type: "text" | "choice" | "yesno"; required: boolean; options?: string[] }[];
 };
 
 export type SavedAddress = { _id: string; label: string; address: string; suburb: string; accessNotes?: string; isDefault: boolean };
@@ -106,6 +107,7 @@ export default function BookingForm({ action, now, defaultName, backHref, provid
   const [phone, setPhone] = useState(savedPhone);
   const [share, setShare] = useState(false);
   const [choice, setChoice] = useState<BookingMode | "">("");
+  const [answers, setAnswers] = useState<Record<string, string>>({});
   const serviceMode: ServiceMode = service?.locationMode ?? "customer";
   const mode: BookingMode | null = serviceMode === "either" ? (choice || null) : serviceMode;
   const venue = service?.venue;
@@ -117,7 +119,9 @@ export default function BookingForm({ action, now, defaultName, backHref, provid
     suburb: mode === "customer" && suburb.trim() === "" ? "Enter the suburb" : "",
     phone: share && phone.trim() === "" ? "Add a phone number to share your contact details" : "",
   };
-  const detailsOk = Object.values(problems).every((p) => p === "");
+  const questions = service?.questions ?? [];
+  const unanswered = questions.filter((q) => q.required && !(answers[q.id] ?? "").trim());
+  const detailsOk = Object.values(problems).every((p) => p === "") && unanswered.length === 0;
   const [showErrors, setShowErrors] = useState(false);
   const err = (k: keyof typeof problems) => (showErrors && problems[k] ? <p className="field__error" role="alert">{problems[k]}</p> : null);
 
@@ -145,6 +149,7 @@ export default function BookingForm({ action, now, defaultName, backHref, provid
     <form action={formAction} className="bk__grid" onSubmit={(e) => { if (step < 3) e.preventDefault(); }}>
       <input type="hidden" name="start" value={startMin !== null ? `${day}T${pad(Math.floor(startMin / 60))}:${pad(startMin % 60)}` : ""} />
       <input type="hidden" name="hours" value={hours} />
+      <input type="hidden" name="answers" value={JSON.stringify(questions.map((q) => ({ id: q.id, value: answers[q.id] ?? "" })))} />
       <input type="hidden" name="serviceId" value={service ? serviceId : ""} />
       <input type="hidden" name="locationChoice" value={serviceMode === "either" ? choice : ""} />
       <input type="hidden" name="name" value={name} />
@@ -233,6 +238,37 @@ export default function BookingForm({ action, now, defaultName, backHref, provid
             <span className="bk__count num">{desc.length}/2000</span>
             {err("description")}
           </div>
+
+          {questions.length > 0 && (
+            <>
+              <h3 className="bk__h3">A few questions from {provider.name}</h3>
+              {questions.map((q) => {
+                const missing = showErrors && q.required && !(answers[q.id] ?? "").trim();
+                const set = (value: string) => setAnswers((a) => ({ ...a, [q.id]: value }));
+                return (
+                  <div className="field" key={q.id}>
+                    {q.type === "choice" ? (
+                      <fieldset className="bk__choice">
+                        <legend className="field__label">{q.label}{q.required ? "" : " (optional)"}</legend>
+                        {q.options?.map((o) => <label key={o} className="bk__check"><input type="radio" name={`q-${q.id}`} checked={answers[q.id] === o} onChange={() => set(o)} /><span>{o}</span></label>)}
+                      </fieldset>
+                    ) : q.type === "yesno" ? (
+                      <fieldset className="bk__choice">
+                        <legend className="field__label">{q.label}{q.required ? "" : " (optional)"}</legend>
+                        {["Yes", "No"].map((o) => <label key={o} className="bk__check"><input type="radio" name={`q-${q.id}`} checked={answers[q.id] === o} onChange={() => set(o)} /><span>{o}</span></label>)}
+                      </fieldset>
+                    ) : (
+                      <>
+                        <label htmlFor={`q-${q.id}`} className="field__label">{q.label}{q.required ? "" : " (optional)"}</label>
+                        <input id={`q-${q.id}`} value={answers[q.id] ?? ""} maxLength={500} onChange={(e) => set(e.target.value)} aria-invalid={missing} />
+                      </>
+                    )}
+                    {missing && <p className="field__error" role="alert">This question needs an answer</p>}
+                  </div>
+                );
+              })}
+            </>
+          )}
 
           <h3 className="bk__h3">Where does it happen?</h3>
           {serviceMode === "either" && (
@@ -324,6 +360,7 @@ export default function BookingForm({ action, now, defaultName, backHref, provid
             <div><dt>Price</dt><dd><strong>{priceLine}</strong><br /><small>{priceNote}</small></dd></div>
             <div><dt>Name</dt><dd>{name}</dd></div>
             <div><dt>Job</dt><dd>{desc}</dd></div>
+            {questions.filter((q) => (answers[q.id] ?? "").trim()).map((q) => <div key={q.id}><dt>{q.label}</dt><dd>{answers[q.id]}</dd></div>)}
             {mode === "customer" && notes && <div><dt>Access</dt><dd>{notes}</dd></div>}
             <div><dt>Contact</dt><dd>{share ? `Shared with ${provider.name} after they accept (${phone})` : "Not shared. You can still manage the booking in Localo."}</dd></div>
           </dl>

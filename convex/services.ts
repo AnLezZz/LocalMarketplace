@@ -3,6 +3,7 @@ import { mutation, query } from "./_generated/server";
 import { getUser } from "./model/auth";
 import { getProviderForUser } from "./model/providers";
 import { requireOwnProvider, validateService } from "./model/services";
+import { questionValidator } from "./model/bookingQuestions";
 import { locationModeValidator } from "./model/serviceLocation";
 import { requireActiveCategory } from "./model/categories";
 import { requireSupportedSuburb } from "./model/locations";
@@ -15,6 +16,7 @@ const fields = {
   name: v.string(), description: v.string(), priceType, priceCents: v.optional(v.number()), durationMinutes: v.number(),
   categorySlug: v.optional(v.string()), locationMode: v.optional(locationModeValidator), venue: v.optional(venueArg),
   onlineNote: v.optional(v.string()), meetingLink: v.optional(v.string()),
+  questions: v.optional(v.array(questionValidator)),
 };
 
 /** A service is public without its private meeting link. Only the owner's own list carries it. */

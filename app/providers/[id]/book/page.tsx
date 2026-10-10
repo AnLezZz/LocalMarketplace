@@ -27,7 +27,7 @@ export default async function Book({ params, searchParams }: { params: Promise<{
   const cats = await loadCategories();
   const services = ((await fetchQuery(api.services.listForProvider, { providerId: id })) as any[]).map((s) => ({
     id: s._id as string, name: s.name, description: s.description, priceType: s.priceType, priceCents: s.priceCents, durationMinutes: s.durationMinutes,
-    categoryLabel: s.categorySlug ? cats.all.find((c) => c.slug === s.categorySlug)?.label : undefined, locationMode: s.locationMode, venue: s.venue, onlineNote: s.onlineNote,
+    categoryLabel: s.categorySlug ? cats.all.find((c) => c.slug === s.categorySlug)?.label : undefined, locationMode: s.locationMode, venue: s.venue, onlineNote: s.onlineNote, questions: s.questions,
   }));
 
   /** Returns an error for the form to show (it keeps everything the customer entered); a success goes to the confirmation page. */
@@ -42,9 +42,11 @@ export default async function Book({ params, searchParams }: { params: Promise<{
     const description = String(fd.get("description") ?? "").trim();
     if (!name || !description) return { error: "Fill in your name and describe the job." };
     const choice = String(fd.get("locationChoice") ?? "");
+    let answers: { id: string; value: string }[] = [];
+    try { const raw = JSON.parse(String(fd.get("answers") ?? "[]")); if (Array.isArray(raw)) answers = raw.map((a) => ({ id: String(a?.id ?? ""), value: String(a?.value ?? "") })); } catch { /* none */ }
     const r = await attempt(async () =>
       fetchMutation(api.bookings.create, {
-        providerId: id, customerName: name, description, startsAt: startsAt.getTime(), endsAt: endsAt.getTime(), serviceId,
+        providerId: id, customerName: name, description, answers, startsAt: startsAt.getTime(), endsAt: endsAt.getTime(), serviceId,
         ...(choice === "customer" || choice === "provider" || choice === "online" ? { locationChoice: choice } : {}),
         address: String(fd.get("address") ?? "") || undefined, suburb: String(fd.get("suburb") ?? "") || undefined, accessNotes: String(fd.get("accessNotes") ?? "") || undefined,
         shareContact: fd.get("shareContact") === "on", phone: String(fd.get("phone") ?? "") || undefined,

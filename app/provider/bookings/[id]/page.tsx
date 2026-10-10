@@ -78,6 +78,12 @@ export default async function BookingDetails({ params, searchParams }: { params:
         {(b.status === "accepted" || b.status === "completed") && !b.contact && b.address && <p className="note"><Icon name="info" size={18} />The customer chose not to share contact details. Use the address and instructions above.</p>}
         <h3 className="card__title">Job description</h3>
         <p className="booking__desc">{b.description}</p>
+        {!!b.answers?.length && (
+          <>
+            <h3 className="card__title">Answers to your questions</h3>
+            <dl className="detail">{b.answers.map((a: { label: string; value: string }, i: number) => <div key={i}><dt>{a.label}</dt><dd>{a.value}</dd></div>)}</dl>
+          </>
+        )}
 
         {b.locationMode === "online" && (b.status === "requested" || b.status === "accepted") && (
           <form action={saveLink} className="quote-box">

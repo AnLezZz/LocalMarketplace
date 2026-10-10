@@ -1,3 +1,4 @@
+import { answerValidator, questionValidator } from "./model/bookingQuestions";
 import { bookingModeValidator, locationModeValidator, venueValidator } from "./model/serviceLocation";
 import { defineSchema, defineTable } from "convex/server";
 import { authTables } from "@convex-dev/auth/server";
@@ -99,6 +100,7 @@ export default defineSchema({
     serviceId: v.optional(v.id("services")),
     serviceName: v.optional(v.string()),
     serviceCategorySlug: v.optional(v.string()),
+    answers: v.optional(v.array(answerValidator)), // the customer's answers, with the question wording as it was asked
     // Where it happens, copied from the service when the request was made (later service edits never rewrite it).
     // "customer": address/suburb above. "provider": venue. "online": onlineNote and, once accepted, meetingLink. Missing = "customer".
     locationMode: v.optional(bookingModeValidator),
@@ -136,6 +138,7 @@ export default defineSchema({
     venue: v.optional(venueValidator), // for "provider" and "either": where customers come
     onlineNote: v.optional(v.string()), // for "online": shown publicly, e.g. "Video call"
     meetingLink: v.optional(v.string()), // for "online": PRIVATE. Never returned by a public query; copied to a booking and shown once it is accepted.
+    questions: v.optional(v.array(questionValidator)), // asked of the customer in the booking flow
   }).index("by_provider", ["providerId"]),
 
   // One row per weekday a provider has configured. No rows at all means "never configured": 8am-5pm every day.
