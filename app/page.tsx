@@ -3,7 +3,7 @@ import Image from "next/image";
 import { fetchQuery, preloadQuery } from "convex/nextjs";
 import { api } from "../lib/convex";
 import { loadCategories, loadLocations, metaIn } from "../lib/categories";
-import { getMe } from "../lib/auth";
+import { authOpts, getMe } from "../lib/auth";
 import Icon from "../components/Icon";
 import PlaceInput from "../components/PlaceInput";
 import FeaturedCategories from "../components/FeaturedCategories";
@@ -26,6 +26,15 @@ function href(p: Params) {
   const qs = s.toString();
   return qs ? `/?${qs}` : "/";
 }
+
+const FAQ: [string, string][] = [
+  ["How does booking work?", "You pick a service and a time from the provider's real availability and send a request. The provider accepts or declines. Nothing is confirmed until they accept, and a pending request never holds the slot."],
+  ["Do I pay through Localo?", "No. Localo doesn't collect, hold or guarantee payment. You pay your provider directly."],
+  ["What if a service has no fixed price?", "Some services are quoted. The provider sends you a price, you accept or decline it, and only then can they accept the booking."],
+  ["Can I cancel or change the time?", "Yes. You can cancel from My bookings, or ask for a different time. A new time only takes effect once the other side agrees."],
+  ["Who can see my address?", "A provider only sees your suburb while your request is open. The full address and any access notes appear after they accept."],
+  ["How are providers checked?", "Every provider applies and an admin approves them before they appear. That is a review of their application, not a licence or insurance check, so if a job needs a licensed tradesperson, ask the provider."],
+];
 
 const SHOWN = 12; // a single scrolling row: the best twelve
 
@@ -51,6 +60,37 @@ export default async function Home({ searchParams }: { searchParams: Promise<Par
   const tally = new Map<string, number>();
   for (const p of list) tally.set(p.category, (tally.get(p.category) ?? 0) + 1);
   const popular = [...tally.entries()].sort((a, b) => b[1] - a[1]).slice(0, 4).map(([slug]) => ({ slug, label: metaIn(cats.all, slug).label }));
+
+  const card = (p: ProviderSummary) => {
+    const price = rate(p.rateCents, p.rateBasis);
+    return (
+      <Link key={p._id} href={`/providers/${p._id}`} className="lp-pro">
+        <div className="lp-pro__photo">
+          <ProviderPhoto name={p.name} photo={p.photo} category={p.category} fill />
+          <span className="lp-pro__rating"><Rating avg={p.ratingAvg} count={p.reviewCount} /></span>
+        </div>
+        <h3 className="lp-pro__name">{p.name}</h3>
+        <div className="lp-pro__meta">{metaIn(cats.all, p.category).label}</div>
+        <div className="lp-pro__meta"><Icon name="pin" size={13} /> {p.suburb}</div>
+        <div className="lp-pro__price">From <strong className="num">{price.amount}</strong> {price.unit.trim()}</div>
+      </Link>
+    );
+  };
+
+  // Near you: for a signed-in customer with a saved address, the providers who serve that place. Nothing for visitors we know nothing about.
+  let near: { place: string; rows: ProviderSummary[] } | null = null;
+  if (me && !filtered && everyone.length > 0) {
+    const opts = await authOpts();
+    const acct = (await fetchQuery(api.account.mine, {}, opts)) as { addresses: { suburb: string; isDefault: boolean }[] } | null;
+    const addr = acct?.addresses.find((a) => a.isDefault) ?? acct?.addresses[0];
+    if (addr) {
+      const place = (await fetchQuery(api.locations.resolveSearchPlace, { name: addr.suburb })) as { status: string; place?: { _id: string; name: string } };
+      if (place.status === "ok" && place.place) {
+        const r = (await fetchQuery(api.providers.search, { placeId: place.place._id as never, offset: 0, limit: 8 })) as { rows: ProviderSummary[] };
+        if (r.rows.length > 0) near = { place: place.place.name, rows: r.rows };
+      }
+    }
+  }
 
   const noProviders = everyone.length === 0 && !filtered; // nobody has been approved yet
 
@@ -100,6 +140,17 @@ export default async function Home({ searchParams }: { searchParams: Promise<Par
       </section>
 
       <FeaturedCategories preloaded={featuredCats} />
+
+      {near && (
+        <section className="lp-section" id="near" aria-labelledby="near-h">
+          <div className="lp-section__head">
+            <h2 id="near-h" className="lp-h2">Near {near.place}</h2>
+            <Link href={`/search?${new URLSearchParams({ where: near.place })}`} className="lp-link">View all</Link>
+          </div>
+          <p className="lp-section__sub">Providers who serve your saved address.</p>
+          <ProviderCarousel label={`Providers near ${near.place}`}>{near.rows.map(card)}</ProviderCarousel>
+        </section>
+      )}
 
       {noProviders ? (
         <section className="lp-launch" id="pros" aria-labelledby="launch-h">
@@ -153,21 +204,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<Par
             </div>
           ) : (
             <ProviderCarousel label="Featured providers">
-              {list.map((p) => {
-                const price = rate(p.rateCents, p.rateBasis);
-                return (
-                  <Link key={p._id} href={`/providers/${p._id}`} className="lp-pro">
-                    <div className="lp-pro__photo">
-                      <ProviderPhoto name={p.name} photo={p.photo} category={p.category} fill />
-                      <span className="lp-pro__rating"><Rating avg={p.ratingAvg} count={p.reviewCount} /></span>
-                    </div>
-                    <h3 className="lp-pro__name">{p.name}</h3>
-                    <div className="lp-pro__meta">{metaIn(cats.all, p.category).label}</div>
-                    <div className="lp-pro__meta"><Icon name="pin" size={13} /> {p.suburb}</div>
-                    <div className="lp-pro__price">From <strong className="num">{price.amount}</strong> {price.unit.trim()}</div>
-                  </Link>
-                );
-              })}
+              {list.map(card)}
             </ProviderCarousel>
           )}
           {found.total > list.length && (
@@ -231,6 +268,18 @@ export default async function Home({ searchParams }: { searchParams: Promise<Par
             <li key={title}><span className="lp-why__icon"><Icon name={icon} size={20} /></span><div><strong>{title}</strong><span>{text}</span></div></li>
           ))}
         </ul>
+      </section>
+
+      <section className="lp-section" id="faq" aria-labelledby="faq-h">
+        <h2 id="faq-h" className="lp-h2">Common questions</h2>
+        <div className="lp-faq">
+          {FAQ.map(([q, a]) => (
+            <details key={q} className="lp-faq__item">
+              <summary>{q}<span className="lp-faq__chev" aria-hidden="true" /></summary>
+              <p>{a}</p>
+            </details>
+          ))}
+        </div>
       </section>
 
       {!noProviders && (
