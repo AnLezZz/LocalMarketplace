@@ -41,6 +41,18 @@ const PATHS = {
   car: <><path d="M4 16.5v-3.2l1.8-4.6a2 2 0 0 1 1.9-1.2h8.6a2 2 0 0 1 1.9 1.2l1.8 4.6v3.2a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1z" /><path d="M4 13.3h16M7 17.5V19.5M17 17.5V19.5M7.5 10.5h9" /></>,
   bell: <><path d="M6 17V11a6 6 0 0 1 12 0v6l1.5 2h-15z" /><path d="M10 21a2 2 0 0 0 4 0" /></>,
   moving: <><path d="M4 8l8-4 8 4v8l-8 4-8-4z" /><path d="m4 8 8 4 8-4M12 12v8M8 6l8 4" /></>,
+  // More categories
+  scissors: <><circle cx="6" cy="6.5" r="2.5" /><circle cx="6" cy="17.5" r="2.5" /><path d="M8 8.2 20 18M8 15.8 20 6" /></>,
+  spa: <><path d="M12 20c-4 0-7-2.5-7.5-6.5 3 0 5.5 1 7.5 3.5 2-2.5 4.5-3.5 7.5-3.5C19 17.5 16 20 12 20z" /><path d="M12 17.5C9.5 15 9.5 9.5 12 4c2.5 5.5 2.5 11 0 13.5z" /></>,
+  smile: <><circle cx="12" cy="12" r="8.5" /><path d="M8.5 14.2c.9 1.2 2.1 1.8 3.5 1.8s2.6-.6 3.5-1.8M9.2 10v.4M14.8 10v.4" /></>,
+  book: <><path d="M5 5.5A1.5 1.5 0 0 1 6.5 4H19v14.5H6.5A1.5 1.5 0 0 0 5 20z" /><path d="M5 20a1.5 1.5 0 0 1 1.5-1.5H19M9 8h6" /></>,
+  droplet: <path d="M12 3.5s6 6 6 10.2a6 6 0 0 1-12 0C6 9.5 12 3.5 12 3.5z" />,
+  bolt: <path d="M13 3 5 13.5h6L10 21l8-10.5h-6z" />,
+  paint: <><rect x="4" y="4" width="14" height="5" rx="1.5" /><path d="M18 6.5h2v5h-8v3" /><rect x="10.5" y="14.5" width="3" height="6" rx="1" /></>,
+  window: <><rect x="4" y="4" width="16" height="16" rx="2" /><path d="M12 4v16M4 12h16" /></>,
+  tree: <><path d="M12 21v-6" /><path d="M12 15c-3.5 0-6-2.4-6-5.5 0-1.6.8-3 2-3.9.5-2 2-3.1 4-3.1s3.5 1.1 4 3.1c1.2.9 2 2.3 2 3.9 0 3.1-2.5 5.5-6 5.5z" /></>,
+  truck: <><path d="M3 7h11v9H3z" /><path d="M14 10h3.5L21 13v3h-7" /><circle cx="7" cy="17.5" r="2" /><circle cx="17" cy="17.5" r="2" /></>,
+  sparkles: <><path d="M10 4l1.6 4.4L16 10l-4.4 1.6L10 16l-1.6-4.4L4 10l4.4-1.6z" /><path d="M18 14l.8 2.2L21 17l-2.2.8L18 20l-.8-2.2L15 17l2.2-.8z" /></>,
 } satisfies Record<string, ReactNode>;
 
 export type IconName = keyof typeof PATHS;

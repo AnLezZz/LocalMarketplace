@@ -12,8 +12,42 @@ export const DEFAULT_CATEGORIES = [
   { slug: "moving help", label: "Moving help", icon: "moving", hue: "moving" },
 ] as const;
 
+/**
+ * The starter taxonomy an admin can add in one click (categories.seedStarter). Each name appears once, so a provider never has to
+ * choose between two "Plumbing"s. The six built-ins stay main categories (providers already use their keys); they gain types.
+ * Shape: main { label, icon, hue, existing? (a built-in, already saved) } > types { label, icon, hue } > services (labels only).
+ */
+export type StarterNode = { label: string; icon: string; hue: string; children?: StarterNode[] };
+export const STARTER: StarterNode[] = [
+  { label: "Cleaning", icon: "cleaning", hue: "cleaning", children: [
+    { label: "House cleaning", icon: "home", hue: "cleaning" }, { label: "End-of-tenancy clean", icon: "sparkles", hue: "cleaning" },
+    { label: "Window cleaning", icon: "window", hue: "cleaning" }, { label: "Carpet cleaning", icon: "cleaning", hue: "cleaning" } ] },
+  { label: "Gardening", icon: "gardening", hue: "gardening", children: [
+    { label: "Lawn mowing", icon: "leaf", hue: "gardening" }, { label: "Hedge trimming", icon: "tree", hue: "gardening" }, { label: "Garden tidy-up", icon: "gardening", hue: "gardening" } ] },
+  { label: "Handyman", icon: "handyman", hue: "handyman", children: [
+    { label: "General repairs", icon: "handyman", hue: "handyman" }, { label: "Furniture assembly", icon: "home", hue: "handyman" }, { label: "Painting", icon: "paint", hue: "handyman" } ] },
+  { label: "Pet care", icon: "petCare", hue: "petcare", children: [
+    { label: "Dog walking", icon: "petCare", hue: "petcare" }, { label: "Pet sitting", icon: "heart", hue: "petcare" }, { label: "Grooming", icon: "scissors", hue: "petcare" } ] },
+  { label: "Car detailing", icon: "car", hue: "car", children: [
+    { label: "Exterior wash", icon: "droplet", hue: "car" }, { label: "Interior clean", icon: "sparkles", hue: "car" }, { label: "Full detail", icon: "car", hue: "car" } ] },
+  { label: "Moving help", icon: "moving", hue: "moving", children: [
+    { label: "House moves", icon: "moving", hue: "moving" }, { label: "Furniture delivery", icon: "truck", hue: "moving" }, { label: "Rubbish removal", icon: "truck", hue: "moving" } ] },
+  { label: "Plumbing & Electrical", icon: "bolt", hue: "car", children: [
+    { label: "Plumbing", icon: "droplet", hue: "car", children: [
+      { label: "Leaks and repairs", icon: "droplet", hue: "car" }, { label: "Drain unblocking", icon: "droplet", hue: "car" }, { label: "Hot water", icon: "droplet", hue: "car" } ] },
+    { label: "Electrical", icon: "bolt", hue: "handyman", children: [
+      { label: "Lighting and power points", icon: "bolt", hue: "handyman" }, { label: "Appliance installation", icon: "bolt", hue: "handyman" } ] } ] },
+  { label: "Beauty & Wellness", icon: "spa", hue: "petcare", children: [
+    { label: "Hair", icon: "scissors", hue: "petcare", children: [
+      { label: "Women's Haircut", icon: "scissors", hue: "petcare" }, { label: "Men's Haircut", icon: "scissors", hue: "petcare" }, { label: "Hair Colouring", icon: "paint", hue: "petcare" } ] },
+    { label: "Spa", icon: "spa", hue: "car", children: [
+      { label: "Facial", icon: "sparkles", hue: "car" }, { label: "Massage", icon: "spa", hue: "car" }, { label: "Body Treatment", icon: "droplet", hue: "car" } ] } ] },
+  { label: "Child & Family", icon: "smile", hue: "gardening", children: [
+    { label: "Babysitting", icon: "smile", hue: "gardening" }, { label: "Tutoring", icon: "book", hue: "gardening" }, { label: "Nanny Services", icon: "heart", hue: "gardening" } ] },
+];
+
 // What the app can actually draw. Keep in sync with lib/categories.ts (the app cannot import from convex/).
-export const CATEGORY_ICONS = ["cleaning", "gardening", "handyman", "petCare", "car", "moving", "home", "leaf", "tag", "briefcase", "star", "heart"] as const;
+export const CATEGORY_ICONS = ["cleaning", "gardening", "handyman", "petCare", "car", "moving", "home", "leaf", "tag", "briefcase", "star", "heart", "scissors", "spa", "smile", "book", "droplet", "bolt", "paint", "window", "tree", "truck", "sparkles"] as const;
 export const CATEGORY_HUES = ["cleaning", "gardening", "handyman", "petcare", "car", "moving", "neutral"] as const;
 export const MAX_CATEGORIES = 300;
 export const MAX_DEPTH = 3; // main category, subcategory, individual service

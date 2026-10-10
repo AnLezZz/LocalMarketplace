@@ -15,7 +15,7 @@ export default async function CategoryPage({ params, searchParams }: { params: P
   const crumbs = trail(cats.all, slug);
   const kids = childrenOf(cats.all, slug);
   return (
-    <div className="page page--wide">
+    <div className="page page--wide cats">
       <nav aria-label="Breadcrumb">
         <ol className="cats__crumbs">
           <li><Link href="/">Home</Link></li>
@@ -23,20 +23,23 @@ export default async function CategoryPage({ params, searchParams }: { params: P
           {crumbs.map((c, i) => <li key={c.slug}>{i === crumbs.length - 1 ? <span aria-current="page">{c.label}</span> : <Link href={`/categories/${encodeURIComponent(c.slug)}`}>{c.label}</Link>}</li>)}
         </ol>
       </nav>
-      <h1 className="cats__title">{here.label}</h1>
+      <h1 className="cats__title cats__title--page">{here.label}</h1>
       {kids.length > 0 && (
         <>
-          <p className="cats__sub">Narrow it down:</p>
+          <h2 className="cats__eyebrow">Narrow it down</h2>
           <ul className="cats__grid">
-            {kids.map((k) => (
-              <li key={k.slug}>
-                <Link href={`/categories/${encodeURIComponent(k.slug)}`} className="cats__card">
-                  <span className="cats__thumb">{k.imageUrl ? <img src={k.imageUrl} alt="" /> : <Icon name={k.icon} size={22} />}</span>
-                  <span className="cats__name">{k.label}</span>
-                  {childrenOf(cats.all, k.slug).length > 0 && <span className="cats__hint">{childrenOf(cats.all, k.slug).length} types</span>}
-                </Link>
-              </li>
-            ))}
+            {kids.map((k) => {
+              const n = childrenOf(cats.all, k.slug).length;
+              return (
+                <li key={k.slug}>
+                  <Link href={`/categories/${encodeURIComponent(k.slug)}`} className="cats__card">
+                    <span className={`cats__thumb tile--${k.hue}`}>{k.imageUrl ? <img src={k.imageUrl} alt="" /> : <Icon name={k.icon} size={22} />}</span>
+                    <span className="cats__name">{k.label}</span>
+                    <span className="cats__hint">{n > 0 ? `${n} types` : "All providers"}</span>
+                  </Link>
+                </li>
+              );
+            })}
           </ul>
         </>
       )}

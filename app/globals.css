@@ -1540,3 +1540,53 @@ body:has(.d-layout) { background: var(--ivory, #FAF9F6); }
   .adm-act .btn { flex: 1; min-height: 44px; }
   .adm-manage .adm-act form { width: auto; flex: 1; }
 }
+
+/* ---------- Admin categories ---------- */
+.acat__bar { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: var(--s-3) var(--s-6); }
+.acat__count { font-size: 15px; color: var(--ink-2, var(--ink-3)); padding-top: 8px; }
+.acat__add { min-width: 0; }
+.acat__grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--s-4); align-items: start; }
+.acat__grid > .acat { margin: 0; }
+@media (min-width: 1100px) { .acat__grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.acat { display: flex; flex-direction: column; gap: var(--s-3); padding: var(--s-4); }
+.acat__head { display: flex; align-items: center; gap: var(--s-3); flex-wrap: wrap; }
+.acat__disc { display: grid; place-items: center; flex: none; border-radius: 50%; overflow: hidden; background: var(--t-chip); color: var(--t-ink); }
+.acat__disc img { width: 100%; height: 100%; object-fit: cover; }
+.acat__titles { flex: 1; min-width: 160px; display: grid; gap: 2px; }
+.acat__name { margin: 0; font-size: 19px; font-weight: 600; letter-spacing: -0.01em; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.acat__meta { font-size: 13px; color: var(--ink-3); overflow-wrap: anywhere; }
+.acat__meta code { font-size: 12px; }
+.acat__kids > summary { display: flex; align-items: center; min-height: 44px; cursor: pointer; font-size: 14px; font-weight: 600; color: var(--forest); list-style: none; }
+.acat__kids > summary::-webkit-details-marker { display: none; }
+.acat__kids > summary::before { content: "›"; display: inline-block; margin-right: 8px; transition: transform .2s; }
+.acat__kids[open] > summary::before { transform: rotate(90deg); }
+.acat__list { list-style: none; margin: 0; padding: 0; display: grid; }
+.acat__list--nested { margin-left: 20px; padding-left: 14px; border-left: 1px solid var(--line); }
+.acat__row { border-top: 1px solid var(--wash); padding: 10px 0; }
+.acat__row:first-child { border-top: 0; }
+.acat__rowmain { display: flex; align-items: center; gap: var(--s-3); flex-wrap: wrap; }
+.acat__rowtext { flex: 1; min-width: 140px; display: grid; gap: 1px; }
+.acat__rowname { font-size: 15px; font-weight: 500; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.acat__edit { display: grid; gap: var(--s-3); }
+.acat__label { display: grid; gap: 6px; font-size: 14px; font-weight: 600; }
+.acat__label input, .acat__label select { min-height: 44px; padding: 0 12px; font-size: 16px; font-weight: 400; border: 1px solid var(--line); border-radius: 10px; background: #fff; }
+.acat .adm-more, .acat__bar .adm-more { flex: none; }
+/* An open Manage panel takes its own full-width row inside the card instead of overflowing it */
+.acat .adm-more[open] { flex: 1 1 100%; min-width: 0; }
+.acat .adm-more[open] > summary { margin-bottom: var(--s-2); }
+.acat .adm-manage { min-width: 0; }
+
+/* Icon and colour picker: pictures, not a drop-down */
+.ipick { display: grid; gap: var(--s-3); }
+.ipick__group { margin: 0; padding: 0; border: 0; min-width: 0; }
+.ipick__legend { padding: 0; margin-bottom: 8px; font-size: 14px; font-weight: 600; }
+.ipick__icons, .ipick__hues { display: flex; flex-wrap: wrap; gap: 6px; }
+.ipick__opt { position: relative; display: inline-flex; }
+.ipick__opt input { position: absolute; inset: 0; opacity: 0; margin: 0; cursor: pointer; }
+.ipick__face { display: grid; place-items: center; width: 44px; height: 44px; border: 1px solid var(--line); border-radius: 12px; background: #fff; color: var(--ink); }
+.ipick__face--hue { border-radius: 50%; background: var(--t-chip); }
+.ipick__opt input:checked + .ipick__face { border-color: var(--forest); box-shadow: 0 0 0 2px var(--forest); }
+.ipick__opt input:focus-visible + .ipick__face { outline: 3px solid var(--forest); outline-offset: 2px; }
+.ipick__opt:hover .ipick__face { background: var(--wash); }
+.ipick__opt:hover .ipick__face--hue { background: var(--t-chip); filter: brightness(.96); }
+@media (max-width: 639px) { .acat { padding: var(--s-3); } .acat__head .adm-more { flex-basis: 100%; } .acat__rowmain .adm-more { flex-basis: 100%; } }

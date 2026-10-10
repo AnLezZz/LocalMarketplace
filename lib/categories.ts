@@ -12,7 +12,7 @@ export type CategoryRow = {
 
 // What the admin may pick from: the icons the app draws and the colours it has tokens for.
 // Keep in sync with convex/model/categories.ts (the app cannot import from convex/).
-export const CATEGORY_ICONS = ["cleaning", "gardening", "handyman", "petCare", "car", "moving", "home", "leaf", "tag", "briefcase", "star", "heart"] as const;
+export const CATEGORY_ICONS = ["cleaning", "gardening", "handyman", "petCare", "car", "moving", "home", "leaf", "tag", "briefcase", "star", "heart", "scissors", "spa", "smile", "book", "droplet", "bolt", "paint", "window", "tree", "truck", "sparkles"] as const;
 export const CATEGORY_HUES = ["cleaning", "gardening", "handyman", "petcare", "car", "moving", "neutral"] as const;
 
 /** All categories in tree order (admin-managed, or the built-ins until saved), loaded once per request. `enabled` are the usable ones to offer. */

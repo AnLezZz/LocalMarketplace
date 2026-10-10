@@ -119,6 +119,7 @@ export default async function ProviderSearch({ params, basePath, lockedCategory 
           <span className="empty__icon"><Icon name={resolved ? "pin" : "search"} size={26} /></span>
           {(() => {
             const catLabel = category ? metaIn(cats.all, category).label.toLowerCase() : "";
+            if (lockedCategory && !resolved && !q && !max && !rating) return <><h2 className="empty__title">No {metaIn(cats.all, lockedCategory).label} providers yet</h2><p className="empty__text">Nobody has listed this category. Try one of the options above, or browse everything else.</p><Link href="/categories" className="btn btn--forest">Browse all categories</Link></>;
             if (resolved?.status === "unrecognised") return <><h2 className="empty__title">We don&apos;t recognise &ldquo;{where}&rdquo;</h2><p className="empty__text">Check the spelling, or try a nearby suburb, a city or a region.</p></>;
             if (resolved?.status === "not_launched") return <><h2 className="empty__title">Localo hasn&apos;t launched in {resolved.name} yet</h2><p className="empty__text">We&apos;re not taking bookings there yet. Try a nearby area.</p></>;
             if (resolved?.status === "ambiguous") return <><h2 className="empty__title">Which {where}?</h2><p className="empty__text">More than one place has that name.</p>
@@ -128,7 +129,7 @@ export default async function ProviderSearch({ params, basePath, lockedCategory 
             if (resolved?.status === "ok") return <><h2 className="empty__title">Your filters exclude everyone</h2><p className="empty__text">{all.length} {all.length === 1 ? "provider serves" : "providers serve"} {resolved.place.name}, but none match the price or rating you chose.</p></>;
             return <><h2 className="empty__title">No pros match that search</h2><p className="empty__text">Try another suburb, keyword or filter.</p></>;
           })()}
-          <Link href={basePath} className="btn btn--secondary">Clear filters</Link>
+          {!(lockedCategory && !resolved && !q && !max && !rating) && <Link href={basePath} className="btn btn--secondary">Clear filters</Link>}
         </div>
       ) : (
         <ul className="srch__list">

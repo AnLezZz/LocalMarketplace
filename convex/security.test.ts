@@ -10,7 +10,7 @@ const sources = Object.entries(all).filter(([path]) => !path.endsWith(".test.ts"
 const PUBLIC_MUTATIONS = [
   "account.addAddress", "account.generateUploadUrl", "account.removeAddress", "account.removePhoto", "account.setDefaultAddress", "account.setEmailPrefs", "account.setPhoto", "account.updateProfile",
   "admin.cancelBooking", "admin.reactivateProvider", "admin.reactivateUser", "admin.resolveDispute", "admin.resolveReviewReport", "admin.restoreReview", "admin.review", "admin.suspendProvider", "admin.suspendUser", "availability.addTimeOff", "availability.removeTimeOff", "availability.setHours",
-  "bookings.create", "bookings.respondToQuote", "bookings.submitQuote", "bookings.transition", "categories.create", "categories.generateUploadUrl", "categories.initDefaults", "categories.move", "categories.remove", "categories.removeImage", "categories.seedExamples", "categories.setEnabled", "categories.setFeatured", "categories.setImage", "categories.update", "disputes.open", "favourites.toggle", "locations.addSuburbs", "locations.dismissReview", "locations.removeSuburb", "locations.resolveReview", "locations.setAreaOpen", "locations.setCity", "locations.setSuburbEnabled", "notifications.markAllRead", "notifications.markRead", "providers.addGalleryPhoto", "providers.addServiceArea", "providers.generateUploadUrl", "providers.removeGalleryPhoto", "providers.removePhoto", "providers.removeServiceArea", "providers.setPhoto", "providers.setServiceAreas", "providers.submitProfile", "providers.updateProfile", "reschedules.propose", "reschedules.respond", "reschedules.withdraw", "reviews.create", "reviews.report",
+  "bookings.create", "bookings.respondToQuote", "bookings.submitQuote", "bookings.transition", "categories.create", "categories.generateUploadUrl", "categories.initDefaults", "categories.move", "categories.remove", "categories.removeImage", "categories.seedStarter", "categories.setEnabled", "categories.setFeatured", "categories.setImage", "categories.update", "disputes.open", "favourites.toggle", "locations.addSuburbs", "locations.dismissReview", "locations.removeSuburb", "locations.resolveReview", "locations.setAreaOpen", "locations.setCity", "locations.setSuburbEnabled", "notifications.markAllRead", "notifications.markRead", "providers.addGalleryPhoto", "providers.addServiceArea", "providers.generateUploadUrl", "providers.removeGalleryPhoto", "providers.removePhoto", "providers.removeServiceArea", "providers.setPhoto", "providers.setServiceAreas", "providers.submitProfile", "providers.updateProfile", "reschedules.propose", "reschedules.respond", "reschedules.withdraw", "reviews.create", "reviews.report",
   "services.archive", "services.create", "services.setEnabled", "services.update",
 ];
 // A public action can write via ctx.runMutation. Add one here deliberately and give it its own signed-out check.
@@ -98,7 +98,7 @@ test("every public mutation refuses a signed-out caller", async () => {
     () => t.mutation(api.categories.generateUploadUrl, {}),
     () => t.mutation(api.categories.setImage, { id: categoryId, storageId }),
     () => t.mutation(api.categories.removeImage, { id: categoryId }),
-    () => t.mutation(api.categories.seedExamples, {}),
+    () => t.mutation(api.categories.seedStarter, {}),
     () => t.mutation(api.locations.setCity, { city: "Auckland" }),
     () => t.mutation(api.locations.addSuburbs, { names: ["Ponsonby"] }),
     () => t.mutation(api.locations.setSuburbEnabled, { id: suburbId, enabled: false }),

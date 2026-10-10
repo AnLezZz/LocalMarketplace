@@ -5,7 +5,7 @@ import type { QueryCtx } from "./_generated/server";
 import { requireRole } from "./model/auth";
 import { audit } from "./model/audit";
 import { checkImage } from "./model/photos";
-import { activeRows, DEFAULT_CATEGORIES, depthOf, loadCategoryRows, MAX_CATEGORIES, MAX_DEPTH, slugify, validateCategoryInput } from "./model/categories";
+import { activeRows, DEFAULT_CATEGORIES, depthOf, loadCategoryRows, MAX_CATEGORIES, MAX_DEPTH, slugify, STARTER, validateCategoryInput, type StarterNode } from "./model/categories";
 
 /** Rows in tree order (a parent, then its children), siblings by their order. */
 function inTreeOrder(rows: Doc<"categories">[]): Doc<"categories">[] {
@@ -212,41 +212,38 @@ export const removeImage = mutation({
   },
 });
 
-/** Adds a sample hierarchy (beauty, home, family) as ordinary editable data. Skips anything already there, so it is safe to run twice. */
-const EXAMPLES: { label: string; icon: string; children: { label: string; children: string[] }[] }[] = [
-  { label: "Beauty & Wellness", icon: "heart", children: [
-    { label: "Hair", children: ["Women's Haircut", "Men's Haircut", "Hair Colouring"] },
-    { label: "Spa", children: ["Facial", "Massage", "Body Treatment"] },
-  ] },
-  { label: "Home Services", icon: "home", children: ["Electrical", "Plumbing", "Cleaning", "Gardening"].map((label) => ({ label, children: [] })) },
-  { label: "Child & Family", icon: "star", children: ["Babysitting", "Tutoring", "Nanny Services"].map((label) => ({ label, children: [] })) },
-];
-
-export const seedExamples = mutation({
+/**
+ * Adds the starter categories (model/categories.ts STARTER) as ordinary editable data: the six built-ins with their types, plus
+ * Plumbing & Electrical, Beauty & Wellness and Child & Family. Anything already there (matched by key) is left exactly as it is,
+ * so it is safe to run twice and never touches what an admin has renamed, disabled or re-iconed.
+ */
+export const seedStarter = mutation({
   args: {},
   handler: async (ctx) => {
     const admin = await requireRole(ctx, "admin");
-    const rows = await all(ctx);
-    const taken = new Set(rows.map((r) => r.slug));
+    const rows = await loadCategoryRows(ctx);
+    const bySlug = new Map(rows.map((r) => [r.slug, r]));
     let added = 0;
-    const add = async (label: string, icon: string, parent: Doc<"categories"> | null, featured: boolean) => {
-      const slug = slugify(parent ? `${parent.slug} ${label}` : label);
-      const existing = rows.find((r) => r.slug === slug);
-      if (existing) return existing;
-      if (rows.length + added >= MAX_CATEGORIES) throw new ConvexError(`You can have up to ${MAX_CATEGORIES} categories`);
-      const order = Math.max(-1, ...(await loadCategoryRows(ctx)).filter((r) => r.parentId === parent?._id).map((r) => r.order)) + 1;
-      const id = await ctx.db.insert("categories", { slug, label, icon, hue: "neutral", order, enabled: true, featured, ...(parent ? { parentId: parent._id } : {}) });
-      added++; taken.add(slug);
-      return (await ctx.db.get(id))!;
-    };
-    for (const main of EXAMPLES) {
-      const m = await add(main.label, main.icon, null, true);
-      for (const sub of main.children) {
-        const s = await add(sub.label, main.icon, m, false);
-        for (const leaf of sub.children) await add(leaf, main.icon, s, false);
+    const walk = async (nodes: StarterNode[], parent: Doc<"categories"> | null) => {
+      for (const node of nodes) {
+        const slug = slugify(parent ? `${parent.slug} ${node.label}` : node.label);
+        let row = bySlug.get(slug);
+        if (!row) {
+          if (bySlug.size >= MAX_CATEGORIES) throw new ConvexError(`You can have up to ${MAX_CATEGORIES} categories`);
+          const siblingOrders = [...bySlug.values()].filter((r) => r.parentId === parent?._id).map((r) => r.order);
+          const id = await ctx.db.insert("categories", {
+            slug, label: node.label, icon: node.icon, hue: node.hue, order: Math.max(-1, ...siblingOrders) + 1, enabled: true,
+            featured: !parent, ...(parent ? { parentId: parent._id } : {}),
+          });
+          row = (await ctx.db.get(id))!;
+          bySlug.set(slug, row);
+          added++;
+        }
+        if (node.children) await walk(node.children, row);
       }
-    }
-    if (added > 0) await audit(ctx, admin._id, "category.examples", "category", "examples", `${added} added`);
+    };
+    await walk(STARTER, null);
+    if (added > 0) await audit(ctx, admin._id, "category.starter", "category", "starter", `${added} added`);
     return added;
   },
 });
