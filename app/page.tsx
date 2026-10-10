@@ -37,6 +37,11 @@ const FAQ: [string, string][] = [
 ];
 
 const SHOWN = 12; // a single scrolling row: the best twelve
+/**
+ * The featured providers, the popular chips and the Near-you row stay hidden (the launch cards show instead) until this many real,
+ * approved providers exist. Demo listings without an owner don't count. Lower it if you want them back sooner.
+ */
+const FEATURED_MIN = 6;
 
 export default async function Home({ searchParams }: { searchParams: Promise<Params> }) {
   const { category, suburb, q } = await searchParams;
@@ -47,19 +52,21 @@ export default async function Home({ searchParams }: { searchParams: Promise<Par
   // The homepage shows the best few; the full, paged list is /search. The total is the real number of matches.
   const search = (extra: { category?: string; suburb?: string; q?: string }, limit: number) =>
     fetchQuery(api.providers.search, { ...extra, offset: 0, limit }) as Promise<{ rows: ProviderSummary[]; total: number; capped: boolean }>;
-  const [found, anyone, me, recentReviews] = await Promise.all([
+  const [found, anyone, me, recentReviews, real] = await Promise.all([
     search({ category: category || undefined, suburb: suburb || undefined, q: q || undefined }, SHOWN),
     filtered ? search({}, 1) : null,
     getMe(),
     fetchQuery(api.reviews.recent, { limit: 6 }) as Promise<{ _id: string; customerName: string; rating: number; text: string; at: number; providerId: string; providerName: string }[]>,
+    fetchQuery(api.providers.realCount, {}) as Promise<number>,
   ]);
   const list = found.rows;
   const everyone = { length: (anyone ?? found).total };
+  const noProviders = !filtered && real < FEATURED_MIN; // not enough real providers yet: show the launch cards instead
 
   // Popular: the categories most of the featured providers are listed under, so every link is known to lead to someone.
   const tally = new Map<string, number>();
   for (const p of list) tally.set(p.category, (tally.get(p.category) ?? 0) + 1);
-  const popular = [...tally.entries()].sort((a, b) => b[1] - a[1]).slice(0, 4).map(([slug]) => ({ slug, label: metaIn(cats.all, slug).label }));
+  const popular = noProviders ? [] : [...tally.entries()].sort((a, b) => b[1] - a[1]).slice(0, 4).map(([slug]) => ({ slug, label: metaIn(cats.all, slug).label }));
 
   const card = (p: ProviderSummary) => {
     const price = rate(p.rateCents, p.rateBasis);
@@ -79,7 +86,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<Par
 
   // Near you: for a signed-in customer with a saved address, the providers who serve that place. Nothing for visitors we know nothing about.
   let near: { place: string; rows: ProviderSummary[] } | null = null;
-  if (me && !filtered && everyone.length > 0) {
+  if (me && !filtered && !noProviders) {
     const opts = await authOpts();
     const acct = (await fetchQuery(api.account.mine, {}, opts)) as { addresses: { suburb: string; isDefault: boolean }[] } | null;
     const addr = acct?.addresses.find((a) => a.isDefault) ?? acct?.addresses[0];
@@ -92,7 +99,6 @@ export default async function Home({ searchParams }: { searchParams: Promise<Par
     }
   }
 
-  const noProviders = everyone.length === 0 && !filtered; // nobody has been approved yet
 
   const firstName = me?.name?.trim().split(/\s+/)[0];
   const greeting = `Good ${partOfDay()}${firstName ? `, ${firstName}` : ""}.`;
@@ -131,7 +137,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<Par
             </p>
           )}
           <ul className="lp-trust" aria-label="Why people use Localo">
-            <li><Icon name="shield" size={16} />{everyone.length > 0 ? `${everyone.length} approved ${everyone.length === 1 ? "provider" : "providers"}` : "Providers are approved before they appear"}</li>
+            <li><Icon name="shield" size={16} />{!noProviders ? `${real} approved ${real === 1 ? "provider" : "providers"}` : "Providers are approved before they appear"}</li>
             <li><Icon name="calendar" size={16} />Pick from their real availability</li>
             <li><Icon name="check" size={16} />Pay your provider directly</li>
           </ul>

@@ -43,6 +43,18 @@ async function matching(ctx: QueryCtx, { category, suburb, q, placeId }: Search)
   return { rows, capped };
 }
 
+/**
+ * How many approved providers are real: someone owns the listing and can answer bookings. The seeded demo listings have no owner and
+ * don't count. Used by the landing page to decide when there are enough people to show. Capped at SEARCH_POOL.
+ */
+export const realCount = query({
+  args: {},
+  handler: async (ctx) => {
+    const rows = await ctx.db.query("providers").withIndex("by_approved", (i) => i.eq("approved", true)).take(SEARCH_POOL + 1);
+    return Math.min(rows.filter((p) => p.userId !== undefined).length, SEARCH_POOL);
+  },
+});
+
 /** Everything matching, with photos. Kept for callers that need the whole (bounded) set. */
 export const list = query({
   args: searchArgs,

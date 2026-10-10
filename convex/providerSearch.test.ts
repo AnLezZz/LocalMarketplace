@@ -57,3 +57,15 @@ describe("provider search pages", () => {
     expect((await page(t, -5, 0)).rows).toHaveLength(1); // a nonsense page is made sane
   });
 });
+
+describe("realCount", () => {
+  test("counts approved providers that someone owns, not seeded demo listings or unapproved ones", async () => {
+    const t = newT();
+    const { createUser } = await import("../test-utils/harness");
+    for (let i = 0; i < 3; i++) await createProvider(t, undefined, { name: `Seed ${i}` }); // approved, no owner
+    await createProvider(t, await createUser(t, "provider"), { name: "Owned" });
+    await createProvider(t, await createUser(t, "provider"), { name: "Owned too" });
+    await createProvider(t, await createUser(t, "provider"), { name: "Pending", approved: false });
+    expect(await t.query(api.providers.realCount, {})).toBe(2);
+  });
+});
