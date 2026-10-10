@@ -93,3 +93,28 @@ html { scroll-behavior: smooth; }
   --shadow-button-hover: 0 2px 4px rgba(49, 92, 72, 0.2), 0 10px 22px rgba(49, 92, 72, 0.28);
 }
 input[type="checkbox"], input[type="radio"] { accent-color: var(--forest); }
+
+/* Primary tasks stay in the header; account and role tools live in Profile. */
+.header-nav { display: flex; align-items: center; justify-content: flex-end; gap: 24px; }
+.header-nav__center { margin: 0; gap: 8px; align-items: center; }
+.header-nav__actions { gap: 12px; }
+.profile-nav { position: relative; }
+.profile-nav__trigger { display: flex; align-items: center; gap: 8px; min-height: 44px; padding: 8px 12px; border: 1px solid var(--hairline); border-radius: 24px; cursor: pointer; list-style: none; font-size: 14px; color: var(--ink); background: var(--surface); }
+.profile-nav__trigger::-webkit-details-marker { display: none; }
+.profile-nav__trigger:hover, .profile-nav[open] .profile-nav__trigger { background: var(--surface-sunk); }
+.profile-nav__caret { color: var(--ink-3); }
+.profile-nav__panel { position: absolute; right: 0; top: calc(100% + 8px); width: 224px; max-width: calc(100vw - 32px); padding: 8px; border: 1px solid var(--hairline); border-radius: 12px; background: var(--surface); box-shadow: 0 8px 28px rgba(32, 35, 32, .12); z-index: 30; }
+.profile-nav__panel .header-nav__link, .profile-nav__signout { display: flex; align-items: center; width: 100%; min-height: 44px; padding: 10px 12px; text-align: left; border: 0; border-radius: 6px; font-size: 14px; text-decoration: none; color: var(--ink); background: transparent; cursor: pointer; }
+.profile-nav__panel .header-nav__link:hover, .profile-nav__signout:hover { background: var(--surface-sunk); }
+.profile-nav__divider { border-top: 1px solid var(--hairline); margin: 6px 4px; }
+@media (max-width: 900px) {
+  .header-nav { gap: 12px; }
+  .header-nav__center { gap: 0; }
+  .header-nav__center .header-nav__link { font-size: 13px; padding: 8px; }
+}
+@media (max-width: 719px) {
+  .header-nav__center { display: none; }
+  .header-nav__actions { gap: 6px; }
+  .header-nav__login { font-size: 13px; padding: 8px; }
+  .header-nav__actions .btn { min-height: 40px; padding: 8px 12px; font-size: 13px; }
+}
