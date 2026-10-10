@@ -10,7 +10,7 @@ const sources = Object.entries(all).filter(([path]) => !path.endsWith(".test.ts"
 const PUBLIC_MUTATIONS = [
   "account.addAddress", "account.generateUploadUrl", "account.removeAddress", "account.removePhoto", "account.setDefaultAddress", "account.setEmailPrefs", "account.setPhoto", "account.updateProfile",
   "admin.cancelBooking", "admin.reactivateProvider", "admin.reactivateUser", "admin.resolveDispute", "admin.resolveReviewReport", "admin.restoreReview", "admin.review", "admin.suspendProvider", "admin.suspendUser", "availability.addTimeOff", "availability.removeTimeOff", "availability.setHours",
-  "bookings.create", "bookings.respondToQuote", "bookings.submitQuote", "bookings.transition", "categories.create", "categories.initDefaults", "categories.move", "categories.setEnabled", "categories.update", "disputes.open", "favourites.toggle", "locations.addSuburbs", "locations.removeSuburb", "locations.setCity", "locations.setSuburbEnabled", "notifications.markAllRead", "notifications.markRead", "providers.addGalleryPhoto", "providers.generateUploadUrl", "providers.removeGalleryPhoto", "providers.removePhoto", "providers.setPhoto", "providers.setServiceAreas", "providers.submitProfile", "providers.updateProfile", "reschedules.propose", "reschedules.respond", "reschedules.withdraw", "reviews.create", "reviews.report",
+  "bookings.create", "bookings.respondToQuote", "bookings.submitQuote", "bookings.transition", "categories.create", "categories.initDefaults", "categories.move", "categories.setEnabled", "categories.update", "disputes.open", "favourites.toggle", "locations.addSuburbs", "locations.dismissReview", "locations.removeSuburb", "locations.resolveReview", "locations.setAreaOpen", "locations.setCity", "locations.setSuburbEnabled", "notifications.markAllRead", "notifications.markRead", "providers.addGalleryPhoto", "providers.addServiceArea", "providers.generateUploadUrl", "providers.removeGalleryPhoto", "providers.removePhoto", "providers.removeServiceArea", "providers.setPhoto", "providers.setServiceAreas", "providers.submitProfile", "providers.updateProfile", "reschedules.propose", "reschedules.respond", "reschedules.withdraw", "reviews.create", "reviews.report",
   "services.archive", "services.create", "services.setEnabled", "services.update",
 ];
 // A public action can write via ctx.runMutation. Add one here deliberately and give it its own signed-out check.
@@ -59,7 +59,14 @@ test("every public mutation refuses a signed-out caller", async () => {
   const requestId = await t.run((ctx) => ctx.db.insert("rescheduleRequests", { bookingId, proposedBy: "customer", proposerId: customerId, newStartsAt: startsAt + 86_400_000, newEndsAt: startsAt + 90_000_000, status: "pending" }));
   const categoryId = await t.run((ctx) => ctx.db.insert("categories", { slug: "roofing", label: "Roofing", icon: "home", hue: "neutral", order: 0, enabled: true }));
   const suburbId = await t.run((ctx) => ctx.db.insert("suburbs", { name: "Ponsonby", key: "ponsonby", enabled: true }));
+  const placeId = await t.run((ctx) => ctx.db.insert("places", { source: "linz", layer: "suburbs_localities", sourceId: "1", kind: "suburb", selectable: true, name: "Ponsonby", nameAscii: "Ponsonby", key: "ponsonby", altNames: [], altKeys: [], regionIds: [], taIds: [], flags: [], active: true, runId: "t" }));
+  const reviewId2 = await t.run((ctx) => ctx.db.insert("locationReviews", { providerId, field: "base", raw: "x", reason: "unmatched", candidateIds: [placeId], status: "open" }));
   const calls = [
+    () => t.mutation(api.locations.setAreaOpen, { placeId, open: false }),
+    () => t.mutation(api.locations.resolveReview, { reviewId: reviewId2, placeId }),
+    () => t.mutation(api.locations.dismissReview, { reviewId: reviewId2 }),
+    () => t.mutation(api.providers.addServiceArea, { placeId }),
+    () => t.mutation(api.providers.removeServiceArea, { placeId }),
     () => t.mutation(api.admin.review, { providerId, decision: "approve", submittedAt: 1 }),
     () => t.mutation(api.bookings.create, { address: "12 Test Street", suburb: "Ponsonby", providerId, customerName: "A", description: "d", startsAt, endsAt: startsAt + 3_600_000 }),
     () => t.mutation(api.bookings.transition, { bookingId, to: "accepted" }),

@@ -40,3 +40,11 @@ export async function saveServiceAreas(fd: FormData) {
   const suburbs = String(fd.get("suburbs") ?? "").split(/[,\n]/).map((x) => x.trim()).filter(Boolean);
   done(await attempt(async () => fetchMutation(api.providers.setServiceAreas, { suburbs }, await authOpts())), `${BACK}?ok=areas`);
 }
+
+export async function addServiceArea(placeId: string) {
+  done(await attempt(async () => fetchMutation(api.providers.addServiceArea, { placeId }, await authOpts())), `${BACK}#area-h`);
+}
+
+export async function removeServiceArea(placeId: string) {
+  done(await attempt(async () => fetchMutation(api.providers.removeServiceArea, { placeId }, await authOpts())), `${BACK}#area-h`);
+}

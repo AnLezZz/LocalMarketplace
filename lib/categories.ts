@@ -24,4 +24,4 @@ export function metaIn(rows: CategoryRow[], slug: string) {
 }
 
 /** The launch city and the suburbs customers may use, loaded once per request. */
-export const loadLocations = cache(async () => (await fetchQuery(api.locations.overview, {})) as { city: string; restricted: boolean; suburbs: string[] });
+export const loadLocations = cache(async () => (await fetchQuery(api.locations.overview, {})) as { city: string; restricted: boolean; places: boolean; suburbs: string[] });

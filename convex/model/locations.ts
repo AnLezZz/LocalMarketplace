@@ -1,5 +1,6 @@
 import { ConvexError } from "convex/values";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
+import { coverageOf, hasPlaces } from "./coverage";
 
 export const DEFAULT_CITY = "Auckland";
 export const MAX_SUBURBS = 500;
@@ -17,6 +18,12 @@ export async function suburbAllowed(ctx: QueryCtx | MutationCtx, suburb: string)
 }
 
 export async function requireSupportedSuburb(ctx: QueryCtx | MutationCtx, suburb: string, message?: (s: string) => string) {
+  if (await hasPlaces(ctx)) {
+    const c = await coverageOf(ctx, suburb);
+    if (c.status === "unrecognised") throw new ConvexError(`We don't recognise "${suburb}" as a place in New Zealand`);
+    if (c.status === "not_launched") throw new ConvexError(`Localo hasn't launched in ${suburb} yet`);
+    return;
+  }
   if (!(await suburbAllowed(ctx, suburb))) throw new ConvexError(message ? message(suburb) : `We don't cover ${suburb} yet`);
 }
 

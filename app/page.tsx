@@ -5,6 +5,7 @@ import { api } from "../lib/convex";
 import { loadCategories, loadLocations, metaIn } from "../lib/categories";
 import { getMe } from "../lib/auth";
 import Icon from "../components/Icon";
+import PlaceInput from "../components/PlaceInput";
 import ProviderPhoto from "../components/ProviderPhoto";
 import { Rating } from "../components/Pill";
 import { type ProviderSummary } from "../components/ProviderCard";
@@ -27,6 +28,7 @@ function href(p: Params) {
 export default async function Home({ searchParams }: { searchParams: Promise<Params> }) {
   const { category, suburb, q } = await searchParams;
   const cats = await loadCategories();
+  const places = await loadLocations();
   const filtered = !!(category || suburb || q);
   const [list, all, me] = await Promise.all([
     fetchQuery(api.providers.list, { category: category || undefined, suburb: suburb || undefined, q: q || undefined }) as Promise<ProviderSummary[]>,
@@ -56,11 +58,12 @@ export default async function Home({ searchParams }: { searchParams: Promise<Par
               <Icon name="search" size={18} />
               <input name="q" placeholder="What do you need help with?" defaultValue={q} autoComplete="off" />
             </label>
-            <label className="lp-search__field">
-              <span className="sr-only">Suburb</span>
+            <div className="lp-search__field">
               <Icon name="pin" size={18} />
-              <input name="suburb" placeholder="Your suburb" defaultValue={suburb} autoComplete="address-level2" />
-            </label>
+              {places.places
+                ? <PlaceInput name="where" idName="place" label="Where" placeholder="Suburb or region" defaultValue={suburb} />
+                : <input name="suburb" aria-label="Suburb" placeholder="Your suburb" defaultValue={suburb} autoComplete="address-level2" />}
+            </div>
             <button className="btn btn--forest">Search</button>
           </form>
         </div>

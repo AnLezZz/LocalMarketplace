@@ -266,3 +266,34 @@ Done: `categories` (slug is the stable key providers store; label, icon, colour,
 Verified: 159 convex tests (helpers, defaults and idempotence, validation, ordering, floor/ceiling, admin-only, audit, profile validation with disabled categories, suburb key normalisation, bulk add dedupe, enforcement in booking/profile/application/service areas, own-suburb exemption) and a browser run: non-admin gets 404; save built-ins, add, duplicate refused, rename, reorder and disable reflected on home chips and the search filter while the provider in a disabled category stays listed; the provider editor offers enabled + own; 52 suburbs added, a Whangarei booking and profile edit refused with a clear message, suggestions on the booking form, unchanged edit with a disabled own suburb allowed; dev data restored (all suburbs removed, categories renamed back, extra "Roofing" left disabled).
 Not built: deleting categories (disable only, so providers keep theirs), per-suburb pricing or provider counts, multiple cities, importing suburbs from a file.
 Dev data left: the six categories are now saved in the database plus a disabled "Roofing".
+
+---
+
+# Location search, Part 1: geography data, import and validation (no UI change)
+
+Sources (verified 2026-10-10, all public ArcGIS feeds, CC BY 4.0, no API key): LINZ NZ Suburbs and Localities (6,563 records, item modified 2026-06-09), Stats NZ Regional Council 2025 (17) and Territorial Authority 2025 (68). Downloaded GeoJSON files are accepted instead via `--linz/--regions/--tas`.
+
+- [x] `places` (recognised geography, separate from marketplace coverage) and `geoImports` (run, source edition/licence/attribution) tables
+- [x] `scripts/geo/transform.mts` (pure): keys, point-in-polygon, TA matching from LINZ's own text, flags, report
+- [x] `scripts/geo-import.mts`: dry run by default, `--apply` upserts through `convex run` (internal functions, no public endpoint)
+- [x] `convex/geoImport.ts`: batched idempotent upsert keyed by (layer, sourceId), retire-not-delete, refuses to retire an unwritten layer
+- [x] Tests on labelled fixtures (including re-import = no duplicates); 169 tests and both typechecks pass
+
+## Part 1 review (2026-10-10)
+Dry run against the live feeds: 6,648 places (17 regions, 68 TAs, 1,174 suburbs, 2,002 localities, 3,387 non-selectable bays/lakes/islands etc.), no duplicate source IDs, 555 names with macrons preserved, 262 duplicate-name flags, 144 multi-council places, 1 centroid/TA disagreement (John Creek), 0 unmatched TA names, 0 unresolved regions.
+Auckland boundary evidence: TA 076 = 286 places, Regional Council 02 = 280, LINZ major name "Auckland" = 175. The six only in the TA: Buckland, Lake Puketi, Mangatāwhiri, Mangawhai, Pukekohe East, Whakatīwai (they straddle the region edge).
+NOT done: nothing written to any Convex deployment; `suburbs` table untouched and still enforced; no UI. TA-to-region links are not stored (suburbs carry their region directly).
+
+# Location search, Part 2: coverage, provider service areas, migration review (2026-10-10)
+Nationwide: once `places` exist, coverage = recognised and not under a `closedAreas` row (region, council area or suburb; closing a wider area closes what is inside). The legacy `suburbs` list and city setting go dormant (still used if no geography is imported). Providers: `baseAreaId` (that suburb only) + `serviceAreaIds` (suburbs, councils, regions) picked via `searchPlaces`; booking uses `providerServes`. Providers not yet migrated keep their old rules (incl. empty list = anywhere); `geoMigration:migrateProviders` links exact matches, queues ambiguous/unmatched in `locationReviews` (admin resolves on /admin/locations), then empty list means base suburb only.
+Verified: 179 tests, typecheck; dev dry-run: 9 providers, 9 base suburbs link exactly, 0 reviews. Migration NOT yet run for real; browser pass of the new admin/provider UI not done.
+Not built: autocomplete UI, search by place IDs, empty states (Part 3); alt-name matching (altKeys unindexed); disambiguating an ambiguous suburb at sign-up (goes to review).
+
+# Location search, Part 3: autocomplete, search by place, empty states (2026-10-10)
+`providerAreas` (search rows: "serves" the exact place, "within" for ancestors) rebuilt by `syncProviderAreas` on any change; `providers.list({placeId})` is indexed, not a scan. `resolveSearchPlace` -> unrecognised | not_launched | ambiguous | ok (region beats council beats suburb of the same name; two of one kind ask). `PlaceInput` ARIA combobox on home and /search (plain text field without JS). Empty states: unrecognised, not launched, no one serves the place, none in that category/keyword, filters exclude. Old `?suburb=` links still work.
+Verified: 185 tests, typecheck, SSR checks against the dev data (each empty state, "Which Springfield?" with councils/regions, Ponsonby 3 vs Auckland wider). Dev migration run (9 providers linked) and syncAll. NOT verified: interactive combobox in a browser (Chrome extension unavailable).
+Not built: booking-form suburb autocomplete (still free text, validated), alt-name matching, a "city" kind (cities are found via their council, region or locality names).
+
+Part 3 addendum: browse panel like Trade Me (Region > District > Suburb selects, each starting "All of ..."; Apply picks the most specific). `placeParents` edges (suburb>council, council>region, derived from the source data; rebuilt on every import) + `locations.children`. Dev re-imported. 187 tests. Not browser-tested (Chrome extension unavailable).
+
+Part 3 addendum 2: picker is Region > District > Suburb. Districts = council areas, except Auckland where its 21 local boards (Auckland Council "Local Electoral Boundary" layer 2, 2025 elections, CC BY 4.0) replace the single council entry (TA flagged `has_districts`; local boards belong to council 076 by definition). Stats NZ TA subdivisions were tried and dropped: they leave ~83% of suburbs outside any subdivision. 6 border suburbs (Buckland, Mangawhai...) have no local board and sit under their other council. A board with no suburbs (Aotea / Great Barrier) does not appear in the picker. Dev re-imported; 190 tests; browser-checked Auckland (20 boards listed + Waikato District) and Canterbury (14 districts).

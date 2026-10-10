@@ -4,7 +4,7 @@ import { api } from "../../../lib/convex";
 import { authOpts } from "../../../lib/auth";
 import { requireAdminPage } from "../../../lib/adminGuard";
 import AdminShell from "../../../components/dashboard/AdminShell";
-import { addPopularSuburbs, addSuburbs, removeSuburb, saveCity, setSuburbEnabled } from "../actions";
+import { addPopularSuburbs, addSuburbs, dismissLocationReview, removeSuburb, resolveLocationReview, saveCity, setAreaOpen, setSuburbEnabled } from "../actions";
 
 export const dynamic = "force-dynamic";
 type Row = { _id: string; name: string; enabled: boolean };
@@ -12,6 +12,9 @@ type Row = { _id: string; name: string; enabled: boolean };
 export default async function AdminLocations({ searchParams }: { searchParams: Promise<{ q?: string; err?: string; ok?: string }> }) {
   await requireAdminPage();
   const { q, err, ok } = await searchParams;
+  const opts = await authOpts();
+  const cov = (await fetchQuery(api.locations.adminCoverage, {}, opts)) as { imported: boolean; regions: { _id: string; name: string; open: boolean }[]; closed: { _id: string; name: string; kind: string; context: string }[] };
+  if (cov.imported) return <Coverage cov={cov} q={q} err={err} ok={ok} />;
   const data = (await fetchQuery(api.locations.adminList, {}, await authOpts())) as { city: string; suburbs: Row[] };
   const shown = q ? data.suburbs.filter((s) => s.name.toLowerCase().includes(q.toLowerCase())) : data.suburbs;
   const enabled = data.suburbs.filter((s) => s.enabled).length;
@@ -52,6 +55,58 @@ export default async function AdminLocations({ searchParams }: { searchParams: P
             {shown.length === 0 && <p className="field__hint">No suburbs match.</p>}
           </>
         )}
+      </section>
+    </AdminShell>
+  );
+}
+
+type Place = { _id: string; name: string; kind: string; context: string; open: boolean };
+async function Coverage({ cov, q, err, ok }: { cov: { regions: { _id: string; name: string; open: boolean }[]; closed: { _id: string; name: string; kind: string; context: string }[] }; q?: string; err?: string; ok?: string }) {
+  const opts = await authOpts();
+  const found = q ? ((await fetchQuery(api.locations.searchPlaces, { q, limit: 25 })) as Place[]) : [];
+  const reviews = (await fetchQuery(api.locations.reviews, {}, opts)) as { _id: string; provider: string; field: string; raw: string; reason: string; candidates: { _id: string; name: string; context: string }[] }[];
+  const back = `/admin/locations${q ? `?q=${encodeURIComponent(q)}` : ""}`;
+  const toggle = (p: { _id: string; name: string }, open: boolean) => (
+    <form action={setAreaOpen.bind(null, p._id, !open)}><input type="hidden" name="back" value={back} /><button className="btn btn--secondary btn--sm" aria-label={`${open ? "Close" : "Open"} ${p.name}`}>{open ? "Close" : "Open"}</button></form>
+  );
+  return (
+    <AdminShell active="locations" title="Locations" sub="Localo covers all of New Zealand. Close a region, council area or suburb to stop new bookings and service areas there; closing a wider area closes everything inside it." err={err} ok={ok}>
+      <section className="card d-card" aria-labelledby="reg-h">
+        <div className="d-card__head"><h2 id="reg-h" className="d-card__title">Regions</h2><span className="d-card__sub num">{cov.regions.filter((r) => r.open).length} open of {cov.regions.length}</span></div>
+        <ul className="adm-list">
+          {cov.regions.map((r) => (
+            <li key={r._id} className="adm-row"><div className="adm-row__main"><strong>{r.name} <span className={`pill pill--${r.open ? "completed" : "neutral"}`}>{r.open ? "Open" : "Closed"}</span></strong></div><div className="adm-act">{toggle(r, r.open)}</div></li>
+          ))}
+        </ul>
+      </section>
+
+      <section className="card d-card" aria-labelledby="find-h">
+        <div className="d-card__head"><h2 id="find-h" className="d-card__title">Council areas and suburbs</h2></div>
+        <form className="adm-search" role="search"><input name="q" defaultValue={q} placeholder="Search by name" aria-label="Search places" /><button className="btn btn--secondary btn--sm">Search</button>{q && <Link href="/admin/locations" className="lp-link">Clear</Link>}</form>
+        {q && found.length === 0 && <p className="field__hint">No place matches.</p>}
+        <ul className="adm-list">
+          {found.map((p) => (
+            <li key={p._id} className="adm-row"><div className="adm-row__main"><strong>{p.name}</strong> <span className="field__hint">{p.context}</span> <span className={`pill pill--${p.open ? "completed" : "neutral"}`}>{p.open ? "Open" : "Closed"}</span></div><div className="adm-act">{toggle(p, p.open)}</div></li>
+          ))}
+        </ul>
+        {cov.closed.length > 0 && (<><h3 className="d-card__title">Closed</h3><ul className="adm-list">
+          {cov.closed.map((p) => <li key={p._id} className="adm-row"><div className="adm-row__main"><strong>{p.name}</strong> <span className="field__hint">{p.context}</span></div><div className="adm-act">{toggle(p, false)}</div></li>)}
+        </ul></>)}
+      </section>
+
+      <section className="card d-card" aria-labelledby="rev-h">
+        <div className="d-card__head"><h2 id="rev-h" className="d-card__title">Provider locations to review</h2><span className="d-card__sub num">{reviews.length}</span></div>
+        <p className="field__hint">Locations typed by providers that could not be matched to exactly one place. Nothing is changed until you choose.</p>
+        {reviews.length === 0 && <p className="field__hint">Nothing to review.</p>}
+        <ul className="adm-list">
+          {reviews.map((r) => (
+            <li key={r._id} className="adm-row"><div className="adm-row__main"><strong>{r.provider}</strong> <span className="field__hint">{r.field === "base" ? "base suburb" : "service area"} &ldquo;{r.raw}&rdquo; · {r.reason}</span>
+              <div className="adm-act">{r.candidates.map((c) => (
+                <form key={c._id} action={resolveLocationReview.bind(null, r._id, c._id)}><input type="hidden" name="back" value={back} /><button className="btn btn--secondary btn--sm">{c.name}{c.context && `, ${c.context}`}</button></form>
+              ))}</div></div>
+              <form action={dismissLocationReview.bind(null, r._id)}><input type="hidden" name="back" value={back} /><button className="btn btn--danger btn--sm">Dismiss</button></form></li>
+          ))}
+        </ul>
       </section>
     </AdminShell>
   );

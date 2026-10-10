@@ -7,10 +7,11 @@ import { notify } from "./model/notify";
 import { withdrawPendingReschedules } from "./model/reschedules";
 import { latestDispute } from "./model/disputes";
 import { latestReschedule } from "./model/reschedules";
-import { providerMaySeePrivate, servesSuburb, validateJob } from "./model/jobDetails";
+import { providerMaySeePrivate, validateJob } from "./model/jobDetails";
 import { snapshotPrice, validateQuote, type PriceType } from "./model/pricing";
 import { isTimeAvailable } from "./model/availability";
 import { requireSupportedSuburb } from "./model/locations";
+import { providerServes } from "./model/coverage";
 
 export const create = mutation({
   args: {
@@ -32,7 +33,7 @@ export const create = mutation({
     if (customerName.length > 100 || description.length > 2000) throw new ConvexError("One of the fields is too long");
     const job = validateJob({ address: a.address, suburb: a.suburb, accessNotes: a.accessNotes, shareContact: a.shareContact ?? false, phone: a.phone });
     await requireSupportedSuburb(ctx, job.suburb, (s) => `We don't operate in ${s} yet`);
-    if (!servesSuburb(provider, job.suburb)) throw new ConvexError(`${provider.name} doesn't service ${job.suburb}`);
+    if (!(await providerServes(ctx, provider, job.suburb))) throw new ConvexError(`${provider.name} doesn't service ${job.suburb}`);
     // Refuse times the provider has closed or blocked. Providers who never set hours are only checked
     // against blocked time and accepted bookings, so existing listings keep working.
     if (!(await isTimeAvailable(ctx, provider._id, a.startsAt, a.endsAt))) throw new ConvexError("That time isn't available");

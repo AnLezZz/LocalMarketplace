@@ -3,6 +3,7 @@ import { fetchQuery } from "convex/nextjs";
 import { api } from "../../lib/convex";
 import { loadCategories, loadLocations, metaIn } from "../../lib/categories";
 import SuburbOptions from "../../components/SuburbOptions";
+import PlaceInput from "../../components/PlaceInput";
 import Icon from "../../components/Icon";
 import ProviderPhoto from "../../components/ProviderPhoto";
 import { Rating } from "../../components/Pill";
@@ -14,7 +15,9 @@ import "./search.css";
 
 export const dynamic = "force-dynamic";
 
-type Params = { q?: string; suburb?: string; category?: string; max?: string; rating?: string; sort?: string };
+type Params = { q?: string; suburb?: string; where?: string; place?: string; category?: string; max?: string; rating?: string; sort?: string };
+type Place = { _id: string; name: string; kind: string; context: string };
+type Resolved = { status: "unrecognised" } | { status: "not_launched"; name: string } | { status: "ambiguous"; options: Place[] } | { status: "ok"; place: Place };
 
 const SORTS: Record<string, [string, (a: ProviderSummary, b: ProviderSummary) => number]> = {
   best: ["Best match", (a, b) => b.ratingAvg - a.ratingAvg || b.reviewCount - a.reviewCount],
@@ -24,15 +27,24 @@ const SORTS: Record<string, [string, (a: ProviderSummary, b: ProviderSummary) =>
 };
 
 export default async function Search({ searchParams }: { searchParams: Promise<Params> }) {
-  const { q, suburb, category, max, rating, sort } = await searchParams;
+  const { q, suburb: legacySuburb, where: whereParam, place, category, max, rating, sort } = await searchParams;
   const cats = await loadCategories();
   const places = await loadLocations();
-  const all = (await fetchQuery(api.providers.list, { category: category || undefined, suburb: suburb || undefined, q: q || undefined })) as ProviderSummary[];
+  const where = (whereParam ?? legacySuburb ?? "").trim();
+  const suburb = where; // what the box shows and the links carry
+  // With geography imported the place is resolved on the server; otherwise the old suburb text filter applies.
+  const resolved: Resolved | null = places.places && (where || place)
+    ? ((await fetchQuery(api.locations.resolveSearchPlace, { name: where || undefined, placeId: place || undefined })) as Resolved)
+    : null;
+  const placeId = resolved?.status === "ok" ? resolved.place._id : undefined;
+  const find = async (extra: { category?: string; q?: string }) => (resolved && !placeId ? [] : ((await fetchQuery(api.providers.list, { ...extra, ...(placeId ? { placeId } : { suburb: where || undefined }) })) as ProviderSummary[]));
+  const all = await find({ category: category || undefined, q: q || undefined });
+  const atPlace = placeId && all.length === 0 && (category || q) ? await find({}) : all;
   const saved = new Set((await fetchQuery(api.favourites.mineIds, {}, await authOpts())) as string[]);
   const tags = new Map<string, string[]>();
   for (const t of (await fetchQuery(api.services.listPublic, {})) as { providerId: string; name: string }[]) tags.set(t.providerId, [...(tags.get(t.providerId) ?? []), t.name]);
   // The heart returns here with the same keyword and filters.
-  const here = `/search${Object.entries({ q, suburb, category, max, rating, sort }).filter(([, v]) => v).length ? "?" + new URLSearchParams(Object.entries({ q, suburb, category, max, rating, sort }).filter(([, v]) => v) as [string, string][]).toString() : ""}`;
+  const here = `/search${Object.entries({ q, where: suburb, place: placeId, category, max, rating, sort }).filter(([, v]) => v).length ? "?" + new URLSearchParams(Object.entries({ q, where: suburb, place: placeId, category, max, rating, sort }).filter(([, v]) => v) as [string, string][]).toString() : ""}`;
   const maxCents = Number(max) * 100, minRating = Number(rating);
   const sortKey = sort && SORTS[sort] ? sort : "best";
   const list = all
@@ -49,11 +61,12 @@ export default async function Search({ searchParams }: { searchParams: Promise<P
             <Icon name="search" size={18} />
             <input name="q" placeholder="What do you need help with?" defaultValue={q} autoComplete="off" />
           </label>
-          <label className="srch__field">
-            <span className="sr-only">Suburb</span>
+          <div className="srch__field">
             <Icon name="pin" size={18} />
-            <input name="suburb" placeholder="Suburb" defaultValue={suburb} autoComplete="address-level2" list="suburb-options" />
-          </label>
+            {places.places
+              ? <PlaceInput name="where" idName="place" label="Where" placeholder="Suburb or region" defaultValue={where} defaultId={placeId ?? ""} />
+              : <input name="suburb" aria-label="Suburb" placeholder="Suburb" defaultValue={suburb} autoComplete="address-level2" list="suburb-options" />}
+          </div>
           <button className="srch__go" aria-label="Search">
             <Icon name="search" size={20} />
           </button>
@@ -98,9 +111,18 @@ export default async function Search({ searchParams }: { searchParams: Promise<P
 
       {list.length === 0 ? (
         <div className="empty card">
-          <span className="empty__icon"><Icon name="search" size={26} /></span>
-          <h2 className="empty__title">No pros match that search</h2>
-          <p className="empty__text">Try another suburb, keyword or filter.</p>
+          <span className="empty__icon"><Icon name={resolved ? "pin" : "search"} size={26} /></span>
+          {(() => {
+            const catLabel = category ? metaIn(cats.all, category).label.toLowerCase() : "";
+            if (resolved?.status === "unrecognised") return <><h2 className="empty__title">We don&apos;t recognise &ldquo;{where}&rdquo;</h2><p className="empty__text">Check the spelling, or try a nearby suburb, a city or a region.</p></>;
+            if (resolved?.status === "not_launched") return <><h2 className="empty__title">Localo hasn&apos;t launched in {resolved.name} yet</h2><p className="empty__text">We&apos;re not taking bookings there yet. Try a nearby area.</p></>;
+            if (resolved?.status === "ambiguous") return <><h2 className="empty__title">Which {where}?</h2><p className="empty__text">More than one place has that name.</p>
+              <ul className="srch__choices">{resolved.options.map((o) => <li key={o._id}><Link href={`/search?${new URLSearchParams({ ...(q ? { q } : {}), ...(category ? { category } : {}), where: o.name, place: o._id }).toString()}`}><strong>{o.name}</strong><span className="field__hint">{o.context || "Region"}</span></Link></li>)}</ul></>;
+            if (resolved?.status === "ok" && atPlace.length === 0) return <><h2 className="empty__title">No providers serve {resolved.place.name} yet</h2><p className="empty__text">Localo is open there, but nobody has added it as a service area. Try a wider area, such as the region.</p></>;
+            if (resolved?.status === "ok" && all.length === 0) return <><h2 className="empty__title">No {catLabel ? `${catLabel} ` : ""}providers serve {resolved.place.name}{q ? ` for “${q}”` : ""}</h2><p className="empty__text">{atPlace.length} {atPlace.length === 1 ? "provider serves" : "providers serve"} {resolved.place.name} in other categories. Try removing the category or keyword.</p></>;
+            if (resolved?.status === "ok") return <><h2 className="empty__title">Your filters exclude everyone</h2><p className="empty__text">{all.length} {all.length === 1 ? "provider serves" : "providers serve"} {resolved.place.name}, but none match the price or rating you chose.</p></>;
+            return <><h2 className="empty__title">No pros match that search</h2><p className="empty__text">Try another suburb, keyword or filter.</p></>;
+          })()}
           <Link href="/search" className="btn btn--secondary">Clear filters</Link>
         </div>
       ) : (

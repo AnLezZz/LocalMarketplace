@@ -9,9 +9,10 @@ body:has(.lp) { background: var(--ivory); }
 .lp-link { color: var(--forest); font-size: 14px; font-weight: 500; text-decoration: none; }
 .lp-link:hover { text-decoration: underline; }
 
-.lp-hero { position: relative; overflow: hidden; border-radius: 22px; min-height: 420px; display: flex; align-items: flex-end; color: #fff; background: var(--charcoal); }
-.lp-hero__img { object-fit: cover; object-position: 70% 30%; }
-.lp-hero::after { content: ""; position: absolute; inset: 0; background: linear-gradient(90deg, rgba(20,28,22,.72) 0%, rgba(20,28,22,.35) 55%, rgba(20,28,22,0) 100%); }
+.lp-hero { position: relative; border-radius: 22px; min-height: 420px; display: flex; align-items: flex-end; color: #fff; background: var(--charcoal); }
+/* The hero does not clip, so the location panel can drop below it; the image and shade carry the rounded corners instead. */
+.lp-hero__img { object-fit: cover; object-position: 70% 30%; border-radius: 22px; }
+.lp-hero::after { content: ""; position: absolute; inset: 0; border-radius: 22px; background: linear-gradient(90deg, rgba(20,28,22,.72) 0%, rgba(20,28,22,.35) 55%, rgba(20,28,22,0) 100%); }
 .lp-hero__body { position: relative; z-index: 1; padding: var(--s-6); width: 100%; max-width: 640px; }
 .lp-hero__title { font-family: var(--serif); font-weight: 400; font-size: clamp(40px, 9vw, 64px); line-height: 1.02; letter-spacing: -0.01em; }
 .lp-hero__sub { margin: var(--s-3) 0 var(--s-5); font-size: 16px; opacity: .92; }
@@ -55,7 +56,7 @@ body:has(.lp) { background: var(--ivory); }
 @media (min-width: 720px) {
   .lp-hero { min-height: 480px; }
   .lp-hero__body { padding: var(--s-10); }
-  .lp-search { grid-template-columns: 1.8fr 1fr auto; align-items: center; }
+  .lp-search { grid-template-columns: 1.4fr 1fr auto; align-items: center; }
   .lp-cats { justify-content: safe center; gap: var(--s-8); }
   .lp-steps { grid-template-columns: repeat(3, 1fr); }
   .lp-cta { min-height: 280px; }

@@ -8,7 +8,7 @@ import DashboardSidebar from "../../../components/dashboard/DashboardSidebar";
 import Icon from "../../../components/Icon";
 import Banner from "../../../components/Banner";
 import { durationLabel, priceLabel } from "../../../components/format";
-import { archiveService, saveService, saveServiceAreas, setServiceEnabled } from "./actions";
+import { addServiceArea, archiveService, removeServiceArea, saveService, saveServiceAreas, setServiceEnabled } from "./actions";
 import "../../providers/[id]/booking.css";
 
 export const dynamic = "force-dynamic";
@@ -17,13 +17,17 @@ type Service = { _id: string; name: string; description: string; priceType: "fix
 
 const DURATIONS = [30, 45, 60, 90, 120, 180, 240, 300, 360, 480];
 
-export default async function Services({ searchParams }: { searchParams: Promise<{ err?: string; edit?: string; ok?: string }> }) {
-  const { err, edit, ok } = await searchParams;
+export default async function Services({ searchParams }: { searchParams: Promise<{ err?: string; edit?: string; ok?: string; area?: string }> }) {
+  const { err, edit, ok, area } = await searchParams;
   const opts = await authOpts();
   const profile = await fetchQuery(api.providers.mine, {}, opts);
   if (!profile) redirect("/provider/register");
   const services = (await fetchQuery(api.services.listMine, {}, opts)) as Service[];
   const editing = services.find((s) => s._id === edit);
+  type Place = { _id: string; name: string; kind: string; context: string; open: boolean };
+  const mine = (await fetchQuery(api.locations.myAreas, {}, opts)) as { enabled: boolean; base: Place | null; areas: Place[] } | null;
+  const found = mine?.enabled && area ? ((await fetchQuery(api.locations.searchPlaces, { q: area })) as Place[]) : [];
+  const chosen = new Set((mine?.areas ?? []).map((a) => a._id));
 
   return (
     <div className="d-layout">
@@ -72,6 +76,28 @@ export default async function Services({ searchParams }: { searchParams: Promise
 
         <section className="card d-card" aria-labelledby="area-h">
           <div className="d-card__head"><h2 id="area-h" className="d-card__title">Service area</h2><span className="d-card__sub">Based in {profile.suburb}</span></div>
+          {mine?.enabled ? (
+            <div className="form">
+              <p className="field__hint">{mine.base ? <>Your base: <strong>{mine.base.name}</strong>{mine.base.context && ` (${mine.base.context})`}. It covers that suburb only.</> : "Your base suburb is waiting for review, so for now you serve that suburb only."} Add every suburb, council area or region you travel to; a wider area includes everything inside it.</p>
+              {(mine.areas.length > 0) && (
+                <ul className="adm-list">
+                  {mine.areas.map((a) => (
+                    <li key={a._id} className="adm-row"><div className="adm-row__main"><strong>{a.name}</strong> <span className="field__hint">{a.kind === "region" ? "Whole region" : a.kind === "territorial_authority" ? "Whole council area" : a.context}</span></div>
+                      <form action={removeServiceArea.bind(null, a._id)}><button className="btn btn--secondary btn--sm" aria-label={`Remove ${a.name}`}>Remove</button></form></li>
+                  ))}
+                </ul>
+              )}
+              <form className="adm-search" role="search"><label htmlFor="area" className="field__label">Add a place</label>
+                <input id="area" name="area" defaultValue={area} placeholder="Type a suburb, council area or region" autoComplete="off" /><button className="btn btn--secondary btn--sm">Search</button></form>
+              {area && found.length === 0 && <p className="field__hint">No New Zealand place matches &ldquo;{area}&rdquo;.</p>}
+              <ul className="adm-list">
+                {found.map((p) => (
+                  <li key={p._id} className="adm-row"><div className="adm-row__main"><strong>{p.name}</strong> <span className="field__hint">{p.context}{!p.open && " · not launched yet"}</span></div>
+                    {chosen.has(p._id) ? <span className="pill pill--neutral">Added</span> : p.open ? <form action={addServiceArea.bind(null, p._id)}><button className="btn btn--primary btn--sm" aria-label={`Add ${p.name}, ${p.context}`}>Add</button></form> : <span className="pill pill--neutral">Not launched</span>}</li>
+                ))}
+              </ul>
+            </div>
+          ) : (
           <form action={saveServiceAreas} className="form">
             <div className="field">
               <label htmlFor="suburbs" className="field__label">Other suburbs you travel to (one per line or comma separated)</label>
@@ -80,6 +106,7 @@ export default async function Services({ searchParams }: { searchParams: Promise
             </div>
             <button className="btn btn--secondary">Save service area</button>
           </form>
+          )}
         </section>
 
         <section className="card d-card" id="form" aria-labelledby="form-h">

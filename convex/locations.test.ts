@@ -32,7 +32,7 @@ describe("suburbKey", () => {
 describe("overview and city", () => {
   test("defaults to Auckland with no restriction; the city can be changed", async () => {
     const { t, admin, customer } = await world();
-    expect(await t.query(api.locations.overview, {})).toEqual({ city: "Auckland", restricted: false, suburbs: [] });
+    expect(await t.query(api.locations.overview, {})).toEqual({ city: "Auckland", restricted: false, places: false, suburbs: [] });
     await admin.mutation(api.locations.setCity, { city: "  Wellington  " });
     expect((await customer.query(api.locations.overview, {})).city).toBe("Wellington");
     await expect(admin.mutation(api.locations.setCity, { city: " " })).rejects.toThrow("city");

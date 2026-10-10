@@ -42,3 +42,7 @@ export const addPopularSuburbs = async (fd: FormData) => {
 };
 export const setSuburbEnabled = async (id: string, enabled: boolean, fd: FormData) => run(fd, (o) => fetchMutation(api.locations.setSuburbEnabled, { id, enabled }, o), enabled ? "Suburb enabled." : "Suburb disabled.");
 export const removeSuburb = async (id: string, fd: FormData) => run(fd, (o) => fetchMutation(api.locations.removeSuburb, { id }, o), "Suburb removed.");
+
+export const setAreaOpen = async (placeId: string, open: boolean, fd: FormData) => run(fd, (o) => fetchMutation(api.locations.setAreaOpen, { placeId, open }, o), open ? "Area opened." : "Area closed.");
+export const resolveLocationReview = async (reviewId: string, placeId: string, fd: FormData) => run(fd, (o) => fetchMutation(api.locations.resolveReview, { reviewId, placeId }, o), "Location linked.");
+export const dismissLocationReview = async (reviewId: string, fd: FormData) => run(fd, (o) => fetchMutation(api.locations.dismissReview, { reviewId }, o), "Review dismissed.");

@@ -1,16 +1,29 @@
 import { ConvexError, v } from "convex/values";
 import { mutation, query } from "./_generated/server";
-import type { Doc } from "./_generated/dataModel";
+import type { Doc, Id } from "./_generated/dataModel";
 import { getUser, requireUser } from "./model/auth";
 import { getProviderForUser, providerStatus, validateProfile } from "./model/providers";
 import { requireActiveCategory } from "./model/categories";
 import { requireSupportedSuburb } from "./model/locations";
+import { hasPlaces, isClosed, linkBase, MAX_AREAS, syncProviderAreas } from "./model/coverage";
 import { checkImage, MAX_GALLERY, withPhotoUrl } from "./model/photos";
 
 export const list = query({
-  args: { category: v.optional(v.string()), suburb: v.optional(v.string()), q: v.optional(v.string()) },
-  handler: async (ctx, { category, suburb, q }) => {
-    const all = await ctx.db.query("providers").withIndex("by_approved", (i) => i.eq("approved", true)).collect();
+  args: { category: v.optional(v.string()), suburb: v.optional(v.string()), q: v.optional(v.string()), placeId: v.optional(v.id("places")) },
+  handler: async (ctx, { category, suburb, q, placeId }) => {
+    // By place: providers who serve it, a wider area around it, or (for a region or council) something inside it. Indexed, not a scan.
+    let all: Doc<"providers">[];
+    if (placeId) {
+      const place = await ctx.db.get(placeId);
+      if (!place) return [];
+      const ids = new Set<string>();
+      for (const [pid, mode] of [[placeId, "serves"], [placeId, "within"], ...[...place.regionIds, ...place.taIds, ...(place.subdivisionIds ?? [])].map((a) => [a, "serves"] as const)] as const) {
+        for (const r of await ctx.db.query("providerAreas").withIndex("by_place", (i) => i.eq("placeId", pid).eq("mode", mode)).take(500)) ids.add(r.providerId);
+      }
+      all = (await Promise.all([...ids].map((id) => ctx.db.get(id as Id<"providers">)))).flatMap((p) => (p?.approved ? [p] : []));
+    } else {
+      all = await ctx.db.query("providers").withIndex("by_approved", (i) => i.eq("approved", true)).collect();
+    }
     const s = suburb?.toLowerCase(), k = q?.toLowerCase();
     const found = all.filter((p) =>
       (!category || p.category === category) &&
@@ -60,12 +73,15 @@ export const submitProfile = mutation({
       // Strictly increasing, so two submits in the same millisecond still get distinct stamps.
       const submittedAt = Math.max(Date.now(), (existing.submittedAt ?? 0) + 1);
       await ctx.db.patch(existing._id, { ...fields, submittedAt, reviewedAt: undefined, rejectionReason: undefined });
+      if (await hasPlaces(ctx)) await linkBase(ctx, existing, fields.suburb);
       return existing._id;
     }
     const id = await ctx.db.insert("providers", {
       ...fields, userId: user._id, ratingAvg: 0, reviewCount: 0, approved: false, submittedAt: Date.now(),
     });
     await ctx.db.patch(user._id, { role: "provider" });
+    const created = await ctx.db.get(id);
+    if (created && (await hasPlaces(ctx))) await linkBase(ctx, created, fields.suburb);
     return id;
   },
 });
@@ -109,6 +125,7 @@ export const updateProfile = mutation({
     if (fields.category !== provider.category) await requireActiveCategory(ctx, fields.category);
     if (fields.suburb.toLowerCase() !== provider.suburb.toLowerCase()) await requireSupportedSuburb(ctx, fields.suburb, (s) => `We don't operate in ${s} yet. Pick a suburb from the list.`);
     await ctx.db.patch(provider._id, fields);
+    if (fields.suburb.toLowerCase() !== provider.suburb.toLowerCase() && (await hasPlaces(ctx))) await linkBase(ctx, provider, fields.suburb);
   },
 });
 
@@ -191,5 +208,30 @@ export const galleryMine = query({
     const user = await getUser(ctx);
     const provider = user && (await getProviderForUser(ctx, user._id));
     return provider ? await galleryOf(ctx, provider._id) : [];
+  },
+});
+
+/** Adds a place (suburb, council area or region) the owner serves. Independent of where they are based. */
+export const addServiceArea = mutation({
+  args: { placeId: v.id("places") },
+  handler: async (ctx, { placeId }) => {
+    const provider = await ownProvider(ctx);
+    const place = await ctx.db.get(placeId);
+    if (!place || !place.selectable || !place.active) throw new ConvexError("That place isn't available");
+    if (await isClosed(ctx, place)) throw new ConvexError(`Localo hasn't launched in ${place.name} yet`);
+    const areas = provider.serviceAreaIds ?? [];
+    if (areas.includes(placeId)) return;
+    if (areas.length >= MAX_AREAS) throw new ConvexError(`You can serve at most ${MAX_AREAS} areas. Pick a wider one, such as a region.`);
+    await ctx.db.patch(provider._id, { serviceAreaIds: [...areas, placeId] });
+    await syncProviderAreas(ctx, provider._id);
+  },
+});
+
+export const removeServiceArea = mutation({
+  args: { placeId: v.id("places") },
+  handler: async (ctx, { placeId }) => {
+    const provider = await ownProvider(ctx);
+    await ctx.db.patch(provider._id, { serviceAreaIds: (provider.serviceAreaIds ?? []).filter((id) => id !== placeId) });
+    await syncProviderAreas(ctx, provider._id);
   },
 });
