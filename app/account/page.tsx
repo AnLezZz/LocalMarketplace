@@ -13,6 +13,7 @@ import { addAddress, makeDefault, removeAddress, removePhoto, savePrefs, savePro
 import "../bookings/bookings.css";
 import "../providers/[id]/booking.css";
 import "./account.css";
+import AccountShell from "../../components/AccountShell";
 
 export const dynamic = "force-dynamic";
 const OK: Record<string, string> = {
@@ -32,7 +33,7 @@ export default async function Account({ searchParams }: { searchParams: Promise<
   const roleHome = me.role === "admin" ? { href: "/admin", label: "Admin dashboard" } : me.role === "provider" ? { href: "/provider", label: "Provider dashboard" } : null;
 
   return (
-    <div className="page page--narrow acct">
+    <AccountShell active="settings"><div className="acct-pane acct">
       <h1 className="page__title">Account settings</h1>
       <p className="page__sub">Manage your details, saved addresses and which emails you get.</p>
       {err && <Banner tone="error">{err}</Banner>}
@@ -113,6 +114,6 @@ export default async function Account({ searchParams }: { searchParams: Promise<
         <h2 id="sec-h" className="card__title">Password</h2>
         <p className="field__hint">To change your password, sign out and use &ldquo;Forgot your password?&rdquo; on the sign-in page. We&apos;ll email you a code.</p>
       </section>
-    </div>
+    </div></AccountShell>
   );
 }

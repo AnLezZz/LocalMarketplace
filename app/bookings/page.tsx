@@ -11,6 +11,7 @@ import Banner from "../../components/Banner";
 import { StatusPill } from "../../components/Pill";
 import { bookingPriceLine, bookingWindow } from "../../components/format";
 import "./bookings.css";
+import AccountShell from "../../components/AccountShell";
 
 const TABS = [["upcoming", "Upcoming"], ["past", "Past"], ["cancelled", "Cancelled"]] as const;
 type Tab = (typeof TABS)[number][0];
@@ -45,7 +46,7 @@ export default async function MyBookings({ searchParams }: { searchParams: Promi
   }
 
   return (
-    <div className="page page--narrow">
+    <AccountShell active="bookings"><div className="acct-pane">
       <h1 className="page__title">My bookings</h1>
       <nav className="btabs" aria-label="Booking status">
         {TABS.map(([k, label]) => (
@@ -99,6 +100,6 @@ export default async function MyBookings({ searchParams }: { searchParams: Promi
           );
         })}
       </ul>
-    </div>
+    </div></AccountShell>
   );
 }

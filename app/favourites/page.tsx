@@ -10,6 +10,7 @@ import { Rating } from "../../components/Pill";
 import { loadCategories, metaIn } from "../../lib/categories";
 import type { ProviderSummary } from "../../components/ProviderCard";
 import "../search/search.css";
+import AccountShell from "../../components/AccountShell";
 
 export const dynamic = "force-dynamic";
 
@@ -18,7 +19,7 @@ export default async function Favourites({ searchParams }: { searchParams: Promi
   const cats = await loadCategories();
   const list = (await fetchQuery(api.favourites.listMine, {}, await authOpts())) as ProviderSummary[];
   return (
-    <div className="page page--narrow srch">
+    <AccountShell active="favourites"><div className="acct-pane srch">
       <h1 className="page__title">My favourites</h1>
       <p className="page__sub">Keep track of your trusted providers.</p>
       {err && <Banner tone="error">{err}</Banner>}
@@ -47,6 +48,6 @@ export default async function Favourites({ searchParams }: { searchParams: Promi
           ))}
         </ul>
       )}
-    </div>
+    </div></AccountShell>
   );
 }

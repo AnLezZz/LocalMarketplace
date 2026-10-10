@@ -14,6 +14,7 @@ import RescheduleBox from "../../../components/RescheduleBox";
 import BookingWhere from "../../../components/BookingWhere";
 import "../bookings.css";
 import "../../providers/[id]/booking.css";
+import AccountShell from "../../../components/AccountShell";
 
 export const dynamic = "force-dynamic";
 
@@ -53,7 +54,7 @@ export default async function BookingDetail({ params, searchParams }: { params: 
   const priceLine = bookingPriceLine(b, hours);
 
   return (
-    <div className="page page--narrow">
+    <AccountShell active="bookings"><div className="acct-pane">
       <Link href="/bookings" className="back"><Icon name="chevronLeft" size={20} />My bookings</Link>
       <h1 className="page__title">Booking details</h1>
       {err && <Banner tone="error">{err}</Banner>}
@@ -125,6 +126,6 @@ export default async function BookingDetail({ params, searchParams }: { params: 
           ))}
         </ol>
       </section>
-    </div>
+    </div></AccountShell>
   );
 }
