@@ -1,4 +1,5 @@
-import { describe, expect, test } from "vitest";
+import { describe, expect, test, vi } from "vitest";
+import { internal } from "./_generated/api";
 import { api } from "./_generated/api";
 import { asUser, createProvider, createUser, newT } from "../test-utils/harness";
 
@@ -88,5 +89,40 @@ describe("notifications", () => {
     const orphan = await createProvider(t);
     const startsAt = Date.now() + 90 * HOUR;
     await expect(customer.mutation(api.bookings.create, { address: "12 Test Street", suburb: "Ponsonby", providerId: orphan, customerName: "K", description: "d", startsAt, endsAt: startsAt + HOUR })).resolves.toBeTruthy();
+  });
+});
+
+describe("clearing notifications", () => {
+  test("a user clears one or all of their own; nobody can clear someone else's", async () => {
+    const { owner, customer, stranger, request } = await setup();
+    await request(); await request();
+    const [first] = await owner.query(api.notifications.mine, {});
+    await expect(stranger.mutation(api.notifications.clear, { id: first._id })).rejects.toThrow("not found");
+    await expect(customer.mutation(api.notifications.clear, { id: first._id })).rejects.toThrow("not found");
+    expect(await owner.query(api.notifications.mine, {})).toHaveLength(2);
+    await owner.mutation(api.notifications.clear, { id: first._id });
+    expect(await owner.query(api.notifications.mine, {})).toHaveLength(1);
+    expect(await stranger.mutation(api.notifications.clearAll, {})).toBe(false); // touches only the caller's own
+    expect(await owner.query(api.notifications.mine, {})).toHaveLength(1);
+    expect(await owner.mutation(api.notifications.clearAll, {})).toBe(false);
+    expect(await owner.query(api.notifications.mine, {})).toEqual([]);
+    expect(await owner.query(api.notifications.unreadCount, {})).toBe(0);
+  });
+});
+
+describe("old notifications", () => {
+  test("the daily sweep removes notifications older than 60 days and keeps newer ones", async () => {
+    const { t, owner, request } = await setup();
+    await request();
+    const day = 86_400_000, now = Date.now();
+    vi.useFakeTimers();
+    try {
+      vi.setSystemTime(now + 59 * day);
+      await t.mutation(internal.notifications.sweepOld, {});
+      expect(await owner.query(api.notifications.mine, {})).toHaveLength(1);
+      vi.setSystemTime(now + 61 * day);
+      await t.mutation(internal.notifications.sweepOld, {});
+      expect(await owner.query(api.notifications.mine, {})).toEqual([]);
+    } finally { vi.useRealTimers(); }
   });
 });

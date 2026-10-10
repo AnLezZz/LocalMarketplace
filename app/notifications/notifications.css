@@ -13,3 +13,7 @@ body:has(.nt-bar), body:has(.nt-skel), body:has(.nt-list) { background: var(--iv
 .nt-skel span { height: 52px; border-radius: 10px; background: linear-gradient(90deg, #EFEDE7, #F7F5EF, #EFEDE7); background-size: 200% 100%; animation: ntshine 1.2s infinite; }
 @keyframes ntshine { to { background-position: -200% 0; } }
 @media (prefers-reduced-motion: reduce) { .nt-skel span { animation: none; } }
+.nt-bar__actions { display: flex; gap: var(--s-4); }
+.nt-row { display: grid; grid-template-columns: 1fr 44px; gap: var(--s-1); align-items: start; }
+.nt-clear { display: grid; place-items: center; width: 44px; height: 44px; border: 0; border-radius: 12px; background: transparent; color: var(--ink-3); cursor: pointer; }
+.nt-clear:hover { background: #F0EDE5; color: var(--ink); }
