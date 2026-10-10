@@ -2,7 +2,7 @@ import Link from "next/link";
 import { fetchQuery } from "convex/nextjs";
 import { api, CATEGORIES } from "../../lib/convex";
 import Icon from "../../components/Icon";
-import Avatar from "../../components/Avatar";
+import ProviderPhoto from "../../components/ProviderPhoto";
 import { Rating } from "../../components/Pill";
 import { categoryMeta } from "../../components/categories";
 import { rate } from "../../components/format";
@@ -101,7 +101,7 @@ export default async function Search({ searchParams }: { searchParams: Promise<P
             const cat = categoryMeta(p.category);
             return (
               <li key={p._id} className="srch__item">
-                <Avatar name={p.name} size={96} square />
+                <ProviderPhoto name={p.name} photo={p.photo} size={96} />
                 <div className="srch__info">
                   <h2 className="srch__name">{p.name}</h2>
                   <Rating avg={p.ratingAvg} count={p.reviewCount} />

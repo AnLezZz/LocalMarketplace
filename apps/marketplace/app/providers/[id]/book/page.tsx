@@ -7,7 +7,7 @@ import { attempt } from "../../../../lib/actions";
 import BookingForm from "../BookingForm";
 import "../booking.css";
 import Icon from "../../../../components/Icon";
-import Avatar from "../../../../components/Avatar";
+import ProviderPhoto from "../../../../components/ProviderPhoto";
 import Banner from "../../../../components/Banner";
 import { Rating } from "../../../../components/Pill";
 import { categoryMeta } from "../../../../components/categories";
@@ -63,7 +63,7 @@ export default async function Book({ params, searchParams }: { params: Promise<{
       <Link href={`/providers/${id}`} className="back"><Icon name="chevronLeft" size={20} />Back to profile</Link>
 
       <section className="bk__card bk__hero">
-        <Avatar name={p.name} size={96} />
+        <ProviderPhoto name={p.name} photo={p.photo} size={96} rounded={18} />
         <div className="bk__heroid">
           <h1 className="bk__title">{p.name}</h1>
           <div className="bk__meta">

@@ -37,6 +37,8 @@ export default defineSchema({
     rejectionReason: v.optional(v.string()),
     // Stamped on every submit/resubmit. An admin decision must quote it, so it binds to the version they read.
     submittedAt: v.optional(v.number()),
+    // Path under /public (e.g. /images/alex_morgan.jpg). Set by seed only; there is no upload yet.
+    photo: v.optional(v.string()),
   })
     .index("by_approved", ["approved"])
     .index("by_userId", ["userId"])

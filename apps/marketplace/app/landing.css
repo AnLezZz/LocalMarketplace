@@ -78,3 +78,5 @@ html { scroll-behavior: smooth; }
 .tabbar__item[aria-current="page"] { color: var(--forest); }
 .brand__word, .d-sidebar__logo-text { font-family: var(--serif); font-weight: 400; font-size: 30px; letter-spacing: -0.01em; line-height: 1; }
 .d-sidebar__logo-text { font-size: 26px; }
+.lp-pro__photo { overflow: hidden; height: 190px; }
+.lp-pro__rating { z-index: 1; }

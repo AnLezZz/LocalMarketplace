@@ -125,3 +125,4 @@ body:has(.srch) { background: var(--ivory, #FAF9F6); }
 .srch__tags { display: flex; gap: 6px; flex-wrap: wrap; }
 .srch__clear { display: inline-block; margin-top: var(--s-3); }
 .srch__form + .srch__list, .srch__count + .srch__list { margin-top: 0; }
+.srch__sort span { white-space: nowrap; }

@@ -21,14 +21,14 @@ New Zealand: locale en-NZ, times in Pacific/Auckland, prices in NZD (GST applies
 ## Capabilities and Constraints
 Built today: browse and search approved providers by category, suburb and keyword; provider profile page; sign-in and sign-up (email and password); a signed-in customer can request a booking for a time window with a description, see their bookings, and cancel; a provider can apply, see application status, and accept, decline, complete or cancel requests; admins approve or reject applications with a reason.
 Data that exists per provider: name, bio, category, suburb, rate and rate basis (hourly or fixed), rating average, review count.
-NOT built, so the UI must not show them as if they exist: payments or escrow, wallet, reviews, in-app messaging or chat, live arrival tracking, push notifications, provider photos or work galleries, licensed/insured/verified badges, arrival-time estimates, quotes.
+NOT built, so the UI must not show them as if they exist: payments or escrow, wallet, reviews, in-app messaging or chat, live arrival tracking, push notifications, provider work galleries (a single optional portrait exists, set by seed only, no upload), licensed/insured/verified badges, arrival-time estimates, quotes.
 Undecided: launch city, commission levels, how verification badges will be sourced.
 
 ## Brand Commitments
 The product name is Localo (renamed from LocalHub; the lowercase package and seed-account identifiers like @localhub/design-tokens and @localhub.nz keep the old name). The user pinned the visual direction to a specific reference: an iOS-style on-demand home-services app (soft blue-white surfaces, white rounded cards, blue primary actions, pastel category tiles, avatar-led provider cards, status pills, mobile bottom tab bar), restyled for a mobile-first responsive web app.
 
 ## Evidence on Hand
-Six synthetic seed providers (Sparkle & Shine Cleaning, Green Thumb Gardens, Fixit Fred, Happy Paws Walkers, Mirror Finish Detailing, Two Men & A Ute) in Ponsonby, Grey Lynn and Mt Eden, each seeded with a placeholder 4.8 rating and 12 reviews that are not real. No photographs, logos, testimonials or real reviews exist. Do not fabricate any.
+Six synthetic seed providers (Sparkle & Shine Cleaning, Green Thumb Gardens, Fixit Fred, Happy Paws Walkers, Mirror Finish Detailing, Two Men & A Ute) in Ponsonby, Grey Lynn and Mt Eden, each seeded with a placeholder 4.8 rating and 12 reviews that are not real. Four demo providers have stock portraits (public/images, matched by trade); the rest show initials. No logos, testimonials or real reviews exist. Do not fabricate any.
 
 ## Product Principles
 1. Show only what is true: no imagery or claims for features that do not exist yet.

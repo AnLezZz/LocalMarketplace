@@ -6,7 +6,7 @@ import { rate } from "./format";
 
 export type ProviderSummary = {
   _id: string; name: string; bio: string; category: string; suburb: string;
-  rateCents: number; rateBasis: string; ratingAvg: number; reviewCount: number;
+  rateCents: number; rateBasis: string; ratingAvg: number; reviewCount: number; photo?: string;
 };
 
 /** One provider in a list. The whole card is a single link to the profile. */

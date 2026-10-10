@@ -14,8 +14,29 @@ export const run = internalMutation({
       { name: "Mirror Finish Detailing", category: "car detailing", suburb: "Mt Eden", rateCents: 12000, rateBasis: "fixed" as const, bio: "Full interior and exterior detail, we come to you." },
       { name: "Two Men & A Ute", category: "moving help", suburb: "Mt Eden", rateCents: 8500, rateBasis: "hourly" as const, bio: "Small moves and tip runs." },
     ];
-    for (const r of rows) await ctx.db.insert("providers", { ...r, ...base });
+    for (const r of rows) await ctx.db.insert("providers", { ...r, ...base, ...(DEMO_PHOTOS[r.name] ? { photo: DEMO_PHOTOS[r.name] } : {}) });
     return `seeded ${rows.length}`;
+  },
+});
+
+// Demo portraits in apps/marketplace/public/images, matched to the seeded businesses by trade.
+const DEMO_PHOTOS: Record<string, string> = {
+  "Alex Morgan": "/images/alex_morgan.jpg",
+  "Sparkle & Shine Cleaning": "/images/priya_sharma.jpg",
+  "Fixit Fred": "/images/james_carter.jpg",
+  "Happy Paws Walkers": "/images/emily_wong.jpg",
+};
+
+// Idempotent: npx convex run seed:setDemoPhotos
+export const setDemoPhotos = internalMutation({
+  args: {},
+  handler: async (ctx) => {
+    let n = 0;
+    for (const p of await ctx.db.query("providers").take(500)) {
+      const photo = DEMO_PHOTOS[p.name];
+      if (photo && p.photo !== photo) { await ctx.db.patch(p._id, { photo }); n++; }
+    }
+    return `set ${n} photos`;
   },
 });
 
@@ -48,6 +69,7 @@ export const setupDemoAccounts = internalMutation({
         approved: true,
         userId: providerUser._id,
         submittedAt: Date.now(),
+        photo: DEMO_PHOTOS["Alex Morgan"],
       });
       provider = await ctx.db.get(pid);
     } else {

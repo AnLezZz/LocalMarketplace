@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { fetchQuery } from "convex/nextjs";
 import { api } from "../../../lib/convex";
 import Icon from "../../../components/Icon";
-import Avatar from "../../../components/Avatar";
+import ProviderPhoto from "../../../components/ProviderPhoto";
 import { Rating } from "../../../components/Pill";
 import { categoryMeta } from "../../../components/categories";
 import { durationLabel, priceLabel, rate } from "../../../components/format";
@@ -26,7 +26,7 @@ export default async function Provider({ params }: { params: Promise<{ id: strin
       <Link href="/search" className="back"><Icon name="chevronLeft" size={20} />Back to results</Link>
 
       <section className="bk__card bk__hero">
-        <Avatar name={p.name} size={96} />
+        <ProviderPhoto name={p.name} photo={p.photo} size={112} rounded={18} />
         <div className="bk__heroid">
           <h1 className="bk__title">{p.name}</h1>
           <div className="bk__meta">

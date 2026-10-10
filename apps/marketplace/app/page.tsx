@@ -4,7 +4,7 @@ import { fetchQuery } from "convex/nextjs";
 import { api, CATEGORIES } from "../lib/convex";
 import { getMe } from "../lib/auth";
 import Icon from "../components/Icon";
-import Avatar from "../components/Avatar";
+import ProviderPhoto from "../components/ProviderPhoto";
 import { Rating } from "../components/Pill";
 import { type ProviderSummary } from "../components/ProviderCard";
 import { categoryMeta } from "../components/categories";
@@ -106,7 +106,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<Par
               return (
                 <Link key={p._id} href={`/providers/${p._id}`} className="lp-pro">
                   <div className="lp-pro__photo">
-                    <Avatar name={p.name} size={72} />
+                    <ProviderPhoto name={p.name} photo={p.photo} fill />
                     <span className="lp-pro__rating"><Rating avg={p.ratingAvg} count={p.reviewCount} /></span>
                   </div>
                   <h3 className="lp-pro__name">{p.name}</h3>
