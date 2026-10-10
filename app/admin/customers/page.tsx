@@ -18,8 +18,10 @@ export default async function AdminAccounts({ searchParams }: { searchParams: Pr
   return (
     <AdminShell active="customers" title="Accounts" sub="A suspended account can sign in and read, but cannot book, review, message or change anything. Suspending a provider's account also takes their listing down." err={err} ok={ok}>
       <section className="card d-card">
-        <div className="adm-filters">
-          {FILTERS.map(([k, label]) => <Link key={k} href={k ? `/admin/customers?status=${k}` : "/admin/customers"} aria-current={(status ?? "") === k ? "page" : undefined}>{label}</Link>)}
+        <div className="adm-bar">
+          <div className="adm-filters">
+            {FILTERS.map(([k, label]) => <Link key={k} href={k ? `/admin/customers?status=${k}` : "/admin/customers"} aria-current={(status ?? "") === k ? "page" : undefined}>{label}</Link>)}
+          </div>
           <form className="adm-search" role="search"><input name="q" defaultValue={q} placeholder="Search name or email" aria-label="Search accounts" />{status && <input type="hidden" name="status" value={status} />}<button className="btn btn--secondary btn--sm">Search</button></form>
         </div>
         <ul className="adm-list">
@@ -32,12 +34,12 @@ export default async function AdminAccounts({ searchParams }: { searchParams: Pr
               </div>
               <div className="adm-act">
                 {u.role !== "admin" && !u.suspendedAt && (
-                  <form action={suspendUser}><input type="hidden" name="id" value={u._id} /><input type="hidden" name="back" value={back} />
-                    <input name="reason" required minLength={5} maxLength={500} placeholder="Reason" aria-label={`Reason for suspending ${u.email}`} /><button className="btn btn--danger btn--sm">Suspend</button></form>
+                  <details className="adm-more"><summary className="btn btn--danger btn--sm">Suspend…</summary><form action={suspendUser}><input type="hidden" name="id" value={u._id} /><input type="hidden" name="back" value={back} />
+                    <input name="reason" required minLength={5} maxLength={500} placeholder="Reason" aria-label={`Reason for suspending ${u.email}`} /><button className="btn btn--danger btn--sm">Confirm suspend</button></form></details>
                 )}
                 {u.suspendedAt && (
-                  <form action={reactivateUser}><input type="hidden" name="id" value={u._id} /><input type="hidden" name="back" value={back} />
-                    <input name="reason" maxLength={500} placeholder="Note (optional)" aria-label={`Note for reactivating ${u.email}`} /><button className="btn btn--primary btn--sm">Reactivate</button></form>
+                  <details className="adm-more"><summary className="btn btn--secondary btn--sm">Reactivate…</summary><form action={reactivateUser}><input type="hidden" name="id" value={u._id} /><input type="hidden" name="back" value={back} />
+                    <input name="reason" maxLength={500} placeholder="Note (optional)" aria-label={`Note for reactivating ${u.email}`} /><button className="btn btn--primary btn--sm">Confirm reactivate</button></form></details>
                 )}
               </div>
             </li>

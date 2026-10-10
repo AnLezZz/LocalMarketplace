@@ -1369,7 +1369,8 @@ body:has(.d-layout) { background: var(--ivory, #FAF9F6); }
 
 /* Admin tools */
 .pill--danger { background: var(--danger-tint); color: var(--danger); }
-.adm-filters { display: flex; gap: var(--s-2); flex-wrap: wrap; align-items: center; margin-bottom: var(--s-4); }
+.adm-bar { display: flex; flex-wrap: wrap; gap: var(--s-2) var(--s-4); align-items: center; margin-bottom: var(--s-4); }
+.adm-filters { display: flex; gap: var(--s-2); flex-wrap: wrap; align-items: center; }
 .adm-filters a { display: inline-flex; align-items: center; min-height: 40px; padding: 0 var(--s-4); border-radius: 999px; border: 1px solid var(--hairline); background: var(--surface); color: var(--ink-2); font-size: 14px; text-decoration: none; }
 .adm-filters a[aria-current="page"] { background: var(--ink); border-color: var(--ink); color: #fff; }
 .adm-search { display: flex; gap: var(--s-2); margin-left: auto; }
@@ -1508,3 +1509,22 @@ body:has(.d-layout) { background: var(--ivory, #FAF9F6); }
 
 /* 12px is the smallest text (avatar initials excepted: they are sized inline to their disc) */
 .bell__badge, .cal-grid__day-name, .cal-row__label { font-size: 12px; }
+
+/* Destructive admin actions sit behind a toggle so rows stay short and nothing is one tap from a suspension */
+.adm-more > summary { list-style: none; cursor: pointer; display: inline-flex; align-items: center; min-height: 44px; }
+.adm-more > summary::-webkit-details-marker { display: none; }
+.adm-more[open] > summary { margin-bottom: var(--s-2); }
+.adm-more form { display: grid; gap: var(--s-2); }
+.adm-more input[name="reason"] { min-width: 0; width: 100%; min-height: 44px; }
+@media (max-width: 639px) {
+  /* Filter chips: one scrolling row; the search box gets its own full-width row */
+  .adm-filters { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; margin-inline: calc(var(--s-4) * -1); padding-inline: var(--s-4); }
+  .adm-filters::-webkit-scrollbar { display: none; }
+  .adm-filters a { flex: none; min-height: 44px; }
+  .adm-bar .adm-search { flex: 1 1 100%; margin-left: 0; }
+  .adm-bar .adm-search input { flex: 1; min-width: 0; min-height: 44px; font-size: 16px; }
+  .adm-bar .adm-search .btn { min-height: 44px; }
+  .adm-bar { margin-bottom: var(--s-3); }
+  .adm-row { gap: var(--s-2); padding: var(--s-3) 0; }
+  .adm-row__main { min-width: 0; flex-basis: 100%; }
+}

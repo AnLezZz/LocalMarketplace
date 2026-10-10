@@ -19,8 +19,10 @@ export default async function AdminProviders({ searchParams }: { searchParams: P
   return (
     <AdminShell active="providers" title="Providers" sub="Suspending hides a provider from search and stops new bookings. Pending applications are reviewed on the dashboard." err={err} ok={ok}>
       <section className="card d-card">
-        <div className="adm-filters">
-          {FILTERS.map(([k, label]) => <Link key={k} href={k ? `/admin/providers?status=${k}` : "/admin/providers"} aria-current={(status ?? "") === k ? "page" : undefined}>{label}</Link>)}
+        <div className="adm-bar">
+          <div className="adm-filters">
+            {FILTERS.map(([k, label]) => <Link key={k} href={k ? `/admin/providers?status=${k}` : "/admin/providers"} aria-current={(status ?? "") === k ? "page" : undefined}>{label}</Link>)}
+          </div>
           <form className="adm-search" role="search"><input name="q" defaultValue={q} placeholder="Search name, suburb, email" aria-label="Search providers" />{status && <input type="hidden" name="status" value={status} />}<button className="btn btn--secondary btn--sm">Search</button></form>
         </div>
         {rows.length === 0 ? <div className="empty"><h3 className="empty__title">No providers match</h3></div> : (
@@ -36,14 +38,14 @@ export default async function AdminProviders({ searchParams }: { searchParams: P
                 </div>
                 <div className="adm-act">
                   {p.status === "approved" && (
-                    <form action={suspendProvider}><input type="hidden" name="id" value={p._id} /><input type="hidden" name="back" value={back} />
+                    <details className="adm-more"><summary className="btn btn--danger btn--sm">Suspend…</summary><form action={suspendProvider}><input type="hidden" name="id" value={p._id} /><input type="hidden" name="back" value={back} />
                       <input name="reason" required minLength={5} maxLength={500} placeholder="Reason (shown to the provider)" aria-label={`Reason for suspending ${p.name}`} />
-                      <button className="btn btn--danger btn--sm">Suspend</button></form>
+                      <button className="btn btn--danger btn--sm">Confirm suspend</button></form></details>
                   )}
                   {p.status === "suspended" && (
-                    <form action={reactivateProvider}><input type="hidden" name="id" value={p._id} /><input type="hidden" name="back" value={back} />
+                    <details className="adm-more"><summary className="btn btn--secondary btn--sm">Reactivate…</summary><form action={reactivateProvider}><input type="hidden" name="id" value={p._id} /><input type="hidden" name="back" value={back} />
                       <input name="reason" maxLength={500} placeholder="Note (optional)" aria-label={`Note for reactivating ${p.name}`} />
-                      <button className="btn btn--primary btn--sm">Reactivate</button></form>
+                      <button className="btn btn--primary btn--sm">Confirm reactivate</button></form></details>
                   )}
                 </div>
               </li>
