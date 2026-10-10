@@ -19,6 +19,8 @@ async function world() {
   return { t, admin, owner, customer, providerId, book };
 }
 
+const PAGE = { numItems: 50, cursor: null };
+
 describe("suburbKey", () => {
   test("ignores case, spacing, punctuation, macrons and Mt/Mount", () => {
     expect(suburbKey("  Mt  Eden ")).toBe("mount eden");
@@ -56,7 +58,7 @@ describe("suburb list", () => {
     await admin.mutation(api.locations.removeSuburb, { id: ponsonby._id });
     expect((await admin.query(api.locations.adminList, {})).suburbs.some((s) => s.name === "Ponsonby")).toBe(false);
     await expect(admin.mutation(api.locations.addSuburbs, { names: ["x".repeat(61)] })).rejects.toThrow("too long");
-    expect((await admin.query(api.admin.listAudit, {})).map((a) => a.action)).toEqual(expect.arrayContaining(["suburb.add", "suburb.disable", "suburb.remove"]));
+    expect((await admin.query(api.admin.listAudit, { paginationOpts: PAGE })).page.map((a) => a.action)).toEqual(expect.arrayContaining(["suburb.add", "suburb.disable", "suburb.remove"]));
   });
 
   test("only admins manage locations", async () => {

@@ -4,16 +4,20 @@ import { api } from "../../../lib/convex";
 import { authOpts } from "../../../lib/auth";
 import { requireAdminPage, when } from "../../../lib/adminGuard";
 import AdminShell from "../../../components/dashboard/AdminShell";
+import AdminPager from "../../../components/dashboard/AdminPager";
+import { ADMIN_PAGE_SIZE, loadAdminPage, type AdminPage } from "../../../lib/adminPage";
 import { resolveDispute } from "../actions";
 
 export const dynamic = "force-dynamic";
 type Row = { _id: string; bookingId: string; reason: string; openedBy: string; status: string; resolution?: string; at: number; customerName: string; providerName: string; serviceName?: string };
 
-export default async function AdminDisputes({ searchParams }: { searchParams: Promise<{ status?: string; err?: string; ok?: string }> }) {
+export default async function AdminDisputes({ searchParams }: { searchParams: Promise<{ status?: string; cursor?: string; err?: string; ok?: string }> }) {
   await requireAdminPage();
-  const { status, err, ok } = await searchParams;
+  const { status, cursor, err, ok } = await searchParams;
   const resolved = status === "resolved";
-  const rows = (await fetchQuery(api.admin.listDisputes, { status: resolved ? "resolved" : "open" }, await authOpts())) as Row[];
+  const opts = await authOpts();
+  const result = await loadAdminPage<Row>(`/admin/disputes${resolved ? "?status=resolved" : ""}`, cursor, async (c) => (await fetchQuery(api.admin.listDisputes, { status: resolved ? "resolved" : "open", paginationOpts: { numItems: ADMIN_PAGE_SIZE, cursor: c } }, opts)) as AdminPage<Row>);
+  const rows = result.page;
   return (
     <AdminShell active="disputes" title="Disputes" sub="Raised by a customer or provider on an accepted booking. Read the booking, then record what was decided. Both sides are notified." err={err} ok={ok}>
       <section className="card d-card">
@@ -42,6 +46,7 @@ export default async function AdminDisputes({ searchParams }: { searchParams: Pr
             ))}
           </ul>
         )}
+        <AdminPager base="/admin/disputes" params={{ status: resolved ? "resolved" : undefined }} cursor={cursor} result={result} />
       </section>
     </AdminShell>
   );

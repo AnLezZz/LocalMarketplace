@@ -1619,3 +1619,7 @@ a.cal-event { display: block; text-decoration: none; color: inherit; }
 .svc-q__row { display: grid; gap: var(--s-3); padding: var(--s-4); border: 1px solid var(--line, #E6E1D6); border-radius: 14px; background: #fff; }
 .svc-q__opts { display: flex; flex-wrap: wrap; gap: var(--s-3); align-items: flex-end; }
 .svc-q__req { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; }
+
+/* admin tables: paging */
+.adm-pager { display: flex; justify-content: space-between; align-items: center; gap: var(--s-3); margin-top: var(--s-4); }
+.adm-pager__note { margin-top: var(--s-3); }

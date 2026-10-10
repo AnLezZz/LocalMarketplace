@@ -15,6 +15,8 @@ async function world() {
   return { t, admin, owner, customer, providerId, ownerId, list };
 }
 
+const PAGE = { numItems: 50, cursor: null };
+
 describe("helpers", () => {
   test("slugify and validation", () => {
     expect(slugify("Roof & Gutter  Care!")).toBe("roof gutter care");
@@ -38,7 +40,7 @@ describe("categories.list and defaults", () => {
     const after = await t.query(api.categories.list, {});
     expect(after.saved).toBe(true);
     expect((await list()).map((c) => c.slug)).toEqual(before.categories.map((c) => c.slug));
-    expect((await admin.query(api.admin.listAudit, {})).filter((a) => a.action === "category.init")).toHaveLength(1);
+    expect((await admin.query(api.admin.listAudit, { paginationOpts: PAGE })).page.filter((a) => a.action === "category.init")).toHaveLength(1);
   });
 });
 
@@ -88,7 +90,7 @@ describe("categories admin", () => {
     }
     await admin.mutation(api.categories.setEnabled, { id, enabled: false });
     await admin.mutation(api.categories.setEnabled, { id, enabled: true });
-    expect((await admin.query(api.admin.listAudit, {})).map((a) => a.action)).toEqual(expect.arrayContaining(["category.disable", "category.enable"]));
+    expect((await admin.query(api.admin.listAudit, { paginationOpts: PAGE })).page.map((a) => a.action)).toEqual(expect.arrayContaining(["category.disable", "category.enable"]));
   });
 });
 

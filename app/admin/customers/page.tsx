@@ -4,16 +4,20 @@ import { api } from "../../../lib/convex";
 import { authOpts } from "../../../lib/auth";
 import { requireAdminPage, when } from "../../../lib/adminGuard";
 import AdminShell from "../../../components/dashboard/AdminShell";
+import AdminPager from "../../../components/dashboard/AdminPager";
+import { ADMIN_PAGE_SIZE, loadAdminPage, type AdminPage } from "../../../lib/adminPage";
 import { reactivateUser, suspendUser } from "../actions";
 
 export const dynamic = "force-dynamic";
 const FILTERS = [["", "All"], ["active", "Active"], ["suspended", "Suspended"]] as const;
 type Row = { _id: string; name: string | null; email: string | null; role: string; joined: number; suspendedAt?: number; suspendedReason?: string };
 
-export default async function AdminAccounts({ searchParams }: { searchParams: Promise<{ status?: string; q?: string; err?: string; ok?: string }> }) {
+export default async function AdminAccounts({ searchParams }: { searchParams: Promise<{ status?: string; q?: string; cursor?: string; err?: string; ok?: string }> }) {
   await requireAdminPage();
-  const { status, q, err, ok } = await searchParams;
-  const rows = (await fetchQuery(api.admin.listUsers, { status: status || undefined, q: q || undefined }, await authOpts())) as Row[];
+  const { status, q, cursor, err, ok } = await searchParams;
+  const opts = await authOpts();
+  const result = await loadAdminPage<Row>(`/admin/customers${status ? `?status=${status}` : ""}`, cursor, async (c) => (await fetchQuery(api.admin.listUsers, { status: status || undefined, q: q || undefined, paginationOpts: { numItems: ADMIN_PAGE_SIZE, cursor: c } }, opts)) as AdminPage<Row>);
+  const rows = result.page;
   const back = `/admin/customers${status || q ? `?${new URLSearchParams({ ...(status ? { status } : {}), ...(q ? { q } : {}) })}` : ""}`;
   return (
     <AdminShell active="customers" title="Accounts" sub="A suspended account can sign in and read, but cannot book, review, message or change anything. Suspending a provider's account also takes their listing down." err={err} ok={ok}>
@@ -46,6 +50,7 @@ export default async function AdminAccounts({ searchParams }: { searchParams: Pr
           ))}
         </ul>
         {rows.length === 0 && <div className="empty"><h3 className="empty__title">No accounts match</h3></div>}
+        <AdminPager base="/admin/customers" params={{ status, q }} cursor={cursor} result={result} />
       </section>
     </AdminShell>
   );

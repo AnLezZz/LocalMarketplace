@@ -11,15 +11,11 @@ export default async function AdminShell({ active, title, sub, err, ok, children
   const me = await getMe();
   if (me?.role !== "admin") notFound();
   const opts = await authOpts();
-  const [pending, reports, disputes] = await Promise.all([
-    fetchQuery(api.admin.listPending, {}, opts) as Promise<unknown[]>,
-    fetchQuery(api.admin.listReviewReports, {}, opts) as Promise<unknown[]>,
-    fetchQuery(api.admin.listDisputes, {}, opts) as Promise<unknown[]>,
-  ]);
+  const counts = (await fetchQuery(api.admin.sidebarCounts, {}, opts)) as { applications: number; reports: number; disputes: number };
   return (
     <div className="d-layout">
       <DashboardSidebar portal="admin" activeId={active} user={{ name: me.name || "Platform Admin", subtext: "Admin" }}
-        items={adminSidebarItems({ applications: pending.length, reports: reports.length, disputes: disputes.length })} />
+        items={adminSidebarItems(counts)} />
       <div className="d-main">
         <header className="d-header">
           <div className="d-header__info">

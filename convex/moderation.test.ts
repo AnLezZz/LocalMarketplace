@@ -27,9 +27,11 @@ async function world() {
     const row = (await t.run((ctx) => ctx.db.query("reviews").collect())).find((r) => r.bookingId === id)!;
     return row._id;
   };
-  const audit = async () => (await admin.query(api.admin.listAudit, {})).map((a) => a.action);
+  const audit = async () => (await admin.query(api.admin.listAudit, { paginationOpts: PAGE })).page.map((a) => a.action);
   return { t, admin, owner, customer, stranger, adminId, ownerId, customerId, providerId, book, review, audit };
 }
+
+const PAGE = { numItems: 50, cursor: null };
 
 describe("rating maths", () => {
   test("withoutReview is the exact inverse of withReview", () => {
@@ -45,9 +47,9 @@ describe("admin access", () => {
     const { t, owner, customer, providerId, customerId, book } = await world();
     const bookingId = await book("requested");
     const calls = (u: { query: any; mutation: any }) => [
-      () => u.query(api.admin.listProviders, {}), () => u.query(api.admin.listUsers, {}), () => u.query(api.admin.listBookings, {}),
-      () => u.query(api.admin.getBooking, { id: bookingId }), () => u.query(api.admin.listReviewReports, {}), () => u.query(api.admin.listHiddenReviews, {}),
-      () => u.query(api.admin.listDisputes, {}), () => u.query(api.admin.listAudit, {}),
+      () => u.query(api.admin.listProviders, { paginationOpts: PAGE }), () => u.query(api.admin.listUsers, { paginationOpts: PAGE }), () => u.query(api.admin.listBookings, { paginationOpts: PAGE }),
+      () => u.query(api.admin.getBooking, { id: bookingId }), () => u.query(api.admin.listReviewReports, { paginationOpts: PAGE }), () => u.query(api.admin.listHiddenReviews, { paginationOpts: PAGE }),
+      () => u.query(api.admin.listDisputes, { paginationOpts: PAGE }), () => u.query(api.admin.listAudit, { paginationOpts: PAGE }),
       () => u.mutation(api.admin.suspendProvider, { providerId, reason: "because reasons" }), () => u.mutation(api.admin.suspendUser, { userId: customerId, reason: "because reasons" }),
       () => u.mutation(api.admin.cancelBooking, { bookingId, reason: "because reasons" }),
     ];
@@ -132,9 +134,9 @@ describe("user suspension", () => {
   test("list filters by status and search", async () => {
     const { admin, customerId } = await world();
     await admin.mutation(api.admin.suspendUser, { userId: customerId, reason: "for the filter" });
-    expect((await admin.query(api.admin.listUsers, { status: "suspended" })).map((u) => u._id)).toEqual([customerId]);
-    expect((await admin.query(api.admin.listUsers, { status: "active" })).some((u) => u._id === customerId)).toBe(false);
-    expect((await admin.query(api.admin.listUsers, { q: "KIRI" })).map((u) => u.email)).toEqual(["kiri@example.nz"]);
+    expect((await admin.query(api.admin.listUsers, { status: "suspended", paginationOpts: PAGE })).page.map((u) => u._id)).toEqual([customerId]);
+    expect((await admin.query(api.admin.listUsers, { status: "active", paginationOpts: PAGE })).page.some((u) => u._id === customerId)).toBe(false);
+    expect((await admin.query(api.admin.listUsers, { q: "KIRI", paginationOpts: PAGE })).page.map((u) => u.email)).toEqual(["kiri@example.nz"]);
   });
 });
 
@@ -150,14 +152,14 @@ describe("review reports and moderation", () => {
     await expect(owner.mutation(api.reviews.report, { reviewId: bad, reason: "short" })).rejects.toThrow("at least 10");
     const reportId = await owner.mutation(api.reviews.report, { reviewId: bad, reason: "Never had a booking like this" });
     await expect(owner.mutation(api.reviews.report, { reviewId: bad, reason: "Reporting again please" })).rejects.toThrow("already been reported");
-    expect((await admin.query(api.admin.listReviewReports, {}))[0]).toMatchObject({ _id: reportId, providerName: "Fern Gardens", review: { rating: 1, text: "terrible and false", hidden: false } });
+    expect((await admin.query(api.admin.listReviewReports, { paginationOpts: PAGE })).page[0]).toMatchObject({ _id: reportId, providerName: "Fern Gardens", review: { rating: 1, text: "terrible and false", hidden: false } });
 
     await expect(admin.mutation(api.admin.resolveReviewReport, { reportId, action: "hide" })).rejects.toThrow("at least 5");
     await admin.mutation(api.admin.resolveReviewReport, { reportId, action: "hide", note: "Not a real customer experience" });
     expect(await rating()).toEqual({ avg: 5, n: 1 });
     expect((await t.query(api.reviews.forProvider, { providerId })).map((r) => r._id)).toEqual([good]);
-    expect((await admin.query(api.admin.listHiddenReviews, {}))[0]).toMatchObject({ _id: bad, hiddenReason: "Not a real customer experience" });
-    expect((await admin.query(api.admin.listReviewReports, { status: "upheld" })).map((r) => r._id)).toEqual([reportId]);
+    expect((await admin.query(api.admin.listHiddenReviews, { paginationOpts: PAGE })).page[0]).toMatchObject({ _id: bad, hiddenReason: "Not a real customer experience" });
+    expect((await admin.query(api.admin.listReviewReports, { status: "upheld", paginationOpts: PAGE })).page.map((r) => r._id)).toEqual([reportId]);
     expect((await customer.query(api.notifications.mine, {})).some((n) => n.kind === "review_hidden")).toBe(true);
     expect((await owner.query(api.notifications.mine, {})).some((n) => n.kind === "report_resolved")).toBe(true);
     await expect(admin.mutation(api.admin.resolveReviewReport, { reportId, action: "dismiss" })).rejects.toThrow("already resolved");
@@ -177,7 +179,7 @@ describe("review reports and moderation", () => {
     await admin.mutation(api.admin.resolveReviewReport, { reportId, action: "dismiss", note: "It follows the rules" });
     expect((await t.query(api.reviews.forProvider, { providerId })).length).toBe(1);
     expect(await t.run((ctx) => ctx.db.get(providerId))).toMatchObject({ ratingAvg: 4, reviewCount: 1 });
-    expect((await admin.query(api.admin.listReviewReports, { status: "dismissed" }))[0]).toMatchObject({ resolutionNote: "It follows the rules" });
+    expect((await admin.query(api.admin.listReviewReports, { status: "dismissed", paginationOpts: PAGE })).page[0]).toMatchObject({ resolutionNote: "It follows the rules" });
   });
 });
 
@@ -194,15 +196,15 @@ describe("disputes", () => {
     expect(await customer.query(api.bookings.getForCustomer, { id: accepted })).toMatchObject({ dispute: { status: "open", openedBy: "customer" } });
     expect(await owner.query(api.bookings.getForProvider, { id: accepted })).toMatchObject({ dispute: { status: "open", reason: "They did not turn up at all" } });
 
-    expect((await admin.query(api.admin.listDisputes, {})).map((d) => d._id)).toEqual([id]);
-    expect((await admin.query(api.admin.listBookings, {})).find((b) => b._id === accepted)?.disputeOpen).toBe(true);
+    expect((await admin.query(api.admin.listDisputes, { paginationOpts: PAGE })).page.map((d) => d._id)).toEqual([id]);
+    expect((await admin.query(api.admin.listBookings, { paginationOpts: PAGE })).page.find((b) => b._id === accepted)?.disputeOpen).toBe(true);
     await expect(admin.mutation(api.admin.resolveDispute, { disputeId: id, resolution: "short" })).rejects.toThrow("at least 10");
     await admin.mutation(api.admin.resolveDispute, { disputeId: id, resolution: "Provider will rebook for free" });
     expect((await customer.query(api.notifications.mine, {}))[0]).toMatchObject({ kind: "dispute_resolved", body: expect.stringContaining("rebook for free") });
     expect((await owner.query(api.notifications.mine, {}))[0].kind).toBe("dispute_resolved");
     expect(await customer.query(api.bookings.getForCustomer, { id: accepted })).toMatchObject({ dispute: { status: "resolved", resolution: "Provider will rebook for free" } });
     await expect(admin.mutation(api.admin.resolveDispute, { disputeId: id, resolution: "Resolving it a second time" })).rejects.toThrow("already resolved");
-    expect((await admin.query(api.admin.listDisputes, { status: "resolved" })).length).toBe(1);
+    expect((await admin.query(api.admin.listDisputes, { status: "resolved", paginationOpts: PAGE })).page.length).toBe(1);
     await owner.mutation(api.disputes.open, { bookingId: accepted, reason: "A new problem has come up" }); // allowed once the first is resolved
     expect(await audit()).toContain("dispute.resolve");
   });
@@ -212,10 +214,10 @@ describe("admin bookings", () => {
   test("lists and filters bookings, shows full detail, and force-cancels with a reason", async () => {
     const { admin, owner, customer, book, audit } = await world();
     const a = await book("requested"), b = await book("accepted"), c = await book("completed");
-    expect((await admin.query(api.admin.listBookings, {})).length).toBe(3);
-    expect((await admin.query(api.admin.listBookings, { status: "accepted" })).map((x) => x._id)).toEqual([b]);
-    expect((await admin.query(api.admin.listBookings, { q: "fern" })).length).toBe(3);
-    expect((await admin.query(api.admin.listBookings, { q: "nobody" })).length).toBe(0);
+    expect((await admin.query(api.admin.listBookings, { paginationOpts: PAGE })).page.length).toBe(3);
+    expect((await admin.query(api.admin.listBookings, { status: "accepted", paginationOpts: PAGE })).page.map((x) => x._id)).toEqual([b]);
+    expect((await admin.query(api.admin.listBookings, { q: "fern", paginationOpts: PAGE })).page.length).toBe(3);
+    expect((await admin.query(api.admin.listBookings, { q: "nobody", paginationOpts: PAGE })).page.length).toBe(0);
     expect(await admin.query(api.admin.getBooking, { id: b })).toMatchObject({ address: "12 Test Street", customerEmail: "kiri@example.nz", providerName: "Fern Gardens", status: "accepted" });
     expect(await admin.query(api.admin.getBooking, { id: "nope" })).toBeNull();
 
@@ -235,7 +237,7 @@ describe("audit log", () => {
     const { admin, customerId, providerId, audit } = await world();
     await admin.mutation(api.admin.suspendUser, { userId: customerId, reason: "Spam bookings" });
     await admin.mutation(api.admin.suspendProvider, { providerId, reason: "Poor service quality" });
-    const rows = await admin.query(api.admin.listAudit, {});
+    const rows = (await admin.query(api.admin.listAudit, { paginationOpts: PAGE })).page;
     expect(rows[0]).toMatchObject({ action: "provider.suspend", targetType: "provider", reason: "Poor service quality", actor: "admin" });
     expect(rows.map((r) => r.action)).toEqual(["provider.suspend", "user.suspend"]);
     expect(await audit()).toHaveLength(2);

@@ -4,6 +4,8 @@ import { api } from "../../../lib/convex";
 import { authOpts } from "../../../lib/auth";
 import { PROVIDER_PILL, requireAdminPage } from "../../../lib/adminGuard";
 import AdminShell from "../../../components/dashboard/AdminShell";
+import AdminPager from "../../../components/dashboard/AdminPager";
+import { ADMIN_PAGE_SIZE, loadAdminPage, type AdminPage } from "../../../lib/adminPage";
 import { reactivateProvider, suspendProvider } from "../actions";
 
 export const dynamic = "force-dynamic";
@@ -11,10 +13,12 @@ const FILTERS = [["", "All"], ["approved", "Approved"], ["pending", "Pending"], 
 
 type Row = { _id: string; name: string; category: string; suburb: string; status: string; ownerEmail: string | null; ratingAvg: number; reviewCount: number; suspendedReason?: string; rejectionReason?: string };
 
-export default async function AdminProviders({ searchParams }: { searchParams: Promise<{ status?: string; q?: string; err?: string; ok?: string }> }) {
+export default async function AdminProviders({ searchParams }: { searchParams: Promise<{ status?: string; q?: string; cursor?: string; err?: string; ok?: string }> }) {
   await requireAdminPage();
-  const { status, q, err, ok } = await searchParams;
-  const rows = (await fetchQuery(api.admin.listProviders, { status: status || undefined, q: q || undefined }, await authOpts())) as Row[];
+  const { status, q, cursor, err, ok } = await searchParams;
+  const opts = await authOpts();
+  const result = await loadAdminPage<Row>(`/admin/providers${status ? `?status=${status}` : ""}`, cursor, async (c) => (await fetchQuery(api.admin.listProviders, { status: status || undefined, q: q || undefined, paginationOpts: { numItems: ADMIN_PAGE_SIZE, cursor: c } }, opts)) as AdminPage<Row>);
+  const rows = result.page;
   const back = `/admin/providers${status || q ? `?${new URLSearchParams({ ...(status ? { status } : {}), ...(q ? { q } : {}) })}` : ""}`;
   return (
     <AdminShell active="providers" title="Providers" sub="Suspending hides a provider from search and stops new bookings. Pending applications are reviewed on the dashboard." err={err} ok={ok}>
@@ -52,6 +56,7 @@ export default async function AdminProviders({ searchParams }: { searchParams: P
             ))}
           </ul>
         )}
+        <AdminPager base="/admin/providers" params={{ status, q }} cursor={cursor} result={result} />
       </section>
     </AdminShell>
   );

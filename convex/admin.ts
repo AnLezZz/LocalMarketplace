@@ -1,4 +1,6 @@
 import { ConvexError, v } from "convex/values";
+import { paginationOptsValidator } from "convex/server";
+import { adminPage } from "./model/adminPage";
 import { mutation, query } from "./_generated/server";
 import { requireRole } from "./model/auth";
 import { providerStatus, type ProviderStatus } from "./model/providers";
@@ -115,19 +117,21 @@ async function suspendProviderDoc(ctx: MutationCtx, adminId: Id<"users">, p: Doc
 // ---------- providers ----------
 
 export const listProviders = query({
-  args: { status: v.optional(v.string()), q: v.optional(v.string()) },
-  handler: async (ctx, { status, q }) => {
+  args: { status: v.optional(v.string()), q: v.optional(v.string()), paginationOpts: paginationOptsValidator },
+  handler: async (ctx, { status, q, paginationOpts }) => {
     await requireRole(ctx, "admin");
-    const rows = await ctx.db.query("providers").order("desc").take(300);
-    const out = [];
-    for (const p of rows) {
-      const st: ProviderStatus = providerStatus(p);
-      if (status && st !== status) continue;
+    // The status is derived from three fields (see providerStatus), so the same rule is written as a database filter and every page comes back full.
+    const base = ctx.db.query("providers").filter((f) =>
+      status === "suspended" ? f.neq(f.field("suspendedAt"), undefined)
+      : status === "approved" ? f.and(f.eq(f.field("suspendedAt"), undefined), f.eq(f.field("approved"), true))
+      : status === "rejected" ? f.and(f.eq(f.field("suspendedAt"), undefined), f.neq(f.field("approved"), true), f.neq(f.field("reviewedAt"), undefined))
+      : status === "pending" ? f.and(f.eq(f.field("suspendedAt"), undefined), f.neq(f.field("approved"), true), f.eq(f.field("reviewedAt"), undefined))
+      : true).order("desc");
+    return adminPage(base, paginationOpts, !!q?.trim(), async (p) => {
       const owner = p.userId ? await ctx.db.get(p.userId) : null;
-      if (!includes([p.name, p.suburb, p.category, owner?.email], q)) continue;
-      out.push({ _id: p._id, name: p.name, category: p.category, suburb: p.suburb, status: st, ownerEmail: owner?.email ?? null, ratingAvg: p.ratingAvg, reviewCount: p.reviewCount, suspendedReason: p.suspendedReason, rejectionReason: p.rejectionReason });
-    }
-    return out;
+      if (!includes([p.name, p.suburb, p.category, owner?.email], q)) return null;
+      return { _id: p._id, name: p.name, category: p.category, suburb: p.suburb, status: providerStatus(p) as ProviderStatus, ownerEmail: owner?.email ?? null, ratingAvg: p.ratingAvg, reviewCount: p.reviewCount, suspendedReason: p.suspendedReason, rejectionReason: p.rejectionReason };
+    });
   },
 });
 
@@ -160,15 +164,17 @@ export const reactivateProvider = mutation({
 // ---------- customers and other accounts ----------
 
 export const listUsers = query({
-  args: { status: v.optional(v.string()), q: v.optional(v.string()) },
-  handler: async (ctx, { status, q }) => {
+  args: { status: v.optional(v.string()), q: v.optional(v.string()), paginationOpts: paginationOptsValidator },
+  handler: async (ctx, { status, q, paginationOpts }) => {
     await requireRole(ctx, "admin");
-    const rows = await ctx.db.query("users").order("desc").take(300);
-    return rows
-      .filter((u) => (status === "suspended" ? u.suspendedAt !== undefined : status === "active" ? u.suspendedAt === undefined : true) && includes([u.name, u.email], q))
-      .map((u) => ({ _id: u._id, name: u.name ?? null, email: u.email ?? null, role: u.role, joined: u._creationTime, suspendedAt: u.suspendedAt, suspendedReason: u.suspendedReason }));
+    const base = ctx.db.query("users").filter((f) => status === "suspended" ? f.neq(f.field("suspendedAt"), undefined) : status === "active" ? f.eq(f.field("suspendedAt"), undefined) : true).order("desc");
+    return adminPage(base, paginationOpts, !!q?.trim(), (u) => includes([u.name, u.email], q)
+      ? { _id: u._id, name: u.name ?? null, email: u.email ?? null, role: u.role, joined: u._creationTime, suspendedAt: u.suspendedAt, suspendedReason: u.suspendedReason }
+      : null);
   },
 });
+
+// ---------- bookings (below) ----------
 
 export const suspendUser = mutation({
   args: { userId: v.id("users"), reason: v.string() },
@@ -204,20 +210,19 @@ export const reactivateUser = mutation({
 
 // ---------- bookings ----------
 
+const BOOKING_STATUSES = ["requested", "accepted", "declined", "cancelled", "completed"] as const;
 export const listBookings = query({
-  args: { status: v.optional(v.string()), q: v.optional(v.string()) },
-  handler: async (ctx, { status, q }) => {
+  args: { status: v.optional(v.string()), q: v.optional(v.string()), paginationOpts: paginationOptsValidator },
+  handler: async (ctx, { status, q, paginationOpts }) => {
     await requireRole(ctx, "admin");
-    const rows = await ctx.db.query("bookings").order("desc").take(300);
-    const out = [];
-    for (const b of rows) {
-      if (status && b.status !== status) continue;
+    const only = BOOKING_STATUSES.find((x) => x === status);
+    const base = ctx.db.query("bookings").filter((f) => only ? f.eq(f.field("status"), only) : true).order("desc");
+    return adminPage(base, paginationOpts, !!q?.trim(), async (b) => {
       const provider = await ctx.db.get(b.providerId);
-      if (!includes([b.customerName, provider?.name, b.serviceName, b.description, b.suburb], q)) continue;
+      if (!includes([b.customerName, provider?.name, b.serviceName, b.description, b.suburb], q)) return null;
       const d = await latestDispute(ctx, b._id);
-      out.push({ _id: b._id, customerName: b.customerName, providerName: provider?.name ?? "Unknown", serviceName: b.serviceName, status: b.status, startsAt: b.startsAt, suburb: b.suburb, disputeOpen: d?.status === "open" });
-    }
-    return out;
+      return { _id: b._id, customerName: b.customerName, providerName: provider?.name ?? "Unknown", serviceName: b.serviceName, status: b.status, startsAt: b.startsAt, suburb: b.suburb, disputeOpen: d?.status === "open" };
+    });
   },
 });
 
@@ -271,19 +276,16 @@ async function hideReviewDoc(ctx: MutationCtx, adminId: Id<"users">, review: Doc
 }
 
 export const listReviewReports = query({
-  args: { status: v.optional(v.string()) },
-  handler: async (ctx, { status }) => {
+  args: { status: v.optional(v.string()), paginationOpts: paginationOptsValidator },
+  handler: async (ctx, { status, paginationOpts }) => {
     await requireRole(ctx, "admin");
     const st = status === "dismissed" || status === "upheld" ? status : "open";
-    const rows = await ctx.db.query("reviewReports").withIndex("by_status", (q) => q.eq("status", st)).order("desc").take(100);
-    const out = [];
-    for (const r of rows) {
+    return adminPage(ctx.db.query("reviewReports").withIndex("by_status", (q) => q.eq("status", st)).order("desc"), paginationOpts, false, async (r) => {
       const review = await ctx.db.get(r.reviewId), provider = await ctx.db.get(r.providerId);
-      if (!review) continue;
-      out.push({ _id: r._id, reason: r.reason, status: r.status, resolutionNote: r.resolutionNote, at: r._creationTime, providerName: provider?.name ?? "Unknown",
-        review: { _id: review._id, rating: review.rating, text: review.text, customerName: review.customerName, hidden: !!review.hidden, hiddenReason: review.hiddenReason } });
-    }
-    return out;
+      if (!review) return null;
+      return { _id: r._id, reason: r.reason, status: r.status, resolutionNote: r.resolutionNote, at: r._creationTime, providerName: provider?.name ?? "Unknown",
+        review: { _id: review._id, rating: review.rating, text: review.text, customerName: review.customerName, hidden: !!review.hidden, hiddenReason: review.hiddenReason } };
+    });
   },
 });
 
@@ -308,12 +310,11 @@ export const resolveReviewReport = mutation({
 });
 
 export const listHiddenReviews = query({
-  args: {},
-  handler: async (ctx) => {
+  args: { paginationOpts: paginationOptsValidator },
+  handler: async (ctx, { paginationOpts }) => {
     await requireRole(ctx, "admin");
-    const rows = await ctx.db.query("reviews").order("desc").take(300);
-    const hidden = rows.filter((r) => r.hidden);
-    return await Promise.all(hidden.map(async (r) => ({ _id: r._id, rating: r.rating, text: r.text, customerName: r.customerName, hiddenReason: r.hiddenReason, providerName: (await ctx.db.get(r.providerId))?.name ?? "Unknown" })));
+    return adminPage(ctx.db.query("reviews").filter((f) => f.eq(f.field("hidden"), true)).order("desc"), paginationOpts, false, async (r) =>
+      ({ _id: r._id, rating: r.rating, text: r.text, customerName: r.customerName, hiddenReason: r.hiddenReason, providerName: (await ctx.db.get(r.providerId))?.name ?? "Unknown" }));
   },
 });
 
@@ -333,15 +334,14 @@ export const restoreReview = mutation({
 // ---------- disputes ----------
 
 export const listDisputes = query({
-  args: { status: v.optional(v.string()) },
-  handler: async (ctx, { status }) => {
+  args: { status: v.optional(v.string()), paginationOpts: paginationOptsValidator },
+  handler: async (ctx, { status, paginationOpts }) => {
     await requireRole(ctx, "admin");
     const st = status === "resolved" ? "resolved" : "open";
-    const rows = await ctx.db.query("disputes").withIndex("by_status", (q) => q.eq("status", st)).order("desc").take(100);
-    return await Promise.all(rows.map(async (d) => {
+    return adminPage(ctx.db.query("disputes").withIndex("by_status", (q) => q.eq("status", st)).order("desc"), paginationOpts, false, async (d) => {
       const b = await ctx.db.get(d.bookingId), provider = b ? await ctx.db.get(b.providerId) : null;
       return { _id: d._id, bookingId: d.bookingId, reason: d.reason, openedBy: d.openedBy, status: d.status, resolution: d.resolution, at: d._creationTime, customerName: b?.customerName ?? "Unknown", providerName: provider?.name ?? "Unknown", serviceName: b?.serviceName };
-    }));
+    });
   },
 });
 
@@ -366,13 +366,26 @@ export const resolveDispute = mutation({
 // ---------- audit log ----------
 
 export const listAudit = query({
+  args: { paginationOpts: paginationOptsValidator },
+  handler: async (ctx, { paginationOpts }) => {
+    await requireRole(ctx, "admin");
+    return adminPage(ctx.db.query("auditLog").order("desc"), paginationOpts, false, async (r) => {
+      const actor = await ctx.db.get(r.actorId);
+      return { _id: r._id, at: r._creationTime, action: r.action, targetType: r.targetType, targetId: r.targetId, reason: r.reason, actor: actor?.name ?? actor?.email ?? "Unknown" };
+    });
+  },
+});
+
+/** The numbers beside the admin menu: work waiting for an admin. Capped, because a badge only needs "a lot". */
+export const sidebarCounts = query({
   args: {},
   handler: async (ctx) => {
     await requireRole(ctx, "admin");
-    const rows = await ctx.db.query("auditLog").order("desc").take(100);
-    return await Promise.all(rows.map(async (r) => {
-      const actor = await ctx.db.get(r.actorId);
-      return { _id: r._id, at: r._creationTime, action: r.action, targetType: r.targetType, targetId: r.targetId, reason: r.reason, actor: actor?.name ?? actor?.email ?? "Unknown" };
-    }));
+    const n = async (q: { take(n: number): Promise<unknown[]> }) => (await q.take(100)).length;
+    return {
+      applications: await n(ctx.db.query("providers").withIndex("by_approved_and_reviewedAt", (q) => q.eq("approved", false).eq("reviewedAt", undefined))),
+      reports: await n(ctx.db.query("reviewReports").withIndex("by_status", (q) => q.eq("status", "open"))),
+      disputes: await n(ctx.db.query("disputes").withIndex("by_status", (q) => q.eq("status", "open"))),
+    };
   },
 });

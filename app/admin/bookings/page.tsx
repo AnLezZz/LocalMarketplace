@@ -4,18 +4,22 @@ import { api } from "../../../lib/convex";
 import { authOpts } from "../../../lib/auth";
 import { requireAdminPage, when } from "../../../lib/adminGuard";
 import AdminShell from "../../../components/dashboard/AdminShell";
+import AdminPager from "../../../components/dashboard/AdminPager";
+import { ADMIN_PAGE_SIZE, loadAdminPage, type AdminPage } from "../../../lib/adminPage";
 import { StatusPill } from "../../../components/Pill";
 
 export const dynamic = "force-dynamic";
 const FILTERS = [["", "All"], ["requested", "Requested"], ["accepted", "Accepted"], ["completed", "Completed"], ["cancelled", "Cancelled"], ["declined", "Declined"]] as const;
 type Row = { _id: string; customerName: string; providerName: string; serviceName?: string; status: string; startsAt: number; suburb?: string; disputeOpen: boolean };
 
-export default async function AdminBookings({ searchParams }: { searchParams: Promise<{ status?: string; q?: string }> }) {
+export default async function AdminBookings({ searchParams }: { searchParams: Promise<{ status?: string; q?: string; cursor?: string }> }) {
   await requireAdminPage();
-  const { status, q } = await searchParams;
-  const rows = (await fetchQuery(api.admin.listBookings, { status: status || undefined, q: q || undefined }, await authOpts())) as Row[];
+  const { status, q, cursor } = await searchParams;
+  const opts = await authOpts();
+  const result = await loadAdminPage<Row>(`/admin/bookings${status ? `?status=${status}` : ""}`, cursor, async (c) => (await fetchQuery(api.admin.listBookings, { status: status || undefined, q: q || undefined, paginationOpts: { numItems: ADMIN_PAGE_SIZE, cursor: c } }, opts)) as AdminPage<Row>);
+  const rows = result.page;
   return (
-    <AdminShell active="bookings" title="Bookings" sub="The 300 most recent bookings. Open one to investigate or cancel it.">
+    <AdminShell active="bookings" title="Bookings" sub="Newest first. Open one to investigate or cancel it.">
       <section className="card d-card">
         <div className="adm-filters">
           {FILTERS.map(([k, label]) => <Link key={k} href={k ? `/admin/bookings?status=${k}` : "/admin/bookings"} aria-current={(status ?? "") === k ? "page" : undefined}>{label}</Link>)}
@@ -34,6 +38,7 @@ export default async function AdminBookings({ searchParams }: { searchParams: Pr
             ))}
           </ul>
         )}
+        <AdminPager base="/admin/bookings" params={{ status, q }} cursor={cursor} result={result} />
       </section>
     </AdminShell>
   );

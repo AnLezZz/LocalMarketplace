@@ -3,6 +3,8 @@ import { api } from "../../../lib/convex";
 import { authOpts } from "../../../lib/auth";
 import { requireAdminPage, when } from "../../../lib/adminGuard";
 import AdminShell from "../../../components/dashboard/AdminShell";
+import AdminPager from "../../../components/dashboard/AdminPager";
+import { ADMIN_PAGE_SIZE, loadAdminPage, type AdminPage } from "../../../lib/adminPage";
 import { resolveReport, restoreReview } from "../actions";
 
 export const dynamic = "force-dynamic";
@@ -10,18 +12,20 @@ type Report = { _id: string; reason: string; at: number; providerName: string; r
 type Hidden = { _id: string; rating: number; text: string; customerName: string; hiddenReason?: string; providerName: string };
 const stars = (n: number) => "★".repeat(n) + "☆".repeat(5 - n);
 
-export default async function AdminReviews({ searchParams }: { searchParams: Promise<{ err?: string; ok?: string }> }) {
+export default async function AdminReviews({ searchParams }: { searchParams: Promise<{ rcursor?: string; hcursor?: string; err?: string; ok?: string }> }) {
   await requireAdminPage();
-  const { err, ok } = await searchParams;
+  const { rcursor, hcursor, err, ok } = await searchParams;
   const opts = await authOpts();
-  const [reports, hidden] = await Promise.all([
-    fetchQuery(api.admin.listReviewReports, {}, opts) as Promise<Report[]>,
-    fetchQuery(api.admin.listHiddenReviews, {}, opts) as Promise<Hidden[]>,
+  // The two tables page independently: each keeps its own cursor in the address.
+  const [reportPage, hiddenPage] = await Promise.all([
+    loadAdminPage<Report>(`/admin/reviews${hcursor ? `?hcursor=${encodeURIComponent(hcursor)}` : ""}`, rcursor, async (c) => (await fetchQuery(api.admin.listReviewReports, { paginationOpts: { numItems: ADMIN_PAGE_SIZE, cursor: c } }, opts)) as AdminPage<Report>),
+    loadAdminPage<Hidden>(`/admin/reviews${rcursor ? `?rcursor=${encodeURIComponent(rcursor)}` : ""}`, hcursor, async (c) => (await fetchQuery(api.admin.listHiddenReviews, { paginationOpts: { numItems: ADMIN_PAGE_SIZE, cursor: c } }, opts)) as AdminPage<Hidden>),
   ]);
+  const reports = reportPage.page, hidden = hiddenPage.page;
   return (
     <AdminShell active="reviews" title="Reviews" sub="Reviews are hidden, never edited, and always with a reason. A hidden review no longer counts towards the provider's rating." err={err} ok={ok}>
       <section className="card d-card" aria-labelledby="rp-h">
-        <div className="d-card__head"><h2 id="rp-h" className="d-card__title">Reported by providers</h2><span className="d-card__sub num">{reports.length} open</span></div>
+        <div className="d-card__head"><h2 id="rp-h" className="d-card__title">Reported by providers</h2><span className="d-card__sub num">{rcursor || !reportPage.isDone ? "Open reports" : `${reports.length} open`}</span></div>
         {reports.length === 0 ? <div className="empty"><h3 className="empty__title">Nothing to review</h3><p className="empty__text">Reports from providers will appear here.</p></div> : (
           <ul className="adm-list">
             {reports.map((r) => (
@@ -41,9 +45,10 @@ export default async function AdminReviews({ searchParams }: { searchParams: Pro
             ))}
           </ul>
         )}
+        <AdminPager base="/admin/reviews" params={{ hcursor }} cursor={rcursor} cursorParam="rcursor" result={reportPage} />
       </section>
       <section className="card d-card" aria-labelledby="hd-h">
-        <div className="d-card__head"><h2 id="hd-h" className="d-card__title">Hidden reviews</h2><span className="d-card__sub num">{hidden.length}</span></div>
+        <div className="d-card__head"><h2 id="hd-h" className="d-card__title">Hidden reviews</h2><span className="d-card__sub num">{hcursor || !hiddenPage.isDone ? "Newest first" : hidden.length}</span></div>
         {hidden.length === 0 ? <p className="field__hint">No hidden reviews.</p> : (
           <ul className="adm-list">
             {hidden.map((r) => (
@@ -59,6 +64,7 @@ export default async function AdminReviews({ searchParams }: { searchParams: Pro
             ))}
           </ul>
         )}
+        <AdminPager base="/admin/reviews" params={{ rcursor }} cursor={hcursor} cursorParam="hcursor" result={hiddenPage} />
       </section>
     </AdminShell>
   );
