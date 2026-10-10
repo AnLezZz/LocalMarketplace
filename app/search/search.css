@@ -132,3 +132,5 @@ body:has(.srch) { background: var(--ivory, #FAF9F6); }
 .srch__choices a:hover, .srch__choices a:focus-visible { border-color: var(--forest); }
 
 .srch__pages { display: flex; justify-content: space-between; align-items: center; gap: var(--s-3); margin: var(--s-6) 0 var(--s-4); color: var(--ink-3); font-size: 14px; }
+
+.empty__actions { display: flex; flex-wrap: wrap; justify-content: center; gap: var(--s-3); }

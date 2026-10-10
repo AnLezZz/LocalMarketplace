@@ -52,6 +52,8 @@ export default async function Home({ searchParams }: { searchParams: Promise<Par
   for (const p of list) tally.set(p.category, (tally.get(p.category) ?? 0) + 1);
   const popular = [...tally.entries()].sort((a, b) => b[1] - a[1]).slice(0, 4).map(([slug]) => ({ slug, label: metaIn(cats.all, slug).label }));
 
+  const noProviders = everyone.length === 0 && !filtered; // nobody has been approved yet
+
   const firstName = me?.name?.trim().split(/\s+/)[0];
   const greeting = `Good ${partOfDay()}${firstName ? `, ${firstName}` : ""}.`;
   const heading = filtered
@@ -95,51 +97,73 @@ export default async function Home({ searchParams }: { searchParams: Promise<Par
 
       <FeaturedCategories preloaded={featuredCats} />
 
-      <section className="lp-section" id="pros" aria-labelledby="pros-h">
-        <div className="lp-section__head">
-          <h2 id="pros-h" className="lp-h2">{filtered ? heading : "People worth knowing"}</h2>
-          {filtered ? <Link href="/" className="lp-link">Clear filters</Link> : <Link href="/search" className="lp-link">View all</Link>}
-        </div>
-        <p className="lp-section__sub">Trusted locals. Real work.</p>
-        {list.length === 0 ? (
-          <div className="empty card">
-            <span className="empty__icon"><Icon name="search" size={26} /></span>
-            {everyone.length === 0 ? (
-              <>
-                <h3 className="empty__title">No providers yet</h3>
-                <p className="empty__text">No providers found. If this is a fresh database, run <code>pnpm convex:seed</code>.</p>
-              </>
-            ) : (
-              <>
-                <h3 className="empty__title">No pros match that search</h3>
-                <p className="empty__text">Try another suburb or keyword, or browse every category.</p>
-                <Link href="/" className="btn btn--secondary">Clear filters</Link>
-              </>
-            )}
+      {noProviders ? (
+        <section className="lp-section lp-launch" id="pros" aria-labelledby="launch-h">
+          <h2 id="launch-h" className="lp-h2">Providers are joining now</h2>
+          <p className="lp-section__sub">Localo is new. Local people are applying, and each one is approved before they appear here.</p>
+          <div className="lp-launch__cards">
+            <div className="lp-launch__card">
+              <span className="lp-launch__icon"><Icon name="search" size={22} /></span>
+              <h3>Looking for help?</h3>
+              <p>Browse the categories to see what will be offered. Providers show up here as soon as they&apos;re approved, so check back soon.</p>
+              <Link href="/categories" className="btn btn--secondary">Browse categories</Link>
+            </div>
+            <div className="lp-launch__card lp-launch__card--accent">
+              <span className="lp-launch__icon"><Icon name="briefcase" size={22} /></span>
+              <h3>Offer your services</h3>
+              <p>Be one of the first on Localo. Apply, get approved, and start receiving booking requests from people nearby.</p>
+              <Link href={me?.role === "provider" ? "/provider" : "/provider/register"} className="btn btn--forest">{me?.role === "provider" ? "Go to your dashboard" : "Become a provider"}</Link>
+            </div>
           </div>
-        ) : (
-          <ProviderCarousel label="Featured providers">
-            {list.map((p) => {
-              const price = rate(p.rateCents, p.rateBasis);
-              return (
-                <Link key={p._id} href={`/providers/${p._id}`} className="lp-pro">
-                  <div className="lp-pro__photo">
-                    <ProviderPhoto name={p.name} photo={p.photo} category={p.category} fill />
-                    <span className="lp-pro__rating"><Rating avg={p.ratingAvg} count={p.reviewCount} /></span>
-                  </div>
-                  <h3 className="lp-pro__name">{p.name}</h3>
-                  <div className="lp-pro__meta">{metaIn(cats.all, p.category).label}</div>
-                  <div className="lp-pro__meta"><Icon name="pin" size={13} /> {p.suburb}</div>
-                  <div className="lp-pro__price">From <strong className="num">{price.amount}</strong> {price.unit.trim()}</div>
-                </Link>
-              );
-            })}
-          </ProviderCarousel>
-        )}
-        {found.total > list.length && (
-          <p className="lp-more"><Link href={`/search${filtered ? `?${new URLSearchParams(Object.entries({ q, category, where: suburb }).filter(([, v]) => v) as [string, string][])}` : ""}`} className="btn btn--secondary">See all {found.total}{found.capped ? "+" : ""} providers</Link></p>
-        )}
-      </section>
+          {process.env.NODE_ENV !== "production" && <p className="field__hint">Development: run <code>pnpm convex:seed</code> for sample providers.</p>}
+        </section>
+      ) : (
+      <section className="lp-section" id="pros" aria-labelledby="pros-h">
+          <div className="lp-section__head">
+            <h2 id="pros-h" className="lp-h2">{filtered ? heading : "People worth knowing"}</h2>
+            {filtered ? <Link href="/" className="lp-link">Clear filters</Link> : <Link href="/search" className="lp-link">View all</Link>}
+          </div>
+          <p className="lp-section__sub">Trusted locals. Real work.</p>
+          {list.length === 0 ? (
+            <div className="empty card">
+              <span className="empty__icon"><Icon name="search" size={26} /></span>
+              {everyone.length === 0 ? (
+                <>
+                  <h3 className="empty__title">No providers yet</h3>
+                  <p className="empty__text">No providers found. If this is a fresh database, run <code>pnpm convex:seed</code>.</p>
+                </>
+              ) : (
+                <>
+                  <h3 className="empty__title">No pros match that search</h3>
+                  <p className="empty__text">Try another suburb or keyword, or browse every category.</p>
+                  <Link href="/" className="btn btn--secondary">Clear filters</Link>
+                </>
+              )}
+            </div>
+          ) : (
+            <ProviderCarousel label="Featured providers">
+              {list.map((p) => {
+                const price = rate(p.rateCents, p.rateBasis);
+                return (
+                  <Link key={p._id} href={`/providers/${p._id}`} className="lp-pro">
+                    <div className="lp-pro__photo">
+                      <ProviderPhoto name={p.name} photo={p.photo} category={p.category} fill />
+                      <span className="lp-pro__rating"><Rating avg={p.ratingAvg} count={p.reviewCount} /></span>
+                    </div>
+                    <h3 className="lp-pro__name">{p.name}</h3>
+                    <div className="lp-pro__meta">{metaIn(cats.all, p.category).label}</div>
+                    <div className="lp-pro__meta"><Icon name="pin" size={13} /> {p.suburb}</div>
+                    <div className="lp-pro__price">From <strong className="num">{price.amount}</strong> {price.unit.trim()}</div>
+                  </Link>
+                );
+              })}
+            </ProviderCarousel>
+          )}
+          {found.total > list.length && (
+            <p className="lp-more"><Link href={`/search${filtered ? `?${new URLSearchParams(Object.entries({ q, category, where: suburb }).filter(([, v]) => v) as [string, string][])}` : ""}`} className="btn btn--secondary">See all {found.total}{found.capped ? "+" : ""} providers</Link></p>
+          )}
+        </section>
+      )}
 
       <section className="lp-section" id="how-it-works" aria-labelledby="how-h">
         <div className="lp-section__head">
@@ -200,7 +224,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<Par
 
       <section className="lp-biz" aria-labelledby="biz-h">
         <div className="lp-biz__body">
-          <h2 id="biz-h" className="lp-biz__title">Run a local business?</h2>
+          <h2 id="biz-h" className="lp-biz__title">{noProviders ? "Be one of the first providers" : "Run a local business?"}</h2>
           <p>Apply to join Localo, get approved, and receive booking requests from people nearby. You choose your services, your prices and when you&apos;re available.</p>
           <Link href={me?.role === "provider" ? "/provider" : "/provider/register"} className="btn btn--cream">{me?.role === "provider" ? "Go to your dashboard" : "Become a provider"}</Link>
         </div>

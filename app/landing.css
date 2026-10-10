@@ -198,3 +198,13 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--forest); }
   .lp-how__card h3 { margin: 0; font-size: 16px; }
   .lp-how__card p { font-size: 14px; line-height: 1.5; }
 }
+
+/* Before anyone has been approved: an invitation, not an empty box */
+.lp-launch__cards { display: grid; gap: var(--s-4); margin-top: var(--s-5); }
+.lp-launch__card { display: grid; gap: var(--s-3); justify-items: start; padding: var(--s-6); background: #fff; border: 1px solid #ECE8DF; border-radius: 20px; }
+.lp-launch__card--accent { background: #E7EFEA; border-color: #D3E2D9; }
+.lp-launch__card h3 { margin: 0; font-size: 20px; font-weight: 600; }
+.lp-launch__card p { margin: 0; color: var(--ink-3); font-size: 15px; line-height: 1.55; max-width: 46ch; }
+.lp-launch__icon { display: grid; place-items: center; width: 48px; height: 48px; border-radius: 50%; background: #EFEDE7; color: var(--forest); }
+.lp-launch__card--accent .lp-launch__icon { background: #fff; }
+@media (min-width: 720px) { .lp-launch__cards { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
